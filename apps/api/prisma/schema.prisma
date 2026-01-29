@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum UserStatus {
+  active
+  disabled
+
+  @@map("user_status")
+}
+
+enum UserRole {
+  it
+  admin
+  head_it
+  requester
+
+  @@map("user_role")
+}
+
+enum LdapSyncStatus {
+  started
+  completed
+  failed
+
+  @@map("ldap_sync_status")
+}
+
+model User {
+  id        String     @id @default(uuid()) @db.Char(36) @map("id")
+  username  String     @unique @map("username")
+  status    UserStatus @default(active) @map("status")
+  role      UserRole   @default(requester) @map("role")
+  ldapDn        String?   @db.Text @map("ldap_dn")
+  ldapAttributes Json?    @map("ldap_attributes")
+  ldapSyncedAt  DateTime? @map("ldap_synced_at")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  ldapSyncRuns LdapSyncRun[]
+  auditLogs    AuditLog[]
+
+  @@map("users")
+}
+
+model LdapSyncRun {
+  id               String          @id @default(uuid()) @db.Char(36) @map("id")
+  status           LdapSyncStatus  @default(started) @map("status")
+  startedAt        DateTime        @default(now()) @map("started_at")
+  completedAt      DateTime?       @map("completed_at")
+  processedCount   Int             @default(0) @map("processed_count")
+  createdCount     Int             @default(0) @map("created_count")
+  updatedCount     Int             @default(0) @map("updated_count")
+  skippedCount     Int             @default(0) @map("skipped_count")
+  errorMessage     String?         @db.Text @map("error_message")
+  triggeredByUserId String         @db.Char(36) @map("triggered_by_user_id")
+  triggeredByUser  User            @relation(fields: [triggeredByUserId], references: [id])
+
+  @@map("ldap_sync_runs")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid()) @db.Char(36) @map("id")
+  action       String   @db.VarChar(191) @map("action")
+  actorUserId  String   @db.Char(36) @map("actor_user_id")
+  entityType   String?  @db.VarChar(191) @map("entity_type")
+  entityId     String?  @db.VarChar(191) @map("entity_id")
+  metadata     Json?    @map("metadata")
+  createdAt    DateTime @default(now()) @map("created_at")
+  actorUser    User     @relation(fields: [actorUserId], references: [id])
+
+  @@map("audit_logs")
+}
