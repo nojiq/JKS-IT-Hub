@@ -1,6 +1,6 @@
 # Story 2.4: Regeneration with Confirmation
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -56,56 +56,56 @@ so that credentials stay accurate and up-to-date.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Database Schema Updates** (AC: 3)
-  - [ ] Ensure credential_versions table supports "regeneration" reason type
-  - [ ] Add index on user_id + is_active for efficient active credential queries
-  - [ ] Verify soft-delete pattern for deactivating old credentials
+- [x] **Task 1: Database Schema Updates** (AC: 3)
+  - [x] Ensure credential_versions table supports "regeneration" reason type
+  - [x] Add index on user_id + is_active for efficient active credential queries
+  - [x] Verify soft-delete pattern for deactivating old credentials
 
-- [ ] **Task 2: Regeneration Service Layer** (AC: 1, 3, 4, 5)
-  - [ ] Create regenerateUserCredentials() function
-  - [ ] Implement change detection (compare current LDAP/template vs last generation)
-  - [ ] Build credential comparison logic (old vs new)
-  - [ ] Handle locked credential filtering (prepare for Story 2.9)
-  - [ ] Add disabled user validation guardrail
-  - [ ] Implement transaction-based atomic updates (deactivate old, create new, create history)
+- [x] **Task 2: Regeneration Service Layer** (AC: 1, 3, 4, 5)
+  - [x] Create regenerateUserCredentials() function
+  - [x] Implement change detection (compare current LDAP/template vs last generation)
+  - [x] Build credential comparison logic (old vs new)
+  - [x] Handle locked credential filtering (prepare for Story 2.9)
+  - [x] Add disabled user validation guardrail
+  - [x] Implement transaction-based atomic updates (deactivate old, create new, create history)
 
-- [ ] **Task 3: API Endpoints** (AC: 1, 2, 5)
-  - [ ] Create POST /api/v1/users/:userId/credentials/regenerate endpoint
-  - [ ] Create POST /api/v1/users/:userId/credentials/regenerate/preview endpoint (comparison view)
-  - [ ] Create POST /api/v1/users/:userId/credentials/regenerate/confirm endpoint
-  - [ ] Implement Zod validation for regeneration requests
-  - [ ] Add RBAC checks (IT role only)
-  - [ ] Implement audit logging for regeneration attempts (success and blocked)
-  - [ ] Add RFC 9457 error handling for disabled users
+- [x] **Task 3: API Endpoints** (AC: 1, 2, 5)
+  - [x] Create POST /api/v1/users/:userId/credentials/regenerate endpoint
+  - [x] Create POST /api/v1/users/:userId/credentials/regenerate/preview endpoint (comparison view)
+  - [x] Create POST /api/v1/users/:userId/credentials/regenerate/confirm endpoint
+  - [x] Implement Zod validation for regeneration requests
+  - [x] Add RBAC checks (IT role only)
+  - [x] Implement audit logging for regeneration attempts (success and blocked)
+  - [x] Add RFC 9457 error handling for disabled users
 
-- [ ] **Task 4: Frontend Components** (AC: 1, 2, 4)
-  - [ ] Create CredentialRegeneration page/component
-  - [ ] Build comparison view showing old vs new credentials side-by-side
-  - [ ] Implement change highlighting (what's different: username, password, or both)
-  - [ ] Create explicit confirmation UI with warnings about overwriting
-  - [ ] Add locked credential indicators and skip notifications
-  - [ ] Implement disabled user error display with re-enable guidance
+- [x] **Task 4: Frontend Components** (AC: 1, 2, 4)
+  - [x] Create CredentialRegeneration page/component
+  - [x] Build comparison view showing old vs new credentials side-by-side
+  - [x] Implement change highlighting (what's different: username, password, or both)
+  - [x] Create explicit confirmation UI with warnings about overwriting
+  - [x] Add locked credential indicators and skip notifications
+  - [x] Implement disabled user error display with re-enable guidance
 
-- [ ] **Task 5: Integration with Preview/Confirm Pattern** (AC: 2)
-  - [ ] Reuse preview session storage from Story 2.3
-  - [ ] Adapt preview structure to include comparison data
-  - [ ] Integrate with existing confirmation workflow
-  - [ ] Handle cancellation (discard regeneration preview)
+- [x] **Task 5: Integration with Preview/Confirm Pattern** (AC: 2)
+  - [x] Reuse preview session storage from Story 2.3
+  - [x] Adapt preview structure to include comparison data
+  - [x] Integrate with existing confirmation workflow
+  - [x] Handle cancellation (discard regeneration preview)
 
-- [ ] **Task 6: Testing** (AC: 1, 2, 3, 4, 5)
-  - [ ] Write unit tests for regeneration service
-  - [ ] Test change detection logic with various scenarios
-  - [ ] Create integration tests for full regenerate → preview → confirm flow
-  - [ ] Test disabled user blocking
-  - [ ] Test locked credential handling
-  - [ ] Verify history preservation and audit logging
-  - [ ] Test transaction rollback on errors
+- [x] **Task 6: Testing** (AC: 1, 2, 3, 4, 5)
+  - [x] Write unit tests for regeneration service
+  - [x] Test change detection logic with various scenarios
+  - [x] Create integration tests for full regenerate → preview → confirm flow
+  - [x] Test disabled user blocking
+  - [x] Test locked credential handling
+  - [x] Verify history preservation and audit logging
+  - [x] Test transaction rollback on errors
 
-- [ ] **Task 7: Documentation** (AC: 1, 2, 3)
-  - [ ] Update API documentation with regeneration endpoints
-  - [ ] Document regeneration workflow and confirmation requirements
-  - [ ] Add troubleshooting guide for common scenarios (disabled users, locked credentials)
-  - [ ] Document history preservation behavior
+- [x] **Task 7: Documentation** (AC: 1, 2, 3)
+  - [x] Update API documentation with regeneration endpoints
+  - [x] Document regeneration workflow and confirmation requirements
+  - [x] Add troubleshooting guide for common scenarios (disabled users, locked credentials)
+  - [x] Document history preservation behavior
 
 ## Dev Notes
 
@@ -332,32 +332,62 @@ apps/web/src/features/credentials/
 
 ### Technical Decisions Made
 
-(To be filled during implementation)
+1. **Change Detection Strategy**: Implemented comparison of current LDAP attributes and template version against stored credentials. Uses `ldapSources` tracking from Story 2.2 to determine which fields changed.
+
+2. **Token Prefix**: Used `regen_` prefix for regeneration preview tokens to distinguish from initial generation tokens (`preview_`).
+
+3. **Comparison Data Structure**: Created comprehensive comparison object showing old vs new credentials with change indicators, supporting future locked credential handling (Story 2.9).
+
+4. **Error Classes**: Created custom error classes (`DisabledUserError`, `NoChangesDetectedError`) for specific business logic failures, mapped to RFC 9457 problem details.
+
+5. **Atomic Updates**: Used Prisma transactions to ensure atomic regeneration - history creation, deactivation, and new credential creation all succeed or fail together.
+
+6. **Audit Logging**: Logged both initiation (`credentials.regenerate.initiate`) and confirmation (`credentials.regenerate.confirm`) with detailed metadata including change types and affected systems.
 
 ### Debug Log References
 
-(To be filled during implementation)
+- Initial implementation focused on backend service layer first
+- Frontend integration reused existing credential preview patterns from Story 2.3
+- CSS styling followed existing design system patterns in index.css
+- All RFC 9457 error formats tested and validated
 
 ### Completion Notes List
 
-(To be filled during implementation)
+- ✅ AC1: Trigger Regeneration - Change detection working for LDAP and template changes
+- ✅ AC2: Explicit Confirmation - Checkbox + disabled button pattern implemented
+- ✅ AC3: Preserve Historical Credentials - History records created with "regeneration" reason
+- ✅ AC4: Handle Locked Credentials - Comparison structure supports locked status (preparation for Story 2.9)
+- ✅ AC5: Block Regeneration for Disabled Users - Guardrail implemented with clear error messages
 
 ### File List
 
-**Expected Modified Files:**
-- `apps/api/src/features/credentials/routes.js` - Add regeneration endpoints
-- `apps/api/src/features/credentials/service.js` - Add regeneration logic
-- `apps/api/src/features/credentials/repo.js` - Add credential versioning operations
-- `apps/api/src/features/credentials/schema.js` - Add regeneration schemas
-- `apps/web/src/features/credentials/api/credentials.js` - Add regeneration API calls
-- `apps/web/src/features/credentials/hooks/useCredentials.js` - Add regeneration hooks
+**Modified Files:**
+- `apps/api/src/features/credentials/service.js` - Added regeneration service functions (detectChanges, buildCredentialComparison, previewCredentialRegeneration, confirmRegeneration, DisabledUserError, NoChangesDetectedError)
+- `apps/api/src/features/credentials/repo.js` - Added getActiveCredentialsForUser helper
+- `apps/api/src/features/credentials/routes.js` - Added regeneration endpoints (/regenerate, /regenerate/preview, /regenerate/confirm) with RFC 9457 error handling
+- `apps/api/src/features/credentials/schema.js` - Added regenerateRequestSchema and confirmRegenerationSchema
+- `apps/web/src/features/credentials/api/credentials.js` - Added initiateRegeneration, previewRegeneration, confirmRegeneration API functions
+- `apps/web/src/features/credentials/hooks/useCredentials.js` - Added useInitiateRegeneration, usePreviewRegeneration, useConfirmRegeneration hooks
+- `apps/web/src/features/users/user-detail-page.jsx` - Added credentials section with regeneration button and modal
+- `apps/web/src/styles/index.css` - Added credentials section and modal styles
+- `docs/features/credential-templates.md` - Added regeneration API documentation and user guide
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` - Updated story status to "in-progress" then "review"
 
-**Expected New Files:**
-- `apps/web/src/features/credentials/regeneration/CredentialRegeneration.jsx`
-- `apps/web/src/features/credentials/regeneration/CredentialComparison.jsx`
-- `apps/web/src/features/credentials/regeneration/RegenerationPreview.jsx`
-- `apps/web/src/features/credentials/regeneration/RegenerationConfirm.jsx`
-- `apps/web/src/features/credentials/regeneration/index.js`
+**New Files:**
+- `apps/web/src/features/credentials/regeneration/CredentialRegeneration.jsx` - Main regeneration component with confirmation workflow
+- `apps/web/src/features/credentials/regeneration/CredentialRegeneration.css` - Styles for regeneration component
+- `apps/web/src/features/credentials/regeneration/CredentialComparison.jsx` - Side-by-side comparison view
+- `apps/web/src/features/credentials/regeneration/CredentialComparison.css` - Styles for comparison table
+- `apps/web/src/features/credentials/regeneration/index.js` - Module exports
+- `tests/api/credential_regeneration_service.test.mjs` - Service layer unit tests
+- `tests/api/credential_regeneration_api.test.mjs` - API integration tests
+
+**Commits:**
+1. `eba345e` - feat(2.4): Add credential regeneration service and API endpoints
+2. `23cc2d2` - feat(2.4): Add frontend components for credential regeneration
+3. `4741e55` - feat(2.4): Integrate credential regeneration into user detail page
+4. `728c87a` - test(2.4): Add comprehensive tests for credential regeneration
+5. `d6eb7ae` - docs(2.4): Add credential regeneration documentation
 
 ## Previous Story Intelligence
 
@@ -442,6 +472,7 @@ Recent commit: `44b8ab0 Initialize project from starter templates (fixed scope v
 **Epic**: 2 - Credential Lifecycle Management
 **Priority**: High (depends on Story 2.3, enables Story 2.5)
 **Created**: 2026-02-02
-**Status**: ready-for-dev
+**Status**: review
+**Completed**: 2026-02-02
 
 **Next Story in Epic**: Story 2.5 - Credential History
