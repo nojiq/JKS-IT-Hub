@@ -57,7 +57,7 @@ development_status:
   2-1-global-credential-template: review
   2-2-deterministic-credential-generation: review
   2-3-credential-preview-confirmation: done
-  2-4-regeneration-with-confirmation: in-progress
+  2-4-regeneration-with-confirmation: review
   2-5-credential-history: backlog
   2-6-per-user-credential-override: backlog
   2-7-username-field-mapping-per-system: backlog
