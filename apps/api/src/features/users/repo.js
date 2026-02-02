@@ -1,27 +1,6 @@
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
-import { PrismaClient } from "../../generated/prisma/client.js";
+import { prisma } from "../../shared/db/prisma.js";
 
-const getDatabaseOptions = () => {
-  const url = process.env.DATABASE_URL;
-  if (!url) {
-    throw new Error("DATABASE_URL is required to initialize Prisma Client");
-  }
-
-  const parsed = new URL(url);
-
-  return {
-    host: parsed.hostname,
-    port: parsed.port ? Number(parsed.port) : 3306,
-    user: decodeURIComponent(parsed.username),
-    password: decodeURIComponent(parsed.password),
-    database: parsed.pathname.replace(/^\/+/, ""),
-    connectionLimit: 5
-  };
-};
-
-const prisma = new PrismaClient({
-  adapter: new PrismaMariaDb(getDatabaseOptions())
-});
+export { prisma };
 
 export const findUserByUsername = async (username) => {
   return prisma.user.findUnique({
@@ -64,7 +43,11 @@ export const findUsersByUsernames = async (usernames = []) => {
   }
   return prisma.user.findMany({
     where: { username: { in: unique } },
-    select: { username: true }
+    select: {
+      id: true,
+      username: true,
+      ldapAttributes: true
+    }
   });
 };
 
@@ -110,3 +93,33 @@ export const upsertUserFromLdap = async ({
 };
 
 export const isUserDisabled = (user) => user?.status === "disabled";
+
+export const updateUserRole = async (id, role) => {
+  return prisma.user.update({
+    where: { id },
+    data: { role },
+    select: {
+      id: true,
+      username: true,
+      role: true,
+      status: true,
+      ldapAttributes: true,
+      ldapSyncedAt: true
+    }
+  });
+};
+
+export const updateUserStatus = async (id, status) => {
+  return prisma.user.update({
+    where: { id },
+    data: { status },
+    select: {
+      id: true,
+      username: true,
+      role: true,
+      status: true,
+      ldapAttributes: true,
+      ldapSyncedAt: true
+    }
+  });
+};

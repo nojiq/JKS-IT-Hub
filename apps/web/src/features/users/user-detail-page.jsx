@@ -85,10 +85,11 @@ export default function UserDetailPage() {
   const user = payload.user;
   const fields = payload.fields ?? [];
   const rows = useMemo(
-    () => fields.map((field) => ({
-      field,
-      value: user?.ldapFields?.[field] ?? null
-    })),
+    () =>
+      fields.map((field) => ({
+        field,
+        value: user?.ldapFields?.[field] ?? null
+      })),
     [fields, user]
   );
 

@@ -141,11 +141,39 @@ test("GET /users returns list with fields", async () => {
   assert.equal(body.data.users[0].username, "it-user");
   assert.equal(body.data.users[0].ldapFields.cn, "Jane Doe");
   assert.equal(body.data.users[0].ldapFields.department ?? null, null);
+  assert.ok("ldapSyncedAt" in body.data.users[0]);
+  assert.ok(body.data.users[0].ldapSyncedAt);
 
   await app.close();
 });
 
-test("GET /users/:id returns detail and 404", async () => {
+test("GET /users rejects disabled IT users", async () => {
+  const user = {
+    id: "user-disabled",
+    username: "disabled-it",
+    role: "it",
+    status: "disabled"
+  };
+  const app = await createTestApp({
+    userRepo: createInMemoryUserRepo([user])
+  });
+
+  const response = await app.inject({
+    method: "GET",
+    url: "/users",
+    headers: {
+      cookie: await createSessionCookie(user)
+    }
+  });
+
+  assert.equal(response.statusCode, 403);
+  const body = response.json();
+  assert.equal(body.title, "Account disabled");
+
+  await app.close();
+});
+
+test("GET /users/:id returns detail with ldapSyncedAt and 404", async () => {
   const user = {
     id: "user-3",
     username: "it-user",
@@ -171,6 +199,7 @@ test("GET /users/:id returns detail and 404", async () => {
   const okBody = okResponse.json();
   assert.equal(okBody.data.user.id, user.id);
   assert.ok(okBody.data.fields.includes("uid"));
+  assert.ok("ldapSyncedAt" in okBody.data.user);
 
   const missingResponse = await app.inject({
     method: "GET",

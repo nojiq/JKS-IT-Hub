@@ -1,27 +1,6 @@
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
-import { PrismaClient } from "../../generated/prisma/client.js";
+import { prisma } from "../../shared/db/prisma.js";
 
-const getDatabaseOptions = () => {
-  const url = process.env.DATABASE_URL;
-  if (!url) {
-    throw new Error("DATABASE_URL is required to initialize Prisma Client");
-  }
-
-  const parsed = new URL(url);
-
-  return {
-    host: parsed.hostname,
-    port: parsed.port ? Number(parsed.port) : 3306,
-    user: decodeURIComponent(parsed.username),
-    password: decodeURIComponent(parsed.password),
-    database: parsed.pathname.replace(/^\/+/, ""),
-    connectionLimit: 5
-  };
-};
-
-const prisma = new PrismaClient({
-  adapter: new PrismaMariaDb(getDatabaseOptions())
-});
+export { prisma };
 
 export const createAuditLog = async ({
   action,
@@ -39,4 +18,77 @@ export const createAuditLog = async ({
       metadata
     }
   });
+};
+
+export const findAuditLogsByEntity = async (entityId, entityType) => {
+  return prisma.auditLog.findMany({
+    where: {
+      entityId,
+      entityType
+    },
+    orderBy: {
+      createdAt: "desc"
+    },
+    include: {
+      actorUser: {
+        select: {
+          username: true,
+          role: true,
+          status: true
+        }
+      }
+    }
+  });
+};
+
+export const getAuditLogs = async ({
+  page = 1,
+  limit = 50,
+  actorId,
+  action,
+  startDate,
+  endDate
+}) => {
+  const where = {};
+
+  if (actorId) {
+    where.actorUserId = actorId;
+  }
+
+  if (action) {
+    where.action = action;
+  }
+
+  if (startDate || endDate) {
+    where.createdAt = {};
+    if (startDate) {
+      where.createdAt.gte = new Date(startDate);
+    }
+    if (endDate) {
+      where.createdAt.lte = new Date(endDate);
+    }
+  }
+
+  const [total, logs] = await Promise.all([
+    prisma.auditLog.count({ where }),
+    prisma.auditLog.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: {
+        createdAt: "desc"
+      },
+      include: {
+        actorUser: {
+          select: {
+            username: true,
+            role: true,
+            status: true
+          }
+        }
+      }
+    })
+  ]);
+
+  return { logs, total };
 };

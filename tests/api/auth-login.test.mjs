@@ -31,7 +31,7 @@ const createTestApp = async ({ ldapService, userRepo }) => {
   await app.register(cookie);
   await app.register(authRoutes, {
     config: baseConfig,
-    ldapService,
+    ldapAuthFn: ldapService.authenticate,
     userRepo
   });
   await app.ready();
@@ -111,7 +111,7 @@ test("POST /auth/login rejects invalid LDAP credentials", async () => {
 
   assert.equal(response.statusCode, 401);
   const body = response.json();
-  assert.equal(body.title, "Unauthorized");
+  assert.equal(body.title, "Invalid Credentials");
 
   await app.close();
 });
@@ -133,7 +133,7 @@ test("POST /auth/login blocks disabled users", async () => {
 
   assert.equal(response.statusCode, 403);
   const body = response.json();
-  assert.equal(body.title, "Account disabled");
+  assert.equal(body.title, "Account Disabled");
 
   await app.close();
 });
@@ -200,7 +200,7 @@ test("GET /auth/me blocks disabled users even with a valid token", async () => {
 
   assert.equal(response.statusCode, 403);
   const body = response.json();
-  assert.equal(body.title, "Account disabled");
+  assert.equal(body.title, "Account Disabled");
 
   await app.close();
 });

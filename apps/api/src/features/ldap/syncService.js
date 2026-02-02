@@ -54,31 +54,64 @@ const toUsername = (value) => {
   return typeof value === "string" ? value : String(value);
 };
 
-const getExistingUsernames = async (userRepo, usernames) => {
+const calculateDiff = (oldAttrs, newAttrs) => {
+  const changes = [];
+  const allKeys = new Set([...Object.keys(oldAttrs || {}), ...Object.keys(newAttrs || {})]);
+
+  for (const key of allKeys) {
+    let oldVal = oldAttrs?.[key];
+    let newVal = newAttrs?.[key];
+
+    // Handle arrays: sort them to ensure order doesn't cause false diffs
+    if (Array.isArray(oldVal)) {
+      oldVal = [...oldVal].sort();
+    }
+    if (Array.isArray(newVal)) {
+      newVal = [...newVal].sort();
+    }
+
+    // Simple JSON comparison for values (handles arrays/strings)
+    if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+      changes.push({ field: key, old: oldVal, new: newVal });
+    }
+  }
+  return changes;
+};
+
+const getExistingUsersMap = async (userRepo, usernames) => {
   const unique = [...new Set(usernames.filter(Boolean))];
+  const userMap = new Map();
+
   if (!unique.length) {
-    return new Set();
+    return userMap;
   }
 
   if (userRepo?.findUsersByUsernames) {
     const existing = await userRepo.findUsersByUsernames(unique);
-    return new Set(
-      (existing ?? []).map((item) => (typeof item === "string" ? item : item.username)).filter(Boolean)
-    );
+    for (const user of existing || []) {
+      if (typeof user === "object" && user.username) {
+        userMap.set(user.username, user);
+      } else if (typeof user === "string") {
+        // Fallback for string returns (unlikely but safe)
+        userMap.set(user, { username: user });
+      }
+    }
+    return userMap;
   }
 
-  const existing = new Set();
   if (userRepo?.findUserByUsername) {
     for (const username of unique) {
-      const user = await userRepo.findUserByUsername(username);
-      if (user?.username) {
-        existing.add(user.username);
-      } else if (user) {
-        existing.add(username);
+      try {
+        const user = await userRepo.findUserByUsername(username);
+        if (user) {
+          userMap.set(username, user);
+        }
+      } catch (e) {
+        // ignore errors looking up single user
       }
     }
   }
-  return existing;
+  return userMap;
 };
 
 export const serializeSyncRun = (run) => {
@@ -156,14 +189,34 @@ export const createLdapSyncRunner = ({
       entriesWithUsernames.push({ entry, username });
     }
 
-    const existingUsernames = await getExistingUsernames(
+    const existingUsersMap = await getExistingUsersMap(
       userRepo,
       entriesWithUsernames.map(({ username }) => username)
     );
 
     for (const { entry, username } of entriesWithUsernames) {
-      if (existingUsernames.has(username)) {
+      const existingUser = existingUsersMap.get(username);
+      const newLdapAttributes = mapEntryAttributes(entry, attributes);
+
+      if (existingUser) {
         updatedCount += 1;
+
+        // Calculate diff and log audit if changed
+        // Ensure we have an ID for the user before logging audit
+        if (auditRepo?.createAuditLog && existingUser.id) {
+          const oldLdapAttributes = existingUser.ldapAttributes || {};
+          const changes = calculateDiff(oldLdapAttributes, newLdapAttributes);
+
+          if (changes.length > 0) {
+            await auditRepo.createAuditLog({
+              action: "user.ldap_update",
+              actorUserId: null,
+              entityType: "user",
+              entityId: existingUser.id,
+              metadata: { changes }
+            });
+          }
+        }
       } else {
         createdCount += 1;
       }
@@ -171,7 +224,7 @@ export const createLdapSyncRunner = ({
       await userRepo.upsertUserFromLdap({
         username,
         ldapDn: entry.dn,
-        ldapAttributes: mapEntryAttributes(entry, attributes),
+        ldapAttributes: newLdapAttributes,
         syncedAt: new Date()
       });
     }
@@ -187,52 +240,72 @@ export const createLdapSyncRunner = ({
     });
   };
 
-  const startManualSync = async ({ actor }) => {
+  const startSync = async ({ actor, triggerType, waitForCompletion = false }) => {
     const activeRun =
       (await syncRepo.getActiveSyncRun?.()) ??
       (await syncRepo.getLatestSyncRun?.());
+
     if (activeRun?.status === "started") {
       throw new LdapSyncInProgressError();
     }
 
     const run = await syncRepo.createSyncRun({
       status: "started",
-      triggeredByUserId: actor.id
+      triggeredByUserId: actor?.id ?? null // null for system
     });
 
     if (auditRepo?.createAuditLog) {
       await auditRepo.createAuditLog({
-        action: "ldap.sync.manual",
-        actorUserId: actor.id,
+        action: `ldap.sync.${triggerType}`,
+        actorUserId: actor?.id ?? null,
         entityType: "ldap_sync_run",
         entityId: run.id,
         metadata: {
-          filter: config.ldapSync.filter
+          filter: config.ldapSync.filter,
+          triggeredBy: triggerType
         }
       });
     }
 
     publish("started", run);
 
-    setImmediate(() => {
-      runSync(run)
-        .then((completedRun) => {
-          publish("completed", completedRun);
-        })
-        .catch(async (error) => {
-          const failedRun = await syncRepo.updateSyncRun(run.id, {
-            status: "failed",
-            completedAt: new Date(),
-            errorMessage: error?.message ?? "LDAP sync failed"
-          });
-          publish("failed", failedRun);
+    const executionPromise = runSync(run)
+      .then((completedRun) => {
+        publish("completed", completedRun);
+        return completedRun;
+      })
+      .catch(async (error) => {
+        const failedRun = await syncRepo.updateSyncRun(run.id, {
+          status: "failed",
+          completedAt: new Date(),
+          errorMessage: error?.message ?? "LDAP sync failed"
         });
-    });
+        publish("failed", failedRun);
+        // If we are waiting, we want to propagate the error
+        if (waitForCompletion) throw error;
+      });
 
+    if (waitForCompletion) {
+      return executionPromise;
+    }
+
+    // Run sync in background for manual API calls
+    // We already attached handlers above, so just let it run
     return run;
   };
 
+  const startManualSync = async ({ actor }) => {
+    return startSync({ actor, triggerType: "manual", waitForCompletion: false });
+  };
+
+  const startScheduledSync = async () => {
+    // Audit log specific logic for scheduled sync could go here if needed
+    // We wait for completion to allow the scheduler to handle retries/errors
+    return startSync({ actor: null, triggerType: "scheduled", waitForCompletion: true });
+  };
+
   return {
-    startManualSync
+    startManualSync,
+    startScheduledSync
   };
 };

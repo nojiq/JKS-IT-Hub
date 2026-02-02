@@ -44,6 +44,10 @@ model User {
 
   ldapSyncRuns LdapSyncRun[]
   auditLogs    AuditLog[]
+  credentialTemplates CredentialTemplate[]
+  credentials  UserCredential[]
+  generatedCredentials UserCredential[] @relation("GeneratedBy")
+  credentialVersions CredentialVersion[]
 
   @@map("users")
 }
@@ -58,8 +62,8 @@ model LdapSyncRun {
   updatedCount     Int             @default(0) @map("updated_count")
   skippedCount     Int             @default(0) @map("skipped_count")
   errorMessage     String?         @db.Text @map("error_message")
-  triggeredByUserId String         @db.Char(36) @map("triggered_by_user_id")
-  triggeredByUser  User            @relation(fields: [triggeredByUserId], references: [id])
+  triggeredByUserId String?         @db.Char(36) @map("triggered_by_user_id")
+  triggeredByUser  User?            @relation(fields: [triggeredByUserId], references: [id])
 
   @@map("ldap_sync_runs")
 }
@@ -67,12 +71,70 @@ model LdapSyncRun {
 model AuditLog {
   id           String   @id @default(uuid()) @db.Char(36) @map("id")
   action       String   @db.VarChar(191) @map("action")
-  actorUserId  String   @db.Char(36) @map("actor_user_id")
+  actorUserId  String?   @db.Char(36) @map("actor_user_id")
   entityType   String?  @db.VarChar(191) @map("entity_type")
   entityId     String?  @db.VarChar(191) @map("entity_id")
   metadata     Json?    @map("metadata")
   createdAt    DateTime @default(now()) @map("created_at")
-  actorUser    User     @relation(fields: [actorUserId], references: [id])
+  actorUser    User?     @relation(fields: [actorUserId], references: [id])
 
+  @@index([action], map: "idx_audit_logs_action")
+  @@index([createdAt], map: "idx_audit_logs_created_at")
   @@map("audit_logs")
+}
+
+model CredentialTemplate {
+  id          String   @id @default(uuid()) @db.Char(36) @map("id")
+  name        String   @db.VarChar(191) @map("name")
+  description String?  @db.Text @map("description")
+  structure   Json     @map("structure")
+  version     Int      @default(1) @map("version")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdBy   String   @db.Char(36) @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  createdByUser User @relation(fields: [createdBy], references: [id])
+
+  @@map("credential_templates")
+}
+
+model UserCredential {
+  id               String   @id @default(uuid()) @db.Char(36) @map("id")
+  userId           String   @db.Char(36) @map("user_id")
+  system           String   @db.VarChar(191) @map("system")
+  username         String   @db.VarChar(191) @map("username")
+  password         String   @db.Text @map("password")
+  templateVersion  Int      @map("template_version")
+  isActive         Boolean  @default(true) @map("is_active")
+  generatedBy      String   @db.Char(36) @map("generated_by")
+  generatedAt      DateTime @default(now()) @map("generated_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user        User              @relation(fields: [userId], references: [id])
+  generatedByUser User          @relation("GeneratedBy", fields: [generatedBy], references: [id])
+  versions    CredentialVersion[]
+
+  @@index([userId], map: "idx_user_credentials_user_id")
+  @@index([system], map: "idx_user_credentials_system")
+  @@index([isActive], map: "idx_user_credentials_is_active")
+  @@unique([userId, system, isActive], map: "idx_user_credentials_unique_active")
+  @@map("user_credentials")
+}
+
+model CredentialVersion {
+  id            String   @id @default(uuid()) @db.Char(36) @map("id")
+  credentialId  String   @db.Char(36) @map("credential_id")
+  username      String   @db.VarChar(191) @map("username")
+  password      String   @db.Text @map("password")
+  reason        String   @db.VarChar(191) @map("reason")
+  createdBy     String   @db.Char(36) @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  credential  UserCredential  @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+  createdByUser User          @relation(fields: [createdBy], references: [id])
+
+  @@index([credentialId], map: "idx_credential_versions_credential_id")
+  @@map("credential_versions")
 }

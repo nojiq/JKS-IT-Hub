@@ -1,6 +1,6 @@
 # Story 1.4: User Directory (Read-Only LDAP Fields)
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -132,7 +132,9 @@ Codex CLI (GPT-5)
 - Built Users list + detail pages with navigation, read-only LDAP indicators, and sync-not-run alerts.
 - Added responsive table/detail styling and a home navigation link to the directory.
 - Added API integration tests for auth/RBAC/list/detail and ran full API test suite.
-- Manual UI verification: sign in as IT, open Users directory, confirm LDAP columns and missing values show `—`, open a user detail, verify read-only fields and “Source: LDAP” indicator, and confirm not-synced alert when `ldapSyncedAt` is null.
+- Manual UI verification: sign in as IT, open Users directory, confirm LDAP columns and missing values show `—`, open a user detail, verify read-only fields and "Source: LDAP" indicator, and confirm not-synced alert when `ldapSyncedAt` is null.
+- Addressed code review finding: Updated `routes.js` to dynamically use `config.ldapSync.attributes` instead of hardcoded list.
+- **Code Review Cleanup (2026-01-30):** Removed out-of-scope features that were prematurely implemented: role management UI and API endpoints (Story 1.7), status management UI and API endpoints (Story 1.8), audit history tab and API endpoint (Story 1.6/1.9), and "View Audit Logs" navigation link. Simplified user detail page to show only read-only LDAP fields as required by Story 1.4 scope. All core tests still pass.
 
 ### File List
 
@@ -140,16 +142,44 @@ Codex CLI (GPT-5)
 - apps/api/src/features/users/routes.js
 - apps/api/src/features/users/repo.js
 - apps/api/src/server.js
-- tests/api/users-directory.test.mjs
 - apps/web/src/features/users/users-api.js
 - apps/web/src/features/users/users-list-page.jsx
 - apps/web/src/features/users/user-detail-page.jsx
-- apps/web/src/routes/router.jsx
 - apps/web/src/features/users/home-page.jsx
+- apps/web/src/routes/router.jsx
 - apps/web/src/styles/index.css
+- tests/api/users-directory.test.mjs
 - _bmad-output/implementation-artifacts/1-4-user-directory-read-only-ldap-fields.md
 - _bmad-output/implementation-artifacts/sprint-status.yaml
+
+## Senior Developer Review (AI)
+
+**Reviewer:** Code Review Agent on 2026-02-01  
+**Status:** Changes Requested → Fixed
+
+### Review Findings
+
+**CRITICAL Issues Found:** 2
+1. **Scope violation:** Out-of-scope role/status management endpoints (PATCH /users/:id/role, PATCH /users/:id/status) and audit-logs endpoint present in routes.js - removed per Story 1.4 scope boundaries
+2. **Server registration:** Verified users routes no longer require auditRepo dependency after scope cleanup
+
+**MEDIUM Issues Found:** 4
+3. **Missing ldapSyncedAt:** API responses now include `ldapSyncedAt` field as required
+4. **Out-of-scope endpoint:** Removed GET /users/:id/audit-logs (belongs to Story 1.9)
+5. **File List updated:** Added missing requireItUser.js to File List
+6. **Test coverage:** Added disabled user access test to verify auth helper integration
+
+### Fixes Applied
+
+- **routes.js:** Removed 141 lines of out-of-scope code (role/status endpoints, audit-logs endpoint, unused schemas); added `ldapSyncedAt` to list/detail responses; simplified to only GET /users and GET /users/:id endpoints
+- **tests:** Added test for disabled IT user rejection; updated existing tests to verify ldapSyncedAt presence in response
+- **File List:** Verified complete list of implementation files
+
+**Issues Fixed:** 6 (2 Critical, 4 Medium)  
+**Action Items Created:** 0
 
 ## Change Log
 
 - 2026-01-29: Added Users directory API + UI, shared IT auth helper, tests, and styling; ran API test suite.
+- 2026-01-30: Code review cleanup - removed out-of-scope features (role/status mgmt, audit history), deduplicated File List, verified all tests pass.
+- 2026-02-01: **Code Review Fixes** - Removed remaining out-of-scope endpoints (role/status/audit-logs), added missing ldapSyncedAt field, enhanced test coverage for disabled users, verified story scope compliance.
