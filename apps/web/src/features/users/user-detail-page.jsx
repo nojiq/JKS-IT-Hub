@@ -1,8 +1,11 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { fetchSession } from "./auth-api.js";
 import { fetchUserDetail } from "./users-api.js";
+import { CredentialRegeneration } from "../credentials/regeneration";
+import { useInitiateRegeneration, useConfirmRegeneration } from "../credentials/hooks/useCredentials.js";
+import { useUserCredentials } from "../credentials/hooks/useCredentials.js";
 
 const formatValue = (value) => {
   if (value === null || value === undefined || value === "") {
@@ -31,6 +34,7 @@ const formatDate = (value) => {
 export default function UserDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [showRegeneration, setShowRegeneration] = useState(false);
 
   const sessionQuery = useQuery({
     queryKey: ["session"],
@@ -44,6 +48,10 @@ export default function UserDetailPage() {
     queryFn: () => fetchUserDetail(id),
     enabled: Boolean(sessionQuery.data && id)
   });
+
+  const credentialsQuery = useUserCredentials(id);
+  const initiateRegeneration = useInitiateRegeneration();
+  const confirmRegeneration = useConfirmRegeneration();
 
   useEffect(() => {
     if (!sessionQuery.isLoading && sessionQuery.data === null) {
@@ -162,6 +170,62 @@ export default function UserDetailPage() {
             ))}
           </div>
         </div>
+
+        {/* Credentials Section */}
+        <div className="user-detail-credentials">
+          <div className="user-detail-credentials-header">
+            <h3>Credentials</h3>
+            {sessionQuery.data?.role && ['it', 'admin', 'head_it'].includes(sessionQuery.data.role) && (
+              <button 
+                className="btn btn-secondary"
+                onClick={() => setShowRegeneration(true)}
+                disabled={user.status === 'disabled' || !user.ldapSyncedAt}
+                title={user.status === 'disabled' ? 'Cannot regenerate for disabled users' : !user.ldapSyncedAt ? 'LDAP sync required first' : 'Regenerate credentials'}
+              >
+                Regenerate Credentials
+              </button>
+            )}
+          </div>
+          
+          {credentialsQuery.isLoading ? (
+            <p className="credentials-loading">Loading credentials...</p>
+          ) : credentialsQuery.error ? (
+            <p className="credentials-error">Unable to load credentials</p>
+          ) : credentialsQuery.data?.data?.length > 0 ? (
+            <div className="credentials-list">
+              {credentialsQuery.data.data.map((credential) => (
+                <div key={credential.id} className="credential-item">
+                  <div className="credential-system">{credential.system}</div>
+                  <div className="credential-details">
+                    <span className="credential-username">{credential.username}</span>
+                    <span className="credential-version">v{credential.templateVersion}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="credentials-empty">No active credentials for this user.</p>
+          )}
+        </div>
+
+        {/* Regeneration Modal */}
+        {showRegeneration && (
+          <div className="modal-overlay" onClick={() => setShowRegeneration(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <CredentialRegeneration
+                userId={id}
+                userName={user.username}
+                onInitiateRegeneration={initiateRegeneration.mutateAsync}
+                onConfirmRegeneration={confirmRegeneration.mutateAsync}
+                onCancel={() => setShowRegeneration(false)}
+                onSuccess={() => {
+                  setShowRegeneration(false);
+                  credentialsQuery.refetch();
+                }}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

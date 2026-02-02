@@ -822,3 +822,119 @@ body {
     max-width: 200px;
   }
 }
+
+/* Credentials Section in User Detail */
+.user-detail-credentials {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.user-detail-credentials-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.user-detail-credentials-header h3 {
+  margin: 0;
+}
+
+.credentials-loading,
+.credentials-error,
+.credentials-empty {
+  padding: 1rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.credentials-error {
+  color: #dc2626;
+}
+
+.credentials-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.credential-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.credential-system {
+  font-weight: 600;
+  color: #0f172a;
+  text-transform: capitalize;
+}
+
+.credential-details {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.credential-username {
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+.credential-version {
+  font-size: 0.75rem;
+  color: #64748b;
+  background: #e2e8f0;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 20px;
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px rgba(15, 23, 42, 0.25);
+}
+
+@media (max-width: 768px) {
+  .modal-content {
+    max-height: 95vh;
+    border-radius: 16px;
+  }
+  
+  .credential-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .credential-details {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
