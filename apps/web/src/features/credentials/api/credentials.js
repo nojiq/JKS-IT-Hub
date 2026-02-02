@@ -61,3 +61,33 @@ export const confirmCredentials = async (userId, { previewToken, confirmed }) =>
     });
     return handleResponse(response);
 };
+
+// Credential Regeneration API (Story 2.4)
+
+export const initiateRegeneration = async (userId) => {
+    const response = await fetch(`${API_BASE}/credential-templates/users/${userId}/regenerate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+    });
+    return handleResponse(response);
+};
+
+export const previewRegeneration = async (userId) => {
+    const response = await fetch(`${API_BASE}/credential-templates/users/${userId}/regenerate/preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+    });
+    return handleResponse(response);
+};
+
+export const confirmRegeneration = async (userId, { previewToken, confirmed }) => {
+    const response = await fetch(`${API_BASE}/credential-templates/users/${userId}/regenerate/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ previewToken, confirmed })
+    });
+    return handleResponse(response);
+};

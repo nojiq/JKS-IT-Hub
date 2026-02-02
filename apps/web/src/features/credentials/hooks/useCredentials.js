@@ -61,3 +61,32 @@ export const useConfirmCredentials = () => {
         }
     });
 };
+
+// Credential Regeneration Hooks (Story 2.4)
+
+export const useInitiateRegeneration = () => {
+    return useMutation({
+        mutationFn: ({ userId }) => credentialsApi.initiateRegeneration(userId)
+    });
+};
+
+export const usePreviewRegeneration = () => {
+    return useMutation({
+        mutationFn: ({ userId }) => credentialsApi.previewRegeneration(userId)
+    });
+};
+
+export const useConfirmRegeneration = () => {
+    const queryClient = useQueryClient();
+    
+    return useMutation({
+        mutationFn: ({ userId, previewToken, confirmed }) => 
+            credentialsApi.confirmRegeneration(userId, { previewToken, confirmed }),
+        onSuccess: (data, variables) => {
+            // Invalidate user credentials cache
+            queryClient.invalidateQueries({
+                queryKey: [CREDENTIALS_QUERY_KEY, 'user', variables.userId]
+            });
+        }
+    });
+};
