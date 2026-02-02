@@ -48,3 +48,19 @@ export const confirmCredentialsSchema = z.object({
     }),
     csrfToken: z.string().optional() // For CSRF protection
 });
+
+// Regeneration Schemas (Story 2.4)
+export const regenerateRequestSchema = z.object({
+    // Regeneration request doesn't require body parameters
+    // UserId comes from URL params
+    reason: z.string().optional() // Optional reason for regeneration
+});
+
+export const confirmRegenerationSchema = z.object({
+    previewToken: z.string().min(1, "Preview token is required"),
+    confirmed: z.boolean().refine((val) => val === true, {
+        message: "Explicit confirmation required to overwrite credentials"
+    }),
+    acknowledgedWarnings: z.boolean().default(false),
+    csrfToken: z.string().optional()
+});

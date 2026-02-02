@@ -69,6 +69,14 @@ export const getUserCredentialBySystem = async (userId, system, tx = prisma) => 
     });
 };
 
+export const getActiveCredentialsForUser = async (userId, tx = prisma) => {
+    return tx.userCredential.findMany({
+        where: { userId, isActive: true },
+        include: { versions: true },
+        orderBy: { system: 'asc' }
+    });
+};
+
 export const deactivateUserCredentials = async (userId, tx = prisma) => {
     return tx.userCredential.updateMany({
         where: { userId, isActive: true },
