@@ -220,7 +220,7 @@ export default function AuditLogPage() {
                                 {logs.map((log) => (
                                     <tr key={log.id}>
                                         <td className="audit-timestamp">
-                                            {formatTimestamp(log.createdAt)}
+                                            {formatTimestamp(log.timestamp)}
                                         </td>
                                         <td>
                                             <div className="audit-actor">

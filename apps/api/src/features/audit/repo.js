@@ -8,8 +8,8 @@ export const createAuditLog = async ({
   entityType,
   entityId,
   metadata
-}) => {
-  return prisma.auditLog.create({
+}, tx = prisma) => {
+  return tx.auditLog.create({
     data: {
       action,
       actorUserId,
@@ -20,12 +20,19 @@ export const createAuditLog = async ({
   });
 };
 
-export const findAuditLogsByEntity = async (entityId, entityType) => {
+export const findAuditLogsByEntity = async (entityId, entityType, { actions = [], limit = 100 } = {}) => {
+  const where = {
+    entityId,
+    entityType
+  };
+
+  if (actions && actions.length > 0) {
+    where.action = { in: actions };
+  }
+
   return prisma.auditLog.findMany({
-    where: {
-      entityId,
-      entityType
-    },
+    where,
+    take: limit,
     orderBy: {
       createdAt: "desc"
     },

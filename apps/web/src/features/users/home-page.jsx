@@ -56,6 +56,14 @@ export default function HomePage() {
         <Link className="primary-link" to="/users">
           Open Users directory
         </Link>
+        <Link className="primary-link" to="/audit-logs">
+          View Audit Logs
+        </Link>
+        {['it', 'admin', 'head_it'].includes(data.user.role) && (
+          <Link className="primary-link" to="/systems">
+            Manage Systems & Rules
+          </Link>
+        )}
       </div>
       <LdapSyncPanel />
     </section>

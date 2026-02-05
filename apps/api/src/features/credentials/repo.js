@@ -48,24 +48,30 @@ export const updateUserCredential = async (id, data, tx = prisma) => {
     return tx.userCredential.update({ where: { id }, data });
 };
 
-export const getUserCredentials = async (userId, tx = prisma) => {
+export const getUserCredentials = async (userId, includeItOnly = false, tx = prisma) => {
     return tx.userCredential.findMany({
-        where: { userId, isActive: true },
-        include: { versions: true },
-        orderBy: { system: 'asc' }
+        where: {
+            userId,
+            isActive: true,
+            ...(!includeItOnly && {
+                systemConfig: { isItOnly: false }
+            })
+        },
+        include: { versions: true, systemConfig: true },
+        orderBy: { systemId: 'asc' }
     });
 };
 
 export const getUserCredentialById = async (id, tx = prisma) => {
     return tx.userCredential.findUnique({
         where: { id },
-        include: { versions: true }
+        include: { versions: true, systemConfig: true }
     });
 };
 
 export const getUserCredentialBySystem = async (userId, system, tx = prisma) => {
     return tx.userCredential.findFirst({
-        where: { userId, system, isActive: true }
+        where: { userId, systemId: system, isActive: true }
     });
 };
 
@@ -73,7 +79,7 @@ export const getActiveCredentialsForUser = async (userId, tx = prisma) => {
     return tx.userCredential.findMany({
         where: { userId, isActive: true },
         include: { versions: true },
-        orderBy: { system: 'asc' }
+        orderBy: { systemId: 'asc' }
     });
 };
 
@@ -95,6 +101,82 @@ export const deactivateUserCredential = async (id, tx = prisma) => {
 
 export const createCredentialVersion = async (data, tx = prisma) => {
     return tx.credentialVersion.create({ data });
+};
+
+// History Repository Functions
+
+export const getCredentialHistoryByUser = async (userId, filters = {}, tx = prisma) => {
+    const { system, startDate, endDate, page = 1, limit = 20 } = filters;
+
+    const where = { userId };
+
+    if (system) {
+        where.credential = { systemId: system };
+    }
+
+    if (startDate || endDate) {
+        where.createdAt = {};
+        if (startDate) {
+            where.createdAt.gte = new Date(startDate);
+        }
+        if (endDate) {
+            where.createdAt.lte = new Date(endDate);
+        }
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [history, total] = await Promise.all([
+        tx.credentialVersion.findMany({
+            where,
+            orderBy: { createdAt: 'desc' },
+            skip,
+            take: limit,
+            include: {
+                createdByUser: {
+                    select: { id: true, username: true }
+                }
+            }
+        }),
+        tx.credentialVersion.count({ where })
+    ]);
+
+    return {
+        data: history,
+        meta: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit)
+        }
+    };
+};
+
+export const getCredentialVersionById = async (versionId, tx = prisma) => {
+    return tx.credentialVersion.findUnique({
+        where: { id: versionId },
+        include: {
+            createdByUser: {
+                select: { id: true, username: true }
+            },
+            user: {
+                select: { id: true, username: true }
+            }
+        }
+    });
+};
+
+export const getCredentialVersionsForComparison = async (versionIds, tx = prisma) => {
+    return tx.credentialVersion.findMany({
+        where: {
+            id: { in: versionIds }
+        },
+        include: {
+            createdByUser: {
+                select: { id: true, username: true }
+            }
+        }
+    });
 };
 
 export const getCredentialVersions = async (credentialId, tx = prisma) => {
@@ -141,17 +223,17 @@ export const storePreviewSession = async (token, sessionData) => {
 
 export const getPreviewSession = async (token) => {
     const session = previewSessions.get(token);
-    
+
     if (!session) {
         return null;
     }
-    
+
     // Check if expired
     if (Date.now() > session.expiresAt) {
         previewSessions.delete(token);
         return null;
     }
-    
+
     return session;
 };
 
@@ -182,3 +264,96 @@ export const stopCleanupInterval = () => {
     }
 };
 
+// Locked Credential Repository Functions
+
+export const upsertLockRecord = async (data, tx = prisma) => {
+    return tx.lockedCredential.upsert({
+        where: {
+            unique_user_system_lock: {
+                userId: data.userId,
+                systemId: data.systemId
+            }
+        },
+        update: {
+            isLocked: data.isLocked,
+            lockedBy: data.lockedBy,
+            lockedAt: data.lockedAt,
+            lockReason: data.lockReason,
+            unlockedBy: data.unlockedBy,
+            unlockedAt: data.unlockedAt
+        },
+        create: {
+            userId: data.userId,
+            systemId: data.systemId,
+            isLocked: data.isLocked,
+            lockedBy: data.lockedBy,
+            lockedAt: data.lockedAt,
+            lockReason: data.lockReason,
+            unlockedBy: data.unlockedBy,
+            unlockedAt: data.unlockedAt
+        }
+    });
+};
+
+export const getLockRecord = async (userId, systemId, tx = prisma) => {
+    return tx.lockedCredential.findUnique({
+        where: {
+            unique_user_system_lock: {
+                userId,
+                systemId
+            }
+        }
+    });
+};
+
+export const updateLockRecord = async (userId, systemId, data, tx = prisma) => {
+    return tx.lockedCredential.update({
+        where: {
+            unique_user_system_lock: { userId, systemId }
+        },
+        data
+    });
+};
+
+export const getLockedCredentials = async (filters = {}, tx = prisma) => {
+    const { userId, systemId, startDate, endDate, page = 1, limit = 20 } = filters;
+    const where = { isLocked: true };
+
+    if (userId) where.userId = userId;
+    if (systemId) where.systemId = systemId;
+    if (startDate || endDate) {
+        where.lockedAt = {};
+        if (startDate) {
+            where.lockedAt.gte = new Date(startDate);
+        }
+        if (endDate) {
+            where.lockedAt.lte = new Date(endDate);
+        }
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+        tx.lockedCredential.findMany({
+            where,
+            include: {
+                user: { select: { id: true, username: true, status: true, ldapAttributes: true } },
+                system: { select: { systemId: true, description: true } }
+            },
+            orderBy: { lockedAt: 'desc' },
+            skip,
+            take: limit
+        }),
+        tx.lockedCredential.count({ where })
+    ]);
+
+    return {
+        data,
+        meta: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit)
+        }
+    };
+};

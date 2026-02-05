@@ -1,0 +1,35 @@
+﻿node : Created SystemConfig 
+email: {"id":"7b4eaa45-cad9-4
+486-b250-f2a946757969","syste
+mId":"email","usernameLdapFie
+ld":"mail","description":null
+,"createdAt":"2026-02-03T03:0
+4:01.215Z","updatedAt":"2026-
+02-03T03:04:01.215Z"}
+At line:1 char:1
++ node --env-file=.env tests/
+api/credential_lock_integrati
+on.test.mjs 2 ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (Created  
+   SystemC...03:04:01.215Z   
+ "}:String) [], RemoteExc    
+eption
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+Created SystemConfig vpn: {"i
+d":"097369f7-9c60-41ac-abb4-6
+c655257a60b","systemId":"vpn"
+,"usernameLdapField":"sAMAcco
+untName","description":null,"
+createdAt":"2026-02-03T03:04:
+01.231Z","updatedAt":"2026-02
+-03T03:04:01.231Z"}
+SystemConfig count: 2
+Creating UserCredential: { userId: '651dc203-34fc-4cc7-97c4-820f5f5c1827', system: 'email' }
+Creating UserCredential: { userId: '651dc203-34fc-4cc7-97c4-820f5f5c1827', system: 'vpn' }
+Γ£û Locked credential prevents regeneration (633.4206ms)

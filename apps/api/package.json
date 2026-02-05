@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "fastify start -l info -P -w src/server.js",
-    "start": "fastify start -l info -P src/server.js",
+    "dev": "fastify start -l info -P -p 3001 -w src/loader.js",
+    "start": "fastify start -l info -P -p 3001 src/loader.js",
     "test": "node --env-file=../../.env --test ../../tests/api/*.test.mjs"
   },
   "dependencies": {
@@ -23,8 +23,12 @@
     "zod": "^4.3.0"
   },
   "devDependencies": {
+    "cross-env": "^10.1.0",
     "dotenv": "^16.4.7",
     "fastify-cli": "^7.0.0",
     "prisma": "^7.3.0"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
   }
 }

@@ -48,6 +48,7 @@ model User {
   credentials  UserCredential[]
   generatedCredentials UserCredential[] @relation("GeneratedBy")
   credentialVersions CredentialVersion[]
+  lockedCredentials LockedCredential[]
 
   @@map("users")
 }
@@ -99,10 +100,45 @@ model CredentialTemplate {
   @@map("credential_templates")
 }
 
+model SystemConfig {
+  id                String   @id @default(uuid()) @db.Char(36) @map("id")
+  systemId          String   @unique @db.VarChar(191) @map("system_id")
+  usernameLdapField String   @db.VarChar(191) @map("username_ldap_field")
+  isItOnly          Boolean  @default(false) @map("is_it_only")
+  description       String?  @db.Text @map("description")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  credentials UserCredential[]
+  normalizationRules NormalizationRule[]
+  lockedCredentials LockedCredential[]
+
+  @@index([systemId], map: "idx_system_configs_system_id")
+  @@map("system_configs")
+}
+
+model NormalizationRule {
+  id          String   @id @default(uuid()) @db.Char(36) @map("id")
+  systemId    String?  @db.VarChar(191) @map("system_id")
+  ruleType    String   @db.VarChar(191) @map("rule_type")
+  ruleConfig  Json     @map("rule_config")
+  priority    Int      @default(0) @map("priority")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  system      SystemConfig? @relation(fields: [systemId], references: [systemId])
+
+  @@index([systemId], map: "idx_normalization_rules_system_id")
+  @@index([isActive], map: "idx_normalization_rules_is_active")
+  @@index([priority], map: "idx_normalization_rules_priority")
+  @@map("normalization_rules")
+}
+
 model UserCredential {
   id               String   @id @default(uuid()) @db.Char(36) @map("id")
   userId           String   @db.Char(36) @map("user_id")
-  system           String   @db.VarChar(191) @map("system")
+  systemId         String?  @db.VarChar(191) @map("system_id")
   username         String   @db.VarChar(191) @map("username")
   password         String   @db.Text @map("password")
   templateVersion  Int      @map("template_version")
@@ -114,12 +150,12 @@ model UserCredential {
 
   user        User              @relation(fields: [userId], references: [id])
   generatedByUser User          @relation("GeneratedBy", fields: [generatedBy], references: [id])
+  systemConfig SystemConfig?    @relation(fields: [systemId], references: [systemId])
   versions    CredentialVersion[]
 
   @@index([userId], map: "idx_user_credentials_user_id")
-  @@index([system], map: "idx_user_credentials_system")
+  @@index([systemId], map: "idx_user_credentials_system_id")
   @@index([isActive], map: "idx_user_credentials_is_active")
-  @@unique([userId, system, isActive], map: "idx_user_credentials_unique_active")
   @@map("user_credentials")
 }
 
@@ -137,4 +173,24 @@ model CredentialVersion {
 
   @@index([credentialId], map: "idx_credential_versions_credential_id")
   @@map("credential_versions")
+}
+
+model LockedCredential {
+  id          String   @id @default(uuid()) @db.Char(36) @map("id")
+  userId      String   @map("user_id") @db.Char(36)
+  systemId    String   @map("system_id") @db.VarChar(191)
+  isLocked    Boolean  @default(true) @map("is_locked")
+  lockedBy    String   @map("locked_by") @db.Char(36)
+  lockedAt    DateTime @default(now()) @map("locked_at")
+  lockReason  String?  @map("lock_reason") @db.VarChar(255)
+  unlockedBy  String?  @map("unlocked_by") @db.Char(36)
+  unlockedAt  DateTime? @map("unlocked_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user        User     @relation(fields: [userId], references: [id])
+  system      SystemConfig @relation(fields: [systemId], references: [systemId])
+
+  @@unique([userId, systemId], name: "unique_user_system_lock")
+  @@map("locked_credentials")
 }

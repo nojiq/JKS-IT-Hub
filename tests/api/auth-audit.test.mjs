@@ -36,7 +36,7 @@ const baseConfig = {
 // Create a user repo that uses the real DB for create, but in-memory for lookups
 const createHybridUserRepo = (existingDbUser = null) => {
   const users = new Map();
-  
+
   if (existingDbUser) {
     users.set(existingDbUser.username, existingDbUser);
   }
@@ -91,13 +91,19 @@ test("POST /auth/login creates audit log on success", async () => {
   const body = response.json();
   const userId = body.data.user.id;
 
-  // Wait a bit for async audit log creation
-  await new Promise(resolve => setTimeout(resolve, 100));
+  // Poll for audit log creation (more reliable than arbitrary timeout)
+  const waitForAuditLog = async (predicate, maxAttempts = 10) => {
+    for (let i = 0; i < maxAttempts; i++) {
+      const allLogs = await getAuditLogs({ limit: 100 });
+      const log = allLogs.logs.find(predicate);
+      if (log) return log;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    return null;
+  };
 
-  // Verify audit log was created - query recent logs
-  const allLogs = await getAuditLogs({ limit: 100 });
-  const loginLog = allLogs.logs.find(log => 
-    log.action === "auth.login" && 
+  const loginLog = await waitForAuditLog(log =>
+    log.action === "auth.login" &&
     log.actorUserId === userId
   );
   assert.ok(loginLog, "Should create auth.login audit log");
@@ -129,13 +135,19 @@ test("POST /auth/login creates audit log on failure", async () => {
 
   assert.equal(response.statusCode, 401);
 
-  // Wait a bit for async audit log creation
-  await new Promise(resolve => setTimeout(resolve, 100));
+  // Poll for audit log creation
+  const waitForAuditLog = async (predicate, maxAttempts = 10) => {
+    for (let i = 0; i < maxAttempts; i++) {
+      const allLogs = await getAuditLogs({ limit: 100 });
+      const log = allLogs.logs.find(predicate);
+      if (log) return log;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    return null;
+  };
 
-  // Verify audit log was created for failed login
-  const allLogs = await getAuditLogs({ limit: 100 });
-  const failureLog = allLogs.logs.find(log => 
-    log.action === "auth.login_failure" && 
+  const failureLog = await waitForAuditLog(log =>
+    log.action === "auth.login_failure" &&
     log.entityId === username
   );
   assert.ok(failureLog, "Should create auth.login_failure audit log");
@@ -165,7 +177,7 @@ test("POST /auth/logout creates audit log", async () => {
   assert.equal(loginResponse.statusCode, 200);
   const body = loginResponse.json();
   const userId = body.data.user.id;
-  
+
   // Extract cookie value from set-cookie header
   const setCookieHeader = loginResponse.headers["set-cookie"];
   assert.ok(setCookieHeader, "Should have set-cookie header");
@@ -183,13 +195,19 @@ test("POST /auth/logout creates audit log", async () => {
 
   assert.equal(logoutResponse.statusCode, 200);
 
-  // Wait a bit for async audit log creation
-  await new Promise(resolve => setTimeout(resolve, 100));
+  // Poll for audit log creation
+  const waitForAuditLog = async (predicate, maxAttempts = 10) => {
+    for (let i = 0; i < maxAttempts; i++) {
+      const allLogs = await getAuditLogs({ limit: 100 });
+      const log = allLogs.logs.find(predicate);
+      if (log) return log;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    return null;
+  };
 
-  // Verify audit log was created - query recent logs
-  const allLogs = await getAuditLogs({ limit: 100 });
-  const logoutLog = allLogs.logs.find(log => 
-    log.action === "auth.logout" && 
+  const logoutLog = await waitForAuditLog(log =>
+    log.action === "auth.logout" &&
     log.actorUserId === userId
   );
   assert.ok(logoutLog, "Should create auth.logout audit log");
@@ -205,7 +223,7 @@ test("Security: Verify no API endpoint allows deleting audit logs", async () => 
   // This is a security validation test - we need to verify that:
   // 1. The audit repo doesn't export delete methods
   // 2. No API routes expose audit log deletion
-  
+
   // Check that audit repo only exports allowed methods
   assert.ok(auditRepo.createAuditLog, "createAuditLog should be exported");
   assert.ok(auditRepo.findAuditLogsByEntity, "findAuditLogsByEntity should be exported");
@@ -213,4 +231,74 @@ test("Security: Verify no API endpoint allows deleting audit logs", async () => 
   assert.ok(!auditRepo.updateAuditLog, "updateAuditLog should NOT be exported");
   assert.ok(!auditRepo.deleteAuditLog, "deleteAuditLog should NOT be exported");
   assert.ok(!auditRepo.deleteMany, "deleteMany should NOT be exported");
+});
+
+test("Security: Verify no API endpoints allow modifying audit logs", async () => {
+  const testId = randomUUID();
+  const actor = await createUser({
+    username: `audit-admin-${randomUUID()}`,
+    role: "it",
+    status: "active"
+  });
+
+  // Create a test audit log
+  const auditLog = await createAuditLog({
+    action: "test.action",
+    actorUserId: actor.id,
+    entityType: "test",
+    entityId: testId,
+    metadata: { key: "original" }
+  });
+
+  const userRepo = {
+    findUserByUsername: async () => actor,
+    findUserById: async () => actor,
+    isUserDisabled: () => false
+  };
+
+  const app = Fastify({ logger: false });
+  await app.register(cookie);
+  await app.register(await import("../../apps/api/src/features/audit/routes.js"), {
+    config: baseConfig,
+    userRepo,
+    auditRepo
+  });
+  await app.ready();
+
+  const sessionCookie = await (async () => {
+    const { signSessionToken } = await import("../../apps/api/src/shared/auth/jwt.js");
+    const token = await signSessionToken({
+      subject: actor.id,
+      payload: { username: actor.username, role: actor.role }
+    }, baseConfig.jwt);
+    return `${baseConfig.cookie.name}=${token}`;
+  })();
+
+  // Try PATCH
+  const patchResponse = await app.inject({
+    method: "PATCH",
+    url: `/audit-logs/${auditLog.id}`,
+    headers: { cookie: sessionCookie },
+    payload: { metadata: { key: "modified" } }
+  });
+  assert.equal(patchResponse.statusCode, 404, "PATCH should return 404 (route not found)");
+
+  // Try PUT
+  const putResponse = await app.inject({
+    method: "PUT",
+    url: `/audit-logs/${auditLog.id}`,
+    headers: { cookie: sessionCookie },
+    payload: { metadata: { key: "modified" } }
+  });
+  assert.equal(putResponse.statusCode, 404, "PUT should return 404 (route not found)");
+
+  // Try DELETE
+  const deleteResponse = await app.inject({
+    method: "DELETE",
+    url: `/audit-logs/${auditLog.id}`,
+    headers: { cookie: sessionCookie }
+  });
+  assert.equal(deleteResponse.statusCode, 404, "DELETE should return 404 (route not found)");
+
+  await app.close();
 });

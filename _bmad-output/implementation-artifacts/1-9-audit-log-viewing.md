@@ -1,6 +1,6 @@
 # Story 1.9: Audit Log Viewing
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -129,6 +129,13 @@ So that sensitive actions are transparent.
   - Fixed database connection exhaustion by ensuring all tests call `prisma.$disconnect()`.
   - Resolved MySQL 8+ authentication hang by adding `allowPublicKeyRetrieval: true` to connection options.
   - Final test run: **37/38 tests passing** (the only failure is unrelated `ldap-sync`).
+- **Code Review Fixes (2026-02-03):**
+  - **CRITICAL**: Fixed access control - Changed from `requireItUser` to `requireAuthenticated` to allow all internal roles (IT, Admin, Head, Requester) to view audit logs per FR4 and AC #4
+  - **CRITICAL**: Added missing `/audit-logs` route to `apps/web/src/routes/router.jsx` - route was claimed complete but not actually registered
+  - **CRITICAL**: Added missing "View Audit Logs" navigation link to home page (`apps/web/src/features/users/home-page.jsx`)
+  - **HIGH**: Fixed actor data structure in API response - changed from string to object with `username`, `role`, `status` properties to match frontend expectations
+  - **MEDIUM**: Fixed timestamp field name inconsistency - frontend now uses `log.timestamp` instead of `log.createdAt` to match API response
+  - **All 5 critical/high issues resolved** ✅
 
 ### File List
 - apps/api/src/shared/db/prisma.js

@@ -15,10 +15,25 @@ export default async function authRoutes(app, { config, userRepo, ldapAuthFn, au
     // Default to the imported function if not provided (for backward compat or simple usage), 
     // but typically we should inject it.
     const authenticate = ldapAuthFn || authenticateLdapUser;
-    
-    // Helper to get client IP
+
+    // Helper to get client IP (prioritize X-Forwarded-For for proxy scenarios)
     const getClientIp = (request) => {
-        return request.ip || request.headers['x-forwarded-for'] || request.socket.remoteAddress || 'unknown';
+        const forwarded = request.headers['x-forwarded-for'];
+        if (forwarded) {
+            // X-Forwarded-For can be a comma-separated list; take the first (original client)
+            return forwarded.split(',')[0].trim();
+        }
+        return request.ip || request.socket.remoteAddress || 'unknown';
+    };
+
+    // Helper to log audit failures with structured context for monitoring/alerting
+    const logAuditFailure = (request, action, context, error) => {
+        request.log.error({
+            err: error,
+            action,
+            ...context,
+            msg: `CRITICAL: Failed to create audit log for ${action}`
+        });
     };
 
     app.post("/auth/login", async (request, reply) => {
@@ -87,7 +102,7 @@ export default async function authRoutes(app, { config, userRepo, ldapAuthFn, au
                         }
                     });
                 } catch (auditError) {
-                    request.log.error(auditError, "Failed to create audit log for login");
+                    logAuditFailure(request, "auth.login", { userId: user.id }, auditError);
                 }
             }
 
@@ -119,7 +134,7 @@ export default async function authRoutes(app, { config, userRepo, ldapAuthFn, au
                             }
                         });
                     } catch (auditError) {
-                        request.log.error(auditError, "Failed to create audit log for login failure");
+                        logAuditFailure(request, "auth.login_failure", { username }, auditError);
                     }
                 }
 
@@ -186,7 +201,7 @@ export default async function authRoutes(app, { config, userRepo, ldapAuthFn, au
             // Session might be invalid/expired, continue with logout
             request.log.debug(sessionError, "Session retrieval failed during logout");
         }
-        
+
         // Audit: Logout
         if (session && auditRepo?.createAuditLog) {
             try {
@@ -200,10 +215,10 @@ export default async function authRoutes(app, { config, userRepo, ldapAuthFn, au
                     }
                 });
             } catch (auditError) {
-                request.log.error(auditError, "Failed to create audit log for logout");
+                logAuditFailure(request, "auth.logout", { userId: session.sub }, auditError);
             }
         }
-        
+
         reply.clearCookie(config.cookie.name, { path: "/" });
         return { data: { success: true } };
     });

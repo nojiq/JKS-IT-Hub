@@ -51,6 +51,21 @@ export const findUsersByUsernames = async (usernames = []) => {
   });
 };
 
+export const findUsersByIds = async (ids = []) => {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (!unique.length) {
+    return [];
+  }
+  return prisma.user.findMany({
+    where: { id: { in: unique } },
+    select: {
+      id: true,
+      username: true,
+      ldapAttributes: true
+    }
+  });
+};
+
 export const createUser = async ({ username, role = "requester", status = "active" }) => {
   return prisma.user.create({
     data: {

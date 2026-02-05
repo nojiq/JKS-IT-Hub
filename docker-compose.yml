@@ -20,10 +20,12 @@ services:
     working_dir: /app
     volumes:
       - ./:/app
+      - api_node_modules:/app/apps/api/node_modules
+      - root_node_modules:/app/node_modules
     command:
       - sh
       - -c
-      - corepack enable && pnpm install && pnpm --filter api dev
+      - corepack enable && pnpm install --force --no-frozen-lockfile && pnpm --filter api dev
     environment:
       NODE_ENV: development
       DATABASE_URL: ${DATABASE_URL}
@@ -40,10 +42,12 @@ services:
     working_dir: /app
     volumes:
       - ./:/app
+      - web_node_modules:/app/apps/web/node_modules
+      - root_node_modules:/app/node_modules
     command:
       - sh
       - -c
-      - corepack enable && pnpm install && pnpm --filter web dev --host 0.0.0.0
+      - corepack enable && pnpm install --force --no-frozen-lockfile && pnpm --filter web dev --host 0.0.0.0
     environment:
       NODE_ENV: development
     ports:
@@ -53,3 +57,6 @@ services:
 
 volumes:
   mysql_data:
+  root_node_modules:
+  api_node_modules:
+  web_node_modules:

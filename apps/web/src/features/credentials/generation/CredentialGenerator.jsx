@@ -3,9 +3,10 @@ import { usePreviewCredentials, useConfirmCredentials, useUserCredentials } from
 import CredentialList from './CredentialList.jsx';
 import GenerationError from './GenerationError.jsx';
 import CredentialPreview from '../preview/CredentialPreview.jsx';
+import DisabledUserBanner from '../components/DisabledUserBanner.jsx';
 import './CredentialGenerator.css';
 
-const CredentialGenerator = ({ userId, userName }) => {
+const CredentialGenerator = ({ userId, userName, userStatus }) => {
     const [showPreview, setShowPreview] = useState(false);
     const [previewData, setPreviewData] = useState(null);
     const [generationError, setGenerationError] = useState(null);
@@ -53,9 +54,17 @@ const CredentialGenerator = ({ userId, userName }) => {
     };
 
     const isProcessing = previewMutation.isPending || confirmMutation.isPending;
+    const isUserDisabled = userStatus === 'disabled';
 
     return (
         <div className="credential-generator">
+            {isUserDisabled && (
+                <DisabledUserBanner
+                    userName={userName}
+                    userStatus={userStatus}
+                />
+            )}
+
             <div className="generator-header">
                 <h2>Credential Management</h2>
                 <p className="user-info">
@@ -67,11 +76,18 @@ const CredentialGenerator = ({ userId, userName }) => {
                 <button
                     className="btn-generate"
                     onClick={handlePreviewRequest}
-                    disabled={isProcessing}
+                    disabled={isProcessing || isUserDisabled}
+                    title={isUserDisabled ? 'Cannot generate credentials for disabled users' : ''}
                 >
                     {isProcessing ? 'Processing...' : 'Generate Credentials'}
                 </button>
             </div>
+
+            {isUserDisabled && (
+                <div className="warning-message">
+                    Credential generation is disabled while user account is disabled.
+                </div>
+            )}
 
             {generationError && !showPreview && (
                 <GenerationError 

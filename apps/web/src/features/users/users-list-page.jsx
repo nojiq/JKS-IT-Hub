@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { fetchSession } from "./auth-api.js";
@@ -39,6 +39,7 @@ export default function UsersListPage() {
     }
   }, [navigate, sessionQuery.data, sessionQuery.isLoading]);
 
+  // Loading states
   if (sessionQuery.isLoading) {
     return <p className="status-text">Checking session…</p>;
   }
@@ -69,12 +70,13 @@ export default function UsersListPage() {
     );
   }
 
+  // Data processing - moved after all loading states
   const payload = usersQuery.data ?? { users: [], fields: [] };
   const users = payload.users ?? [];
   const fields = payload.fields ?? [];
-
+  const uniqueFields = [...new Set(fields)];
   const hasSync = users.some((user) => Boolean(user.ldapSyncedAt));
-  const tableColumns = useMemo(() => ["user", ...fields], [fields]);
+  const tableColumns = ["user", ...uniqueFields];
 
   return (
     <section className="users-page">
@@ -124,7 +126,7 @@ export default function UsersListPage() {
                       {user.role} · {user.status}
                     </span>
                   </td>
-                  {fields.map((field) => (
+                  {uniqueFields.map((field) => (
                     <td key={field}>{formatValue(user.ldapFields?.[field])}</td>
                   ))}
                 </tr>

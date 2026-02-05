@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { requireAuthenticated } from "../../shared/auth/requireAuthenticated.js";
 import { createProblemDetails, sendProblem } from "../../shared/errors/problemDetails.js";
-import { previewRequestSchema, confirmCredentialsSchema, regenerateRequestSchema, confirmRegenerationSchema } from "./schema.js";
-import { DisabledUserError, NoChangesDetectedError } from "./service.js";
+import { previewRequestSchema, confirmCredentialsSchema, regenerateRequestSchema, confirmRegenerationSchema, overridePreviewSchema, confirmOverrideSchema, lockCredentialSchema, unlockCredentialSchema } from "./schema.js";
+import { CredentialsLockedError, DisabledUserError, NoChangesDetectedError } from "./service.js";
+import { hasItRole } from "../../shared/auth/rbac.js";
 
 const createTemplateSchema = z.object({
     name: z.string().min(3).max(100),
@@ -17,7 +18,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         if (!actor) return;
 
         // specific RBAC check: IT roles
-        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
@@ -190,6 +191,35 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                 }
             });
         } catch (error) {
+            // Handle disabled user error
+            if (error instanceof DisabledUserError) {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/disabled-user',
+                    status: 422,
+                    title: "Disabled User",
+                    detail: "Cannot generate credentials for disabled users",
+                    userId: error.userId,
+                    userStatus: "disabled",
+                    suggestion: "Enable the user before generating credentials"
+                }));
+
+                // Audit log the blocked generation attempt
+                if (auditRepo) {
+                    await auditRepo.createAuditLog({
+                        action: "credential.generation.blocked",
+                        actorUserId: actor.id,
+                        entityType: "User",
+                        entityId: userId,
+                        metadata: {
+                            attemptedOperation: "generate",
+                            reason: "user_disabled",
+                            userStatus: "disabled"
+                        }
+                    });
+                }
+                return;
+            }
+
             // Handle missing LDAP fields error
             if (error.code === 'MISSING_LDAP_FIELDS') {
                 sendProblem(reply, createProblemDetails({
@@ -216,20 +246,25 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         const actor = await requireAuthenticated(request, reply, { config, userRepo });
         if (!actor) return;
 
-        // RBAC check: IT roles only
-        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+        const { userId } = request.params;
+        const isItRole = ['it', 'head_it'].includes(actor.role);
+        const isAdmin = actor.role === 'admin';
+        const isSelf = actor.id === userId;
+
+        // RBAC: Allow IT, Admin, or Self
+        if (!isItRole && !isAdmin && !isSelf) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
-                detail: "Only IT roles can view credentials"
+                detail: "You do not have permission to view these credentials"
             }));
             return;
         }
 
-        const { userId } = request.params;
+        const includeItOnly = isItRole;
 
         try {
-            const credentials = await credentialService.listUserCredentials(userId);
+            const credentials = await credentialService.listUserCredentials(userId, includeItOnly);
 
             reply.send({
                 data: credentials,
@@ -250,16 +285,6 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         const actor = await requireAuthenticated(request, reply, { config, userRepo });
         if (!actor) return;
 
-        // RBAC check: IT roles only
-        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
-            sendProblem(reply, createProblemDetails({
-                status: 403,
-                title: "Forbidden",
-                detail: "Only IT roles can view credentials"
-            }));
-            return;
-        }
-
         const { id } = request.params;
 
         try {
@@ -270,6 +295,50 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                     status: 404,
                     title: "Not Found",
                     detail: "Credential not found"
+                }));
+                return;
+            }
+
+            const isItRole = ['it', 'head_it'].includes(actor.role);
+            const isAdmin = actor.role === 'admin';
+            const isSelf = actor.id === credential.userId;
+
+            // RBAC Check
+            if (!isItRole && !isAdmin && !isSelf) {
+                sendProblem(reply, createProblemDetails({
+                    status: 403,
+                    title: "Forbidden",
+                    detail: "You do not have permission to view this credential"
+                }));
+                return;
+            }
+
+            // IT-Only Check (IMAP Security)
+            if (credential.systemConfig?.isItOnly && !isItRole) {
+                // Audit Log
+                if (auditRepo) {
+                    await auditRepo.createAuditLog({
+                        action: 'credential.imap.access.denied',
+                        actorUserId: actor.id,
+                        entityType: 'user_credential',
+                        entityId: credential.id,
+                        metadata: {
+                            reason: 'insufficient_permissions',
+                            requiredRole: 'it',
+                            actualRole: actor.role,
+                            systemId: credential.systemConfig?.systemId,
+                            targetUserId: credential.userId
+                        }
+                    });
+                }
+
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/insufficient-permissions',
+                    title: 'Insufficient Permissions',
+                    status: 403,
+                    detail: 'IT role required to access IMAP credentials',
+                    requiredRole: 'it',
+                    actualRole: actor.role
                 }));
                 return;
             }
@@ -411,7 +480,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         }
 
         const { userId } = request.params;
-        const { previewToken, confirmed } = validation.data;
+        const { previewToken, confirmed, skipLocked, force } = validation.data;
 
         // Validate explicit confirmation
         if (!confirmed) {
@@ -427,7 +496,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         try {
             // Retrieve and validate preview session
             const previewSession = await credentialService.getPreviewSession(previewToken);
-            
+
             if (!previewSession) {
                 sendProblem(reply, createProblemDetails({
                     type: '/problems/preview-expired',
@@ -480,7 +549,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
             });
         } catch (error) {
             console.error('Confirm credentials error:', error);
-            
+
             // Handle specific error types
             if (error.code === 'PREVIEW_EXPIRED') {
                 sendProblem(reply, createProblemDetails({
@@ -565,20 +634,20 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                     expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString() // 5 minutes
                 }
             });
-        } catch (error) {
-            // Handle disabled user error
-            if (error instanceof DisabledUserError) {
-                sendProblem(reply, createProblemDetails({
-                    type: '/problems/regeneration-blocked',
-                    status: 403,
-                    title: "Regeneration Blocked",
-                    detail: "Cannot regenerate credentials for disabled users",
-                    userId: error.userId,
-                    userStatus: "disabled",
-                    resolution: "Re-enable the user before regenerating credentials"
-                }));
-                
-                // Audit log the blocked attempt
+} catch (error) {
+    // Handle disabled user error
+    if (error instanceof DisabledUserError) {
+      sendProblem(reply, createProblemDetails({
+        type: '/problems/disabled-user',
+        status: 422,
+        title: "Disabled User",
+        detail: "Cannot regenerate credentials for disabled users",
+        userId: error.userId,
+        userStatus: "disabled",
+        suggestion: "Enable the user before regenerating credentials"
+      }));
+
+      // Audit log the blocked attempt
                 if (auditRepo) {
                     await auditRepo.createAuditLog({
                         action: "credentials.regenerate.blocked",
@@ -661,22 +730,22 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                     expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString()
                 }
             });
-        } catch (error) {
-            // Handle errors same as /regenerate endpoint
-            if (error instanceof DisabledUserError) {
-                sendProblem(reply, createProblemDetails({
-                    type: '/problems/regeneration-blocked',
-                    status: 403,
-                    title: "Regeneration Blocked",
-                    detail: "Cannot regenerate credentials for disabled users",
-                    userId: error.userId,
-                    userStatus: "disabled",
-                    resolution: "Re-enable the user before regenerating credentials"
-                }));
-                return;
-            }
+} catch (error) {
+    // Handle errors same as /regenerate endpoint
+    if (error instanceof DisabledUserError) {
+      sendProblem(reply, createProblemDetails({
+        type: '/problems/disabled-user',
+        status: 422,
+        title: "Disabled User",
+        detail: "Cannot regenerate credentials for disabled users",
+        userId: error.userId,
+        userStatus: "disabled",
+        suggestion: "Enable the user before regenerating credentials"
+      }));
+      return;
+    }
 
-            if (error instanceof NoChangesDetectedError) {
+    if (error instanceof NoChangesDetectedError) {
                 sendProblem(reply, createProblemDetails({
                     type: '/problems/no-changes-detected',
                     status: 400,
@@ -748,7 +817,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         try {
             // Retrieve and validate preview session
             const previewSession = await credentialService.getPreviewSession(previewToken);
-            
+
             if (!previewSession) {
                 sendProblem(reply, createProblemDetails({
                     type: '/problems/preview-expired',
@@ -781,7 +850,10 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
             }
 
             // Execute the regeneration
-            const result = await credentialService.confirmRegeneration(actor.id, previewSession);
+            const result = await credentialService.confirmRegeneration(actor.id, previewSession, {
+                skipLocked: skipLocked === true,
+                force: force === true
+            });
 
             // Clean up preview session
             await credentialService.deletePreviewSession(previewToken);
@@ -798,7 +870,8 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                         regeneratedSystems: result.regeneratedCredentials.map(c => c.system),
                         preservedHistory: result.preservedHistory,
                         skippedCredentials: result.skippedCredentials,
-                        templateVersion: result.templateVersion
+                        templateVersion: result.templateVersion,
+                        forced: result.forced === true
                     }
                 });
             }
@@ -811,31 +884,818 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                     preservedHistory: result.preservedHistory,
                     skippedCredentials: result.skippedCredentials,
                     templateVersion: result.templateVersion,
+                    forced: result.forced === true,
                     performedBy: result.performedBy,
                     performedAt: result.performedAt
                 }
             });
-        } catch (error) {
-            console.error('Confirm regeneration error:', error);
-            
-            // Handle disabled user error during confirmation
-            if (error instanceof DisabledUserError) {
-                sendProblem(reply, createProblemDetails({
-                    type: '/problems/regeneration-blocked',
-                    status: 403,
-                    title: "Regeneration Blocked",
-                    detail: "User was disabled during the regeneration process",
-                    userId: error.userId,
-                    userStatus: "disabled"
-                }));
-                return;
-            }
+} catch (error) {
+    console.error('Confirm regeneration error:', error);
 
-            sendProblem(reply, createProblemDetails({
+    // Handle disabled user error during confirmation
+    if (error instanceof DisabledUserError) {
+      sendProblem(reply, createProblemDetails({
+        type: '/problems/disabled-user',
+        status: 422,
+        title: "Disabled User",
+        detail: "User was disabled during the regeneration process",
+        userId: error.userId,
+        userStatus: "disabled",
+        suggestion: "Enable the user before regenerating credentials"
+      }));
+      return;
+    }
+
+    if (error instanceof CredentialsLockedError) {
+        sendProblem(reply, createProblemDetails({
+            type: '/problems/credentials-locked',
+            status: 422,
+            title: "Credentials Cannot Be Regenerated",
+            detail: "Some credentials are locked and cannot be regenerated",
+            lockedCredentials: error.lockedCredentials,
+            suggestion: "Unlock the credentials or skip locked credentials to proceed"
+        }));
+        return;
+    }
+
+    sendProblem(reply, createProblemDetails({
                 status: 500,
                 title: "Failed to Regenerate Credentials",
                 detail: error.message || "Failed to complete credential regeneration"
             }));
         }
     });
+
+    // Credential History Routes (Story 2.5)
+
+    // Zod schemas for credential history endpoints
+    const credentialHistoryQuerySchema = z.object({
+        system: z.string().optional(),
+        startDate: z.string().datetime().optional(),
+        endDate: z.string().datetime().optional(),
+        page: z.string().transform(Number).pipe(z.number().int().min(1)).default('1'),
+        limit: z.string().transform(Number).pipe(z.number().int().min(1).max(100)).default('20')
+    });
+
+    const compareVersionsSchema = z.object({
+        versionId1: z.string().min(1, "First version ID is required"),
+        versionId2: z.string().min(1, "Second version ID is required")
+    });
+
+    const versionIdSchema = z.object({
+        versionId: z.string().min(1, "Version ID is required")
+    });
+
+    // GET /api/v1/users/:userId/credentials/history - List history with filtering
+    app.get("/users/:userId/history", async (request, reply) => {
+        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        if (!actor) return;
+
+        // RBAC check: IT roles only
+        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+            sendProblem(reply, createProblemDetails({
+                status: 403,
+                title: "Forbidden",
+                detail: "Only IT roles can view credential history"
+            }));
+            return;
+        }
+
+        const { userId } = request.params;
+
+        // Validate query parameters
+        const validation = credentialHistoryQuerySchema.safeParse(request.query || {});
+        if (!validation.success) {
+            sendProblem(reply, createProblemDetails({
+                status: 400,
+                title: "Invalid Query Parameters",
+                detail: validation.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ')
+            }));
+            return;
+        }
+
+        try {
+            const filters = validation.data;
+            const history = await credentialService.getCredentialHistory(userId, filters);
+
+            // Audit log the access
+            if (auditRepo) {
+                await auditRepo.createAuditLog({
+                    action: "credentials.history.list",
+                    actorUserId: actor.id,
+                    entityType: "UserCredential",
+                    entityId: userId,
+                    metadata: {
+                        filters: {
+                            system: filters.system,
+                            startDate: filters.startDate,
+                            endDate: filters.endDate
+                        },
+                        resultCount: history.data.length,
+                        page: history.meta.page,
+                        limit: history.meta.limit
+                    }
+                });
+            }
+
+            reply.send({
+                data: history.data,
+                meta: history.meta
+            });
+        } catch (error) {
+            console.error('Get credential history error:', error);
+            sendProblem(reply, createProblemDetails({
+                status: 500,
+                title: "Failed to Retrieve History",
+                detail: error.message || "Failed to retrieve credential history"
+            }));
+        }
+    });
+
+    // GET /api/v1/credential-versions/:versionId - Get version details
+    app.get("/versions/:versionId", async (request, reply) => {
+        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        if (!actor) return;
+
+        // RBAC check: IT roles only
+        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+            sendProblem(reply, createProblemDetails({
+                status: 403,
+                title: "Forbidden",
+                detail: "Only IT roles can view credential versions"
+            }));
+            return;
+        }
+
+        const { versionId } = request.params;
+
+        // Validate version ID format (UUID)
+        const validation = versionIdSchema.safeParse({ versionId });
+        if (!validation.success) {
+            sendProblem(reply, createProblemDetails({
+                status: 400,
+                title: "Invalid Version ID",
+                detail: "Version ID is required"
+            }));
+            return;
+        }
+
+        try {
+            const version = await credentialService.getCredentialVersion(versionId);
+
+            if (!version) {
+                sendProblem(reply, createProblemDetails({
+                    status: 404,
+                    title: "Not Found",
+                    detail: "Credential version not found"
+                }));
+                return;
+            }
+
+            // Audit log the access
+            if (auditRepo) {
+                await auditRepo.createAuditLog({
+                    action: "credentials.version.view",
+                    actorUserId: actor.id,
+                    entityType: "CredentialVersion",
+                    entityId: versionId,
+                    metadata: {
+                        userId: version.userId,
+                        system: version.system,
+                        reason: version.reason
+                    }
+                });
+            }
+
+            reply.send({ data: version });
+        } catch (error) {
+            console.error('Get credential version error:', error);
+            sendProblem(reply, createProblemDetails({
+                status: 500,
+                title: "Failed to Retrieve Version",
+                detail: error.message || "Failed to retrieve credential version"
+            }));
+        }
+    });
+
+    // POST /api/v1/credential-versions/compare - Compare two versions
+    app.post("/versions/compare", async (request, reply) => {
+        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        if (!actor) return;
+
+        // RBAC check: IT roles only
+        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+            sendProblem(reply, createProblemDetails({
+                status: 403,
+                title: "Forbidden",
+                detail: "Only IT roles can compare credential versions"
+            }));
+            return;
+        }
+
+        // Validate request body
+        const validation = compareVersionsSchema.safeParse(request.body || {});
+        if (!validation.success) {
+            sendProblem(reply, createProblemDetails({
+                status: 400,
+                title: "Invalid Input",
+                detail: validation.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ')
+            }));
+            return;
+        }
+
+        const { versionId1, versionId2 } = validation.data;
+
+        try {
+            const comparison = await credentialService.compareCredentialVersions(versionId1, versionId2);
+
+            // Audit log the comparison
+            if (auditRepo) {
+                await auditRepo.createAuditLog({
+                    action: "credentials.version.compare",
+                    actorUserId: actor.id,
+                    entityType: "CredentialVersion",
+                    entityId: `${versionId1}_vs_${versionId2}`,
+                    metadata: {
+                        versionId1,
+                        versionId2,
+                        system: comparison.system,
+                        differences: comparison.differences.map(d => d.field)
+                    }
+                });
+            }
+
+            reply.send({ data: comparison });
+        } catch (error) {
+            // Handle specific error for different systems
+            if (error.code === 'DIFFERENT_SYSTEMS') {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/comparison-error',
+                    status: 400,
+                    title: "Comparison Not Allowed",
+                    detail: "Cannot compare versions from different systems",
+                    system1: error.system1,
+                    system2: error.system2
+                }));
+                return;
+            }
+
+            // Handle version not found error
+            if (error.message?.includes('not found')) {
+                sendProblem(reply, createProblemDetails({
+                    status: 404,
+                    title: "Not Found",
+                    detail: error.message
+                }));
+                return;
+            }
+
+            console.error('Compare credential versions error:', error);
+            sendProblem(reply, createProblemDetails({
+                status: 500,
+                title: "Comparison Failed",
+                detail: error.message || "Failed to compare credential versions"
+            }));
+        }
+    });
+
+    // POST /api/v1/credential-versions/:versionId/reveal - Reveal password
+    app.post("/versions/:versionId/reveal", async (request, reply) => {
+        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        if (!actor) return;
+
+        // RBAC check: IT roles only
+        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+            sendProblem(reply, createProblemDetails({
+                status: 403,
+                title: "Forbidden",
+                detail: "Only IT roles can reveal passwords"
+            }));
+            return;
+        }
+
+        const { versionId } = request.params;
+
+        // Validate version ID
+        const validation = versionIdSchema.safeParse({ versionId });
+        if (!validation.success) {
+            sendProblem(reply, createProblemDetails({
+                status: 400,
+                title: "Invalid Version ID",
+                detail: "Version ID is required"
+            }));
+            return;
+        }
+
+        try {
+            const version = await credentialService.revealCredentialPassword(versionId, actor.id);
+
+            // Audit log the password reveal (sensitive action)
+            if (auditRepo) {
+                await auditRepo.createAuditLog({
+                    action: "credentials.password.reveal",
+                    actorUserId: actor.id,
+                    entityType: "CredentialVersion",
+                    entityId: versionId,
+                    metadata: {
+                        userId: version.userId,
+                        system: version.system,
+                        reason: version.reason,
+                        timestamp: version.timestamp
+                    }
+                });
+            }
+
+            reply.send({ data: version });
+        } catch (error) {
+            // Handle version not found error
+            if (error.code === 'VERSION_NOT_FOUND') {
+                sendProblem(reply, createProblemDetails({
+                    status: 404,
+                    title: "Not Found",
+                    detail: "Credential version not found",
+                    versionId: error.versionId
+                }));
+                return;
+            }
+
+            console.error('Reveal password error:', error);
+            sendProblem(reply, createProblemDetails({
+                status: 500,
+                title: "Failed to Reveal Password",
+                detail: error.message || "Failed to reveal password"
+            }));
+        }
+    });
+
+    // Credential Override Routes (Story 2.6)
+
+    // POST /api/v1/users/:userId/credentials/:system/override/preview - Preview credential override
+    app.post("/users/:userId/:system/override/preview", async (request, reply) => {
+        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        if (!actor) return;
+
+        // RBAC check: IT roles only
+        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+            sendProblem(reply, createProblemDetails({
+                status: 403,
+                title: "Forbidden",
+                detail: "Only IT roles can override credentials"
+            }));
+            return;
+        }
+
+        // Validate request body with Zod
+        const validation = overridePreviewSchema.safeParse(request.body || {});
+        if (!validation.success) {
+            sendProblem(reply, createProblemDetails({
+                status: 400,
+                title: "Invalid Input",
+                detail: validation.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ')
+            }));
+            return;
+        }
+
+        const { userId, system } = request.params;
+        const overrideData = validation.data;
+
+        try {
+            // Generate override preview
+            const preview = await credentialService.previewCredentialOverride(userId, system, overrideData);
+
+            // Audit log the override preview
+            if (auditRepo) {
+                await auditRepo.createAuditLog({
+                    action: "credentials.override.preview",
+                    actorUserId: actor.id,
+                    entityType: "UserCredential",
+                    entityId: userId,
+                    metadata: {
+                        system: system,
+                        changes: preview.changes,
+                        reason: overrideData.reason
+                    }
+                });
+            }
+
+            reply.send({
+                data: {
+                    previewToken: preview.previewToken,
+                    expiresAt: preview.expiresAt,
+                    currentCredential: preview.currentCredential,
+                    proposedCredential: preview.proposedCredential,
+                    changes: preview.changes,
+                    reason: overrideData.reason
+                }
+            });
+        } catch (error) {
+            // Handle disabled user error
+            if (error instanceof DisabledUserError) {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/disabled-user',
+                    status: 403,
+                    title: "Disabled User",
+                    detail: "Cannot override credentials for disabled users",
+                    userId: error.userId,
+                    suggestion: "Re-enable the user first"
+                }));
+                return;
+            }
+
+            // Handle user not found error
+            if (error.code === 'USER_NOT_FOUND') {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/user-not-found',
+                    status: 404,
+                    title: "User Not Found",
+                    detail: "User not found",
+                    userId: error.userId
+                }));
+                return;
+            }
+
+            // Handle no active credential error
+            if (error.code === 'NO_ACTIVE_CREDENTIAL') {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/no-active-credential',
+                    status: 404,
+                    title: "No Active Credential",
+                    detail: "No active credential found for this system",
+                    userId: error.userId,
+                    system: error.system
+                }));
+                return;
+            }
+
+            console.error('Override preview error:', error);
+            sendProblem(reply, createProblemDetails({
+                status: 500,
+                title: "Override Preview Failed",
+                detail: error.message || "Failed to preview credential override"
+            }));
+        }
+    });
+
+    // POST /api/v1/users/:userId/credentials/:system/override/confirm - Confirm and execute override
+    app.post("/users/:userId/:system/override/confirm", async (request, reply) => {
+        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        if (!actor) return;
+
+        // RBAC check: IT roles only
+        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+            sendProblem(reply, createProblemDetails({
+                status: 403,
+                title: "Forbidden",
+                detail: "Only IT roles can confirm credential overrides"
+            }));
+            return;
+        }
+
+        // Validate request body with Zod
+        const validation = confirmOverrideSchema.safeParse(request.body || {});
+        if (!validation.success) {
+            sendProblem(reply, createProblemDetails({
+                status: 400,
+                title: "Invalid Input",
+                detail: validation.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ')
+            }));
+            return;
+        }
+
+        const { userId, system } = request.params;
+        const { previewToken, confirmed } = validation.data;
+
+        // Validate explicit confirmation
+        if (!confirmed) {
+            sendProblem(reply, createProblemDetails({
+                type: '/problems/confirmation-required',
+                status: 400,
+                title: "Explicit Confirmation Required",
+                detail: "You must explicitly confirm the credential override before proceeding."
+            }));
+            return;
+        }
+
+        try {
+            // Retrieve and validate preview session
+            const previewSession = await credentialService.getPreviewSession(previewToken);
+
+            if (!previewSession) {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/invalid-preview-token',
+                    status: 400,
+                    title: "Invalid Preview Token",
+                    detail: "Preview session expired or invalid",
+                    suggestion: "Generate a new preview before confirming"
+                }));
+                return;
+            }
+
+            // Verify it's an override session
+            if (previewSession.type !== 'override') {
+                sendProblem(reply, createProblemDetails({
+                    status: 400,
+                    title: "Invalid Preview Token",
+                    detail: "The preview token is not valid for override."
+                }));
+                return;
+            }
+
+            // Verify userId matches the preview
+            if (previewSession.userId !== userId) {
+                sendProblem(reply, createProblemDetails({
+                    status: 400,
+                    title: "Invalid Preview Token",
+                    detail: "The preview token does not match the specified user."
+                }));
+                return;
+            }
+
+            // Verify system matches the preview
+            if (previewSession.system !== system) {
+                sendProblem(reply, createProblemDetails({
+                    status: 400,
+                    title: "Invalid Preview Token",
+                    detail: "The preview token does not match the specified system."
+                }));
+                return;
+            }
+
+            // Execute the override
+            const result = await credentialService.confirmCredentialOverride(actor.id, {
+                ...previewSession,
+                token: previewToken
+            });
+
+            // Clean up preview session
+            await credentialService.deletePreviewSession(previewToken);
+
+            reply.code(201).send({
+                data: {
+                    credentialId: result.credentialId,
+                    system: result.system,
+                    overriddenAt: result.overriddenAt,
+                    overriddenBy: result.overriddenBy,
+                    historyVersionId: result.historyVersionId,
+                    changes: result.changes
+                }
+            });
+        } catch (error) {
+            // Handle disabled user error during confirmation
+            if (error instanceof DisabledUserError) {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/disabled-user',
+                    status: 403,
+                    title: "Disabled User",
+                    detail: "User was disabled during the override process",
+                    userId: error.userId,
+                    suggestion: "Re-enable the user first"
+                }));
+                return;
+            }
+
+            // Handle user not found error
+            if (error.code === 'USER_NOT_FOUND') {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/user-not-found',
+                    status: 404,
+                    title: "User Not Found",
+                    detail: "User not found",
+                    userId: error.userId
+                }));
+                return;
+            }
+
+            console.error('Confirm override error:', error);
+            sendProblem(reply, createProblemDetails({
+                status: 500,
+                title: "Failed to Override Credential",
+                detail: error.message || "Failed to complete credential override"
+            }));
+        }
+    });
+
+    // Lock/Unlock Routes (Story 2.9)
+    // Mounted at /api/v1/credentials (or credential-templates)
+
+    // GET /api/v1/credentials/locked - List all locked credentials
+    app.get("/locked", async (request, reply) => {
+        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        if (!actor) return;
+
+        if (!hasItRole(actor)) {
+            sendProblem(reply, createProblemDetails({
+                status: 403,
+                title: "Forbidden",
+                type: "/problems/insufficient-permissions",
+                detail: "Only IT roles can view locked credentials"
+            }));
+            return;
+        }
+
+        try {
+            const page = parseInt(request.query.page) || 1;
+            const limit = parseInt(request.query.limit) || 20;
+            const { systemId, userId, startDate, endDate } = request.query || {};
+
+            const result = await credentialService.getLockedCredentials({
+                page,
+                limit,
+                systemId,
+                userId,
+                startDate,
+                endDate
+            });
+            reply.send({
+                data: result.data,
+                meta: result.meta
+            });
+        } catch (error) {
+            console.error('List locked credentials error:', error);
+            sendProblem(reply, createProblemDetails({
+                status: 500,
+                title: "Failed to List Locked Credentials",
+                detail: error.message
+            }));
+        }
+    });
+
+    // POST /api/v1/credentials/:userId/:systemId/lock - Lock credential
+    app.post("/:userId/:systemId/lock", async (request, reply) => {
+        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        if (!actor) return;
+
+        if (!hasItRole(actor)) {
+            sendProblem(reply, createProblemDetails({
+                status: 403,
+                title: "Forbidden",
+                type: "/problems/insufficient-permissions",
+                detail: "Only IT roles can lock credentials"
+            }));
+            return;
+        }
+
+        const { userId, systemId } = request.params;
+        const validation = lockCredentialSchema.safeParse(request.body || {});
+
+        if (!validation.success) {
+            sendProblem(reply, createProblemDetails({
+                status: 400,
+                title: "Invalid Input",
+                detail: validation.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ')
+            }));
+            return;
+        }
+
+        try {
+            const result = await credentialService.lockCredential(userId, systemId, validation.data.reason, actor.id);
+            reply.send({ data: result });
+        } catch (error) {
+            if (error.code === 'CREDENTIAL_NOT_FOUND') {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/credential-not-found',
+                    status: 404,
+                    title: "Credential Not Found",
+                    detail: error.message,
+                    userId: error.userId,
+                    systemId: error.systemId
+                }));
+                return;
+            }
+            if (error.code === 'CREDENTIAL_ALREADY_LOCKED') {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/credential-already-locked',
+                    status: 409,
+                    title: "Credential Already Locked",
+                    detail: error.message,
+                    userId: error.userId,
+                    systemId: error.systemId,
+                    suggestion: "Unlock the credential before attempting to lock again."
+                }));
+                return;
+            }
+            console.error('Lock credential error:', error);
+            sendProblem(reply, createProblemDetails({
+                status: 500,
+                title: "Lock Failed",
+                detail: error.message
+            }));
+        }
+    });
+
+    // POST /api/v1/credentials/:userId/:systemId/unlock - Unlock credential
+    app.post("/:userId/:systemId/unlock", async (request, reply) => {
+        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        if (!actor) return;
+
+        if (!hasItRole(actor)) {
+            sendProblem(reply, createProblemDetails({
+                status: 403,
+                title: "Forbidden",
+                type: "/problems/insufficient-permissions",
+                detail: "Only IT roles can unlock credentials"
+            }));
+            return;
+        }
+
+        const { userId, systemId } = request.params;
+
+        try {
+            const result = await credentialService.unlockCredential(userId, systemId, actor.id);
+            reply.send({ data: result });
+        } catch (error) {
+            if (error.code === 'CREDENTIAL_NOT_LOCKED') {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/credential-not-locked',
+                    status: 409,
+                    title: "Credential Not Locked",
+                    detail: error.message,
+                    userId: error.userId,
+                    systemId: error.systemId,
+                    suggestion: "The credential is already unlocked."
+                }));
+                return;
+            }
+            console.error('Unlock credential error:', error);
+            sendProblem(reply, createProblemDetails({
+                status: 500,
+                title: "Unlock Failed",
+                detail: error.message
+            }));
+        }
+    });
+
+    // GET /api/v1/credentials/:userId/:systemId/lock-status - Check status
+    app.get("/:userId/:systemId/lock-status", async (request, reply) => {
+        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        if (!actor) return;
+
+        // Allowed for IT and maybe owner? Requirement says IT.
+        if (!hasItRole(actor)) {
+            sendProblem(reply, createProblemDetails({
+                status: 403,
+                title: "Forbidden",
+                type: "/problems/insufficient-permissions",
+                detail: "Only IT roles can view lock status"
+            }));
+            return;
+        }
+
+        const { userId, systemId } = request.params;
+        try {
+            const status = await credentialService.getLockStatus(userId, systemId);
+            reply.send({ data: status });
+        } catch (error) {
+            console.error('Get lock status error:', error);
+            sendProblem(reply, createProblemDetails({
+                status: 500,
+                title: "Failed to Get Status",
+                detail: error.message
+            }));
+        }
+    });
+
+    // GET /api/v1/credentials/users/:userId/locked - List locked for user
+    app.get("/users/:userId/locked", async (request, reply) => {
+        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        if (!actor) return;
+
+        if (!hasItRole(actor)) {
+            sendProblem(reply, createProblemDetails({
+                status: 403,
+                title: "Forbidden",
+                type: "/problems/insufficient-permissions",
+                detail: "Only IT roles can view locked credentials"
+            }));
+            return;
+        }
+
+        const { userId } = request.params;
+        try {
+            const page = parseInt(request.query.page) || 1;
+            const limit = parseInt(request.query.limit) || 20;
+            const { systemId, startDate, endDate } = request.query || {};
+
+            const result = await credentialService.getLockedCredentials({
+                userId,
+                page,
+                limit,
+                systemId,
+                startDate,
+                endDate
+            });
+            reply.send({
+                data: result.data,
+                meta: result.meta
+            });
+        } catch (error) {
+            console.error('List user locked credentials error:', error);
+            sendProblem(reply, createProblemDetails({
+                status: 500,
+                title: "Failed to List Locked Credentials",
+                detail: error.message
+            }));
+        }
+    });
+
 }

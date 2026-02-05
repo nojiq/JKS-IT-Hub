@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-01-29T14:55:00+08:00
+generated: 2026-02-02T10:00:00+08:00
 project: IT-Hub
 project_key: it-hub
 tracking_system: file-system
@@ -49,8 +49,8 @@ development_status:
   1-6-ldap-change-history-per-user: done
   1-7-role-management: done
   1-8-enable-disable-users-no-deletion: done
-  1-9-audit-log-viewing: review
-  1-10-audit-logging-for-sensitive-actions: review
+  1-9-audit-log-viewing: done
+  1-10-audit-logging-for-sensitive-actions: done
   epic-1-retrospective: optional
 
   epic-2: in-progress
@@ -58,17 +58,17 @@ development_status:
   2-2-deterministic-credential-generation: review
   2-3-credential-preview-confirmation: done
   2-4-regeneration-with-confirmation: review
-  2-5-credential-history: backlog
-  2-6-per-user-credential-override: backlog
-  2-7-username-field-mapping-per-system: backlog
-  2-8-normalization-rules: backlog
-  2-9-credential-lock-unlock: backlog
-  2-10-disabled-user-guardrails: backlog
-  2-11-imap-credentials-it-only: backlog
+  2-5-credential-history: done
+  2-6-per-user-credential-override: review
+  2-7-username-field-mapping-per-system: review
+  2-8-normalization-rules: done
+  2-9-credential-lock-unlock: in-progress
+  2-10-disabled-user-guardrails: in-progress
+  2-11-imap-credentials-it-only: review
   epic-2-retrospective: optional
 
-  epic-3: backlog
-  3-1-single-user-credential-export: backlog
+  epic-3: in-progress
+  3-1-single-user-credential-export: review
   3-2-batch-credential-export: backlog
   3-3-export-formatting-rules: backlog
   3-4-no-export-archiving: backlog

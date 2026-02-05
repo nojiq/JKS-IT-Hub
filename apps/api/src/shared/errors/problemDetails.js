@@ -3,13 +3,15 @@ export const createProblemDetails = ({
   title,
   detail,
   type = "about:blank",
-  instance
+  instance,
+  ...extensions
 }) => ({
   type,
   title,
   status,
   detail,
-  ...(instance ? { instance } : {})
+  ...(instance ? { instance } : {}),
+  ...extensions
 });
 
 export const sendProblem = (reply, problem) => {

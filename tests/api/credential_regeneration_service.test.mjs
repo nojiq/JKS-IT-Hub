@@ -30,6 +30,7 @@ vi.mock('../src/features/credentials/repo.js', () => ({
   getUserById: vi.fn(),
   getUserCredentials: vi.fn(),
   getUserCredentialBySystem: vi.fn(),
+  getLockedCredentials: vi.fn(),
   deactivateUserCredential: vi.fn(),
   createUserCredential: vi.fn(),
   createCredentialVersion: vi.fn(),
@@ -47,6 +48,7 @@ vi.mock('../src/shared/db/prisma.js', () => ({
 describe('Credential Regeneration Service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    repo.getLockedCredentials.mockResolvedValue({ data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } });
   });
 
   describe('detectChanges', () => {
@@ -430,6 +432,10 @@ describe('Credential Regeneration Service', () => {
       repo.getUserById.mockResolvedValue(mockUser);
       repo.getUserCredentialBySystem.mockResolvedValue({ id: 'cred-1' });
       repo.createUserCredential.mockResolvedValue({ id: 'cred-3' });
+      repo.getLockedCredentials.mockResolvedValue({
+        data: [{ systemId: 'vpn', lockedAt: new Date(), lockReason: 'Policy' }],
+        meta: { page: 1, limit: 20, total: 1, totalPages: 1 }
+      });
 
       const result = await confirmRegeneration('admin-123', previewSession);
 

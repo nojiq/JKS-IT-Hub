@@ -2,7 +2,7 @@ import { requireItUser } from "../../shared/auth/requireItUser.js";
 import { createProblemDetails, sendProblem } from "../../shared/errors/problemDetails.js";
 import { LdapSyncInProgressError } from "./syncService.js";
 
-export default async function (app, { config, userRepo, syncRunner, syncRepo }) {
+export default async function (app, { config, userRepo, syncRunner, syncRepo, eventChannel }) {
 
     app.post("/ldap/sync", async (request, reply) => {
         const actor = await requireItUser(request, reply, { config, userRepo });
@@ -35,5 +35,22 @@ export default async function (app, { config, userRepo, syncRunner, syncRepo }) 
 
         const run = await syncRepo.getLatestSyncRun();
         reply.send({ data: { run } });
+    });
+
+    app.get("/ldap/sync/stream", async (request, reply) => {
+        const actor = await requireItUser(request, reply, { config, userRepo });
+        if (!actor) return;
+
+        if (!eventChannel) {
+            sendProblem(reply, createProblemDetails({
+                status: 503,
+                title: "Sync stream unavailable",
+                detail: "LDAP sync event stream is not configured."
+            }));
+            return;
+        }
+
+        const stream = eventChannel.subscribe();
+        reply.sse(stream);
     });
 }

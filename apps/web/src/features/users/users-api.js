@@ -20,3 +20,8 @@ export const fetchUserDetail = async (userId) => {
   const response = await apiFetch(`/users/${userId}`);
   return parsePayload(response);
 };
+
+export const fetchUserHistory = async (userId) => {
+  const response = await apiFetch(`/users/${userId}/audit-logs`);
+  return parsePayload(response);
+};

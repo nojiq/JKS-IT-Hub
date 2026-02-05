@@ -30,5 +30,5 @@ export const fetchSession = async () => {
     throw new Error(message);
   }
 
-  return payload.data;
+  return payload.data ?? null;
 };

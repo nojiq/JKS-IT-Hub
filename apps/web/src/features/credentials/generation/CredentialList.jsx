@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './CredentialList.css';
 
-const CredentialList = ({ credentials, onViewHistory, onRegenerate }) => {
+const CredentialList = ({ credentials, onViewHistory, onRegenerate, onOverride }) => {
     const [expandedId, setExpandedId] = useState(null);
     const [showPassword, setShowPassword] = useState({});
 
@@ -45,6 +45,13 @@ const CredentialList = ({ credentials, onViewHistory, onRegenerate }) => {
                         <div className="credential-header">
                             <div className="system-badge">{credential.system}</div>
                             <div className="credential-actions">
+                                <button 
+                                    className="btn-override"
+                                    onClick={() => onOverride?.(credential)}
+                                    title="Override Credential"
+                                >
+                                    Override
+                                </button>
                                 <button 
                                     className="btn-icon"
                                     onClick={() => toggleExpand(credential.id)}

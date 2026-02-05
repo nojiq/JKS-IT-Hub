@@ -1,4 +1,6 @@
 import { createSyncJob } from "./syncJob.js";
+import { createLdapService } from "./service.js";
+import { createLdapSyncEventChannel } from "./syncEvents.js";
 import { createLdapSyncRunner } from "./syncService.js";
 // We need to import dependencies/repos here or assume they are passed in fastify.
 // Typically feature index.js is a plugin.
@@ -9,29 +11,49 @@ export default async function ldapFeature(fastify, options) {
 
     // Dependency injection would normally happen here or at app level.
     // Let's assume `syncService` needs to be constructed.
+    const config = options.config || fastify.config;
 
     // Placeholder for repos (in a real app these come from plugins or decorators)
-    // Verify critical dependencies
-    if (!fastify.userRepo || !fastify.syncRepo) {
-        throw new Error("LDAP Feature Missing Dependencies: userRepo or syncRepo not registered");
-    }
+    // Dependency injection: Check options first, then fastify instance
+    const userRepo = options.userRepo || fastify.userRepo;
+    const syncRepo = options.syncRepo || fastify.syncRepo;
+    const auditRepo = options.auditRepo || fastify.auditRepo;
+    const ldapService =
+        options.ldapService ||
+        fastify.ldapService ||
+        createLdapService(config.ldap);
+    const eventChannel =
+        options.eventChannel ||
+        fastify.ldapSyncEvents ||
+        createLdapSyncEventChannel();
 
-    const { userRepo, syncRepo, auditRepo, ldapService } = fastify;
+    // Verify critical dependencies
+    if (!userRepo || !syncRepo) {
+        throw new Error("LDAP Feature Missing Dependencies: userRepo or syncRepo not registered in options or fastify instance");
+    }
 
     // If syncService is not available, we construct it
     const syncRunner = createLdapSyncRunner({
-        config: fastify.config,
-        ldapService: ldapService || {}, // Mock/Placeholder allowed for service, but repos should exist
+        config,
+        ldapService,
         syncRepo: syncRepo,
         userRepo: userRepo,
         auditRepo: auditRepo || {},
-        eventChannel: null
+        eventChannel
+    });
+
+    await fastify.register(import("./routes.js"), {
+        config,
+        userRepo,
+        syncRunner,
+        syncRepo,
+        eventChannel
     });
 
     const job = createSyncJob({
         syncService: syncRunner,
         logger: fastify.log,
-        config: fastify.config
+        config
     });
 
     // Register job with scheduler

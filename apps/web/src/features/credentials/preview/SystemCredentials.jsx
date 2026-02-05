@@ -5,6 +5,7 @@ import './CredentialPreview.css';
  * SystemCredentials Component
  * 
  * Displays credentials for a single system with password masking/reveal toggle.
+ * Updated for Story 2.7: Shows username field source and fallback warnings.
  * 
  * @param {Object} props
  * @param {string} props.system - System name (e.g., 'email', 'vpn')
@@ -12,6 +13,10 @@ import './CredentialPreview.css';
  * @param {string} props.credentials[].username - Username for the credential
  * @param {string} props.credentials[].password - Password for the credential
  * @param {string} props.credentials[].ldapSources - Object mapping field names to LDAP source fields
+ * @param {Object} props.credentials[].generationMetadata - Metadata about how credential was generated (Story 2.7)
+ * @param {string} props.credentials[].generationMetadata.usernameField - LDAP field used for username
+ * @param {boolean} props.credentials[].generationMetadata.usingDefault - Whether default fallback was used
+ * @param {boolean} props.credentials[].generationMetadata.normalized - Whether normalization was applied
  */
 function SystemCredentials({ system, credentials }) {
   const [revealedPasswords, setRevealedPasswords] = useState({});
@@ -35,9 +40,54 @@ function SystemCredentials({ system, credentials }) {
       .replace(/\b\w/g, l => l.toUpperCase());
   };
 
+  // Get generation metadata from first credential (applies to all in system)
+  const metadata = credentials[0]?.generationMetadata;
+
   return (
     <div className="system-credentials">
       <h3 className="system-name">{formatSystemName(system)}</h3>
+      
+      {/* Story 2.7: Show username field source and fallback warning */}
+      {metadata && (
+        <div className={`generation-metadata ${metadata.usingDefault ? 'fallback-warning' : ''}`}>
+          <div className="metadata-row">
+            <span className="metadata-label">Username Source:</span>
+            <span className="metadata-value">
+              {metadata.usernameField || 'mail'}
+              {metadata.usingDefault && (
+                <span className="fallback-badge" title="No system configuration found, using default">
+                  ⚠️ Default
+                </span>
+              )}
+            </span>
+          </div>
+          {metadata.normalized && (
+            <div className="metadata-row">
+              <span className="metadata-label">Normalization:</span>
+              <span className="metadata-value normalized-badge">
+                ✓ Applied
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Fallback warning banner */}
+      {metadata?.usingDefault && (
+        <div className="fallback-warning-banner">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <span>
+            No system configuration found for '{system}'. Using default 'mail' field for username.
+            <a href="/system-configs" target="_blank" rel="noopener noreferrer">
+              Configure system →
+            </a>
+          </span>
+        </div>
+      )}
       
       <div className="credentials-table">
         {credentials.map((cred, index) => (

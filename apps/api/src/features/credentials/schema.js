@@ -62,5 +62,65 @@ export const confirmRegenerationSchema = z.object({
         message: "Explicit confirmation required to overwrite credentials"
     }),
     acknowledgedWarnings: z.boolean().default(false),
+    skipLocked: z.boolean().optional(),
+    force: z.boolean().optional(),
     csrfToken: z.string().optional()
+});
+
+// Credential History Schemas (Story 2.5)
+
+export const historyQuerySchema = z.object({
+    system: z.string().optional(),
+    startDate: z.string().datetime().optional(),
+    endDate: z.string().datetime().optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(20)
+}).refine(
+    (data) => {
+        // If both dates provided, ensure startDate <= endDate
+        if (data.startDate && data.endDate) {
+            return new Date(data.startDate) <= new Date(data.endDate);
+        }
+        return true;
+    },
+    {
+        message: "startDate must be before or equal to endDate",
+        path: ["startDate"]
+    }
+);
+
+export const versionIdSchema = z.object({
+    versionId: z.string().uuid("Invalid version ID format")
+});
+
+export const compareVersionsSchema = z.object({
+    versionId1: z.string().uuid("Invalid version ID 1 format"),
+    versionId2: z.string().uuid("Invalid version ID 2 format")
+});
+
+// Credential Override Schemas (Story 2.6)
+
+export const overridePreviewSchema = z.object({
+    username: z.string().min(1).max(191).optional(),
+    password: z.string().min(1).optional(),
+    reason: z.string().min(10, "Reason must be at least 10 characters").max(500)
+}).refine(
+    (data) => data.username || data.password,
+    { message: "At least one of username or password must be provided" }
+);
+
+export const confirmOverrideSchema = z.object({
+    previewToken: z.string().min(1, "Preview token is required"),
+    confirmed: z.boolean().refine((val) => val === true, {
+        message: "Explicit confirmation required"
+    })
+});
+
+// Lock/Unlock Schemas (Story 2.9)
+export const lockCredentialSchema = z.object({
+    reason: z.string().max(255).optional()
+});
+
+export const unlockCredentialSchema = z.object({
+});
 });

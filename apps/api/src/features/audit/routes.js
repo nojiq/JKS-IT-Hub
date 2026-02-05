@@ -53,10 +53,18 @@ export default async function (app, { config, userRepo, auditRepo }) {
 
         // Map logs to API response format
         const mappedLogs = logs.map(log => {
-            // Build human-readable actor name
-            const actorName = log.actorUser
-                ? `${log.actorUser.username} (${log.actorUser.role})`
-                : "System";
+            // Build actor object with user details
+            const actor = log.actorUser
+                ? {
+                    username: log.actorUser.username,
+                    role: log.actorUser.role,
+                    status: log.actorUser.status
+                }
+                : {
+                    username: "System",
+                    role: null,
+                    status: null
+                };
 
             // Build human-readable target/resource name
             let target = "N/A";
@@ -69,7 +77,7 @@ export default async function (app, { config, userRepo, auditRepo }) {
             return {
                 id: log.id,
                 action: log.action,
-                actor: actorName,
+                actor: actor,
                 actorId: log.actorUserId,
                 target: target,
                 entityType: log.entityType,

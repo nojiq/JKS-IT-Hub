@@ -10,7 +10,8 @@ config({ path: resolve(__dirname, "../../.env") });
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
-    path: "prisma/migrations"
+    path: "prisma/migrations",
+    seed: "node prisma/seed.js"
   },
   engine: "classic",
   datasource: {

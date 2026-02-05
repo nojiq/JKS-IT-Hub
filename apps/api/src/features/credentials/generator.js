@@ -59,7 +59,7 @@ const parsePattern = (pattern) => {
   const regex = /\{(\w+)(?::(\d+))?\}|\{fixed:([^}]+)\}/g;
   let match;
   let lastIndex = 0;
-  
+
   while ((match = regex.exec(pattern)) !== null) {
     // Add any literal text before this token
     if (match.index > lastIndex) {
@@ -68,7 +68,7 @@ const parsePattern = (pattern) => {
         value: pattern.slice(lastIndex, match.index)
       });
     }
-    
+
     if (match[1] && match[2]) {
       // {field:length} format
       tokens.push({
@@ -89,10 +89,10 @@ const parsePattern = (pattern) => {
         value: match[3]
       });
     }
-    
+
     lastIndex = regex.lastIndex;
   }
-  
+
   // Add any remaining literal text
   if (lastIndex < pattern.length) {
     tokens.push({
@@ -100,7 +100,7 @@ const parsePattern = (pattern) => {
       value: pattern.slice(lastIndex)
     });
   }
-  
+
   return tokens;
 };
 
@@ -114,20 +114,20 @@ const executePatternToken = (token, fieldValues) => {
   switch (token.type) {
     case 'literal':
       return token.value;
-    
+
     case 'field':
       const fieldValue = fieldValues[token.field];
       if (!fieldValue) {
         return '';
       }
       return fieldValue.slice(0, token.length);
-    
+
     case 'random':
       return generateRandomChars(token.length);
-    
+
     case 'fixed':
       return token.value;
-    
+
     default:
       return '';
   }
@@ -141,13 +141,13 @@ const executePatternToken = (token, fieldValues) => {
  */
 const mapLdapFields = (ldapAttributes, fieldMappings) => {
   const mapped = {};
-  
+
   for (const field of fieldMappings) {
     if (field.ldapSource && ldapAttributes[field.ldapSource]) {
       mapped[field.name] = ldapAttributes[field.ldapSource];
     }
   }
-  
+
   return mapped;
 };
 
@@ -159,7 +159,7 @@ const mapLdapFields = (ldapAttributes, fieldMappings) => {
  */
 const validateRequiredFields = (fieldValues, fieldDefinitions) => {
   const missing = [];
-  
+
   for (const field of fieldDefinitions) {
     if (field.required) {
       const value = fieldValues[field.name];
@@ -168,7 +168,7 @@ const validateRequiredFields = (fieldValues, fieldDefinitions) => {
       }
     }
   }
-  
+
   return {
     isValid: missing.length === 0,
     missing
@@ -184,21 +184,21 @@ const validateRequiredFields = (fieldValues, fieldDefinitions) => {
  */
 const normalizeFieldValues = (fieldValues, fieldDefinitions, globalRules) => {
   const normalized = { ...fieldValues };
-  
+
   for (const field of fieldDefinitions) {
     if (normalized[field.name]) {
       // Apply field-specific normalization
       if (field.normalization && field.normalization.length > 0) {
         normalized[field.name] = applyNormalizers(normalized[field.name], field.normalization);
       }
-      
+
       // Apply global normalization
       if (globalRules) {
         normalized[field.name] = applyGlobalNormalizers(normalized[field.name], globalRules);
       }
     }
   }
-  
+
   return normalized;
 };
 
@@ -213,7 +213,7 @@ const generatePassword = (pattern, fieldValues) => {
     // Default pattern if none specified
     return generateRandomChars(12);
   }
-  
+
   const tokens = parsePattern(pattern);
   return tokens.map(token => executePatternToken(token, fieldValues)).join('');
 };
@@ -223,47 +223,74 @@ const generatePassword = (pattern, fieldValues) => {
  * @param {Object} system - System configuration from template
  * @param {Object} template - Active credential template
  * @param {Object} user - User record with LDAP attributes
+ * @param {Object} systemConfig - Optional system configuration from database (Story 2.7)
  * @returns {Object} - Generated credentials for the system
  */
-const generateSystemCredentials = (system, template, user) => {
+const generateSystemCredentials = (system, template, user, systemConfig = null) => {
   const { structure } = template;
   const ldapAttributes = user.ldapAttributes || {};
-  
+
   // Map LDAP fields to credential fields
   const fieldValues = mapLdapFields(ldapAttributes, structure.fields);
-  
+
   // Validate required fields
   const validation = validateRequiredFields(fieldValues, structure.fields);
   if (!validation.isValid) {
     throw new MissingLdapFieldsError(validation.missing, user.id);
   }
-  
+
   // Normalize field values
   const normalizedValues = normalizeFieldValues(
-    fieldValues, 
-    structure.fields, 
+    fieldValues,
+    structure.fields,
     structure.normalizationRules
   );
-  
+
   // Find username field mapping
   const usernameField = structure.fields.find(f => f.name === 'username');
   let username;
+  let usernameFieldUsed;
+  let isFallback = false;
   const ldapSources = {};
-  
-  if (usernameField && usernameField.ldapSource) {
+
+  // Determine username
+  // 1. Check for per-system pre-normalized username (Story 2.8) - target specific system or map
+  const systemIdKey = system.name || system;
+  const perSystemConfig = user._systemConfigs?.[systemIdKey] || (user._systemConfig?.systemId === systemIdKey ? user._systemConfig : null);
+
+  if (perSystemConfig?.normalizedUsername) {
+    username = perSystemConfig.normalizedUsername;
+    usernameFieldUsed = perSystemConfig.usernameLdapField;
+    isFallback = perSystemConfig.fallback;
+  } else if (systemConfig && systemConfig.usernameLdapField) {
+    // Fallback to extraction from LDAP using system config (Story 2.7)
+    username = ldapAttributes[systemConfig.usernameLdapField];
+    usernameFieldUsed = systemConfig.usernameLdapField;
+
+    // If configured field not available, fallback to mail
+    if (!username) {
+      console.warn(`[Generator] Configured field '${systemConfig.usernameLdapField}' not found in LDAP data. Falling back to 'mail' field.`);
+      username = ldapAttributes.mail;
+      usernameFieldUsed = 'mail';
+      isFallback = true;
+    }
+  } else if (usernameField && usernameField.ldapSource) {
+    // Use template's username field mapping
     username = normalizedValues[usernameField.name] || ldapAttributes[usernameField.ldapSource];
-    ldapSources.username = usernameField.ldapSource;
+    usernameFieldUsed = usernameField.ldapSource;
   } else {
     // Default to email or generate from first/last name
-    username = ldapAttributes.mail || 
-               `${ldapAttributes.givenName?.toLowerCase()}.${ldapAttributes.sn?.toLowerCase()}`;
-    ldapSources.username = ldapAttributes.mail ? 'mail' : 'givenName+sn';
+    username = ldapAttributes.mail ||
+      `${ldapAttributes.givenName?.toLowerCase()}.${ldapAttributes.sn?.toLowerCase()}`;
+    usernameFieldUsed = ldapAttributes.mail ? 'mail' : 'givenName+sn';
   }
-  
+
+  ldapSources.username = usernameFieldUsed;
+
   // Find password field and track LDAP sources used in pattern
   const passwordField = structure.fields.find(f => f.name === 'password');
   const password = generatePassword(passwordField?.pattern, normalizedValues);
-  
+
   // Track LDAP sources used in password generation
   if (passwordField?.pattern) {
     const tokens = parsePattern(passwordField.pattern);
@@ -276,13 +303,19 @@ const generateSystemCredentials = (system, template, user) => {
       }
     });
   }
-  
+
   return {
     system: system.name || system,
     username,
     password,
     templateVersion: template.version,
-    ldapSources
+    ldapSources,
+    generationMetadata: (perSystemConfig || systemConfig) ? {
+      systemId: perSystemConfig?.systemId || systemConfig?.systemId,
+      usernameFieldUsed,
+      isFallback,
+      normalizationRulesApplied: perSystemConfig?.normalizationRulesApplied || systemConfig?.normalizationRules || []
+    } : null
   };
 };
 
@@ -290,32 +323,56 @@ const generateSystemCredentials = (system, template, user) => {
  * Generate deterministic credentials for a user
  * @param {Object} template - Active credential template
  * @param {Object} user - User record with LDAP attributes
+ * @param {Object} systemConfig - Optional system configuration for system-specific generation (Story 2.7)
  * @returns {Array} - Array of generated credentials for each system
  */
-export const generateCredentials = (template, user) => {
+export const generateCredentials = (template, user, systemConfig = null) => {
   if (!template) {
     throw new NoActiveTemplateError();
   }
-  
+
   if (!template.structure || !template.structure.systems) {
     throw new Error('Invalid template: missing systems configuration');
   }
-  
+
   const credentials = [];
-  
-  for (const system of template.structure.systems) {
+
+  // If systemConfig is provided, only generate for that specific system
+  if (systemConfig && systemConfig.systemId) {
+    const targetSystem = template.structure.systems.find(s =>
+      (s.name || s) === systemConfig.systemId
+    );
+
+    if (!targetSystem) {
+      throw new Error(`System '${systemConfig.systemId}' not found in template`);
+    }
+
     try {
-      const credential = generateSystemCredentials(system, template, user);
+      const credential = generateSystemCredentials(targetSystem, template, user, systemConfig);
       credentials.push(credential);
     } catch (error) {
       // Re-throw missing fields error with system context
       if (error instanceof MissingLdapFieldsError) {
-        error.system = system.name || system;
+        error.system = systemConfig.systemId;
       }
       throw error;
     }
+  } else {
+    // Generate for all systems in template
+    for (const system of template.structure.systems) {
+      try {
+        const credential = generateSystemCredentials(system, template, user);
+        credentials.push(credential);
+      } catch (error) {
+        // Re-throw missing fields error with system context
+        if (error instanceof MissingLdapFieldsError) {
+          error.system = system.name || system;
+        }
+        throw error;
+      }
+    }
   }
-  
+
   return credentials;
 };
 
@@ -323,11 +380,12 @@ export const generateCredentials = (template, user) => {
  * Preview credentials without storing them
  * @param {Object} template - Active credential template
  * @param {Object} user - User record with LDAP attributes
+ * @param {Object} systemConfig - Optional system configuration for system-specific generation (Story 2.7)
  * @returns {Object} - Preview result with credentials or errors
  */
-export const previewCredentials = (template, user) => {
+export const previewCredentials = (template, user, systemConfig = null) => {
   try {
-    const credentials = generateCredentials(template, user);
+    const credentials = generateCredentials(template, user, systemConfig);
     return {
       success: true,
       credentials,
