@@ -18,3 +18,19 @@ pnpm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# Uploads (keep .gitkeep)
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep
+apps/api/test-uploads/
+
+# Local AI / agent workflow artifacts
+.agent/
+.claude/
+.codex/
+.kilocode/
+.opencode/
+_bmad/
+_bmad-output/
+docs/superpowers/
+openspec/
