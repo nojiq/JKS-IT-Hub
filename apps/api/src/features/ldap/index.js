@@ -59,7 +59,7 @@ export default async function ldapFeature(fastify, options) {
     // Register job with scheduler
     // fastify.scheduler is added by @fastify/schedule
     if (fastify.scheduler) {
-        fastify.scheduler.addSimpleIntervalJob(job);
+        fastify.scheduler.addCronJob(job);
         fastify.log.info("LDAP Scheduled Sync Job registered");
     } else {
         fastify.log.warn("Scheduler not available, LDAP sync job NOT registered");

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { useCredentialHistory } from '../hooks/useCredentials.js';
 import CredentialHistoryList from './CredentialHistoryList.jsx';
 import CredentialFilters from './CredentialFilters.jsx';
@@ -23,6 +24,9 @@ import './CredentialHistory.css';
  * @param {string} props.userId - User ID to fetch history for
  */
 function CredentialHistory({ userId }) {
+  const { userId: routeUserId } = useParams();
+  const resolvedUserId = userId ?? routeUserId;
+
   const [filters, setFilters] = useState({
     system: '',
     startDate: '',
@@ -34,7 +38,13 @@ function CredentialHistory({ userId }) {
   const [selectedVersions, setSelectedVersions] = useState([]);
   const [showComparison, setShowComparison] = useState(false);
   
-  const { data, isLoading, error, isFetching } = useCredentialHistory(userId, filters);
+  const { data, isLoading, error, isFetching } = useCredentialHistory(resolvedUserId, filters);
+  const history = data?.data || [];
+  const pagination = data?.meta || { page: 1, limit: 10, total: 0, totalPages: 0 };
+  const systems = useMemo(
+    () => [...new Set(history.map((entry) => entry.system).filter(Boolean))].sort(),
+    [history]
+  );
 
   const handleFilterChange = (newFilters) => {
     setFilters(prev => ({
@@ -104,10 +114,6 @@ function CredentialHistory({ userId }) {
       </div>
     );
   }
-
-  const history = data?.history || [];
-  const pagination = data?.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 };
-  const systems = data?.systems || [];
 
   return (
     <div className="credential-history">

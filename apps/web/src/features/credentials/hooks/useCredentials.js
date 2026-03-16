@@ -15,7 +15,7 @@ export const useGenerateCredentials = () => {
     const queryClient = useQueryClient();
     
     return useMutation({
-        mutationFn: ({ userId }) => credentialsApi.generateCredentials(userId),
+        mutationFn: ({ userId, systemId }) => credentialsApi.generateCredentials(userId, systemId),
         onSuccess: (data, variables) => {
             // Invalidate user credentials cache
             queryClient.invalidateQueries({
@@ -27,7 +27,7 @@ export const useGenerateCredentials = () => {
 
 export const usePreviewCredentials = () => {
     return useMutation({
-        mutationFn: ({ userId }) => credentialsApi.previewCredentials(userId)
+        mutationFn: ({ userId, systemId }) => credentialsApi.previewCredentials(userId, systemId)
     });
 };
 
@@ -66,7 +66,7 @@ export const useConfirmCredentials = () => {
 
 export const useInitiateRegeneration = () => {
     return useMutation({
-        mutationFn: ({ userId }) => credentialsApi.initiateRegeneration(userId)
+        mutationFn: ({ userId, systemId }) => credentialsApi.initiateRegeneration(userId, systemId)
     });
 };
 
@@ -80,8 +80,8 @@ export const useConfirmRegeneration = () => {
     const queryClient = useQueryClient();
     
     return useMutation({
-        mutationFn: ({ userId, previewToken, confirmed, skipLocked, force }) => 
-            credentialsApi.confirmRegeneration(userId, { previewToken, confirmed, skipLocked, force }),
+        mutationFn: ({ userId, previewToken, confirmed, acknowledgedWarnings, skipLocked, force }) =>
+            credentialsApi.confirmRegeneration(userId, { previewToken, confirmed, acknowledgedWarnings, skipLocked, force }),
         onSuccess: (data, variables) => {
             // Invalidate user credentials cache
             queryClient.invalidateQueries({

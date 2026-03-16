@@ -22,6 +22,7 @@ export const requireAuthenticated = async (
             createProblemDetails({
                 status: 401,
                 title: "Unauthorized",
+                type: "/problems/auth/unauthorized",
                 detail: "Session is invalid or expired."
             })
         );
@@ -34,6 +35,7 @@ export const requireAuthenticated = async (
             createProblemDetails({
                 status: 401,
                 title: "Unauthorized",
+                type: "/problems/auth/unauthorized",
                 detail: "Missing session cookie."
             })
         );
@@ -47,6 +49,7 @@ export const requireAuthenticated = async (
             createProblemDetails({
                 status: 401,
                 title: "Unauthorized",
+                type: "/problems/auth/unauthorized",
                 detail: "Session user no longer exists."
             })
         );
@@ -59,6 +62,7 @@ export const requireAuthenticated = async (
             createProblemDetails({
                 status: 403,
                 title: "Account disabled",
+                type: "/problems/auth/account-disabled",
                 detail: "Your account is disabled. Contact IT to regain access."
             })
         );

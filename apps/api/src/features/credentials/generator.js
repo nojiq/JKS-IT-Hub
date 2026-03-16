@@ -8,6 +8,7 @@
  * 4. Password patterns
  */
 
+import { createHash } from 'node:crypto';
 import { applyNormalizers, applyGlobalNormalizers } from './normalizer.js';
 
 /**
@@ -35,17 +36,45 @@ export class NoActiveTemplateError extends Error {
 }
 
 /**
- * Generate random alphanumeric characters
- * @param {number} length - Number of characters to generate
- * @returns {string} - Random string
+ * Deterministically derive alphanumeric characters from a seed.
+ * Same seed + length always yields the same output.
  */
-const generateRandomChars = (length) => {
+const deriveDeterministicChars = (seed, length) => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  let counter = 0;
+
+  while (result.length < length) {
+    const digest = createHash('sha256')
+      .update(`${seed}:${counter}`)
+      .digest();
+
+    for (const byte of digest) {
+      result += chars[byte % chars.length];
+      if (result.length >= length) {
+        break;
+      }
+    }
+
+    counter += 1;
   }
+
   return result;
+};
+
+const stableStringify = (value) => {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(',')}]`;
+  }
+
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, val]) => `"${key}":${stableStringify(val)}`);
+    return `{${entries.join(',')}}`;
+  }
+
+  return JSON.stringify(value);
 };
 
 /**
@@ -56,7 +85,7 @@ const generateRandomChars = (length) => {
  */
 const parsePattern = (pattern) => {
   const tokens = [];
-  const regex = /\{(\w+)(?::(\d+))?\}|\{fixed:([^}]+)\}/g;
+  const regex = /\{fixed:([^}]+)\}|\{([A-Za-z0-9_]+):(\d+)\}/g;
   let match;
   let lastIndex = 0;
 
@@ -69,24 +98,24 @@ const parsePattern = (pattern) => {
       });
     }
 
-    if (match[1] && match[2]) {
-      // {field:length} format
-      tokens.push({
-        type: 'field',
-        field: match[1],
-        length: parseInt(match[2], 10)
-      });
-    } else if (match[1] === 'random' && match[2]) {
-      // {random:length} format
-      tokens.push({
-        type: 'random',
-        length: parseInt(match[2], 10)
-      });
-    } else if (match[3]) {
+    if (match[1]) {
       // {fixed:text} format
       tokens.push({
         type: 'fixed',
-        value: match[3]
+        value: match[1]
+      });
+    } else if (match[2] === 'random' && match[3]) {
+      // {random:length} format
+      tokens.push({
+        type: 'random',
+        length: parseInt(match[3], 10)
+      });
+    } else if (match[2] && match[3]) {
+      // {field:length} format
+      tokens.push({
+        type: 'field',
+        field: match[2],
+        length: parseInt(match[3], 10)
       });
     }
 
@@ -108,9 +137,10 @@ const parsePattern = (pattern) => {
  * Execute a parsed pattern token
  * @param {Object} token - The pattern token
  * @param {Object} fieldValues - Mapped field values from LDAP
+ * @param {Object} context - Execution context for deterministic token generation
  * @returns {string} - The executed token value
  */
-const executePatternToken = (token, fieldValues) => {
+const executePatternToken = (token, fieldValues, context = {}) => {
   switch (token.type) {
     case 'literal':
       return token.value;
@@ -123,7 +153,10 @@ const executePatternToken = (token, fieldValues) => {
       return fieldValue.slice(0, token.length);
 
     case 'random':
-      return generateRandomChars(token.length);
+      return deriveDeterministicChars(
+        `${context.seed || ''}:token:${context.tokenIndex ?? 0}:random`,
+        token.length
+      );
 
     case 'fixed':
       return token.value;
@@ -143,7 +176,7 @@ const mapLdapFields = (ldapAttributes, fieldMappings) => {
   const mapped = {};
 
   for (const field of fieldMappings) {
-    if (field.ldapSource && ldapAttributes[field.ldapSource]) {
+    if (field.ldapSource && Object.hasOwn(ldapAttributes, field.ldapSource)) {
       mapped[field.name] = ldapAttributes[field.ldapSource];
     }
   }
@@ -206,16 +239,21 @@ const normalizeFieldValues = (fieldValues, fieldDefinitions, globalRules) => {
  * Generate password from pattern
  * @param {string} pattern - Password pattern
  * @param {Object} fieldValues - Normalized field values
+ * @param {string} deterministicSeed - Deterministic generation seed
  * @returns {string} - Generated password
  */
-const generatePassword = (pattern, fieldValues) => {
+const generatePassword = (pattern, fieldValues, deterministicSeed) => {
   if (!pattern) {
-    // Default pattern if none specified
-    return generateRandomChars(12);
+    // Deterministic fallback when template omits password pattern.
+    return deriveDeterministicChars(`${deterministicSeed}:default-password`, 12);
   }
 
   const tokens = parsePattern(pattern);
-  return tokens.map(token => executePatternToken(token, fieldValues)).join('');
+  return tokens
+    .map((token, tokenIndex) =>
+      executePatternToken(token, fieldValues, { seed: deterministicSeed, tokenIndex })
+    )
+    .join('');
 };
 
 /**
@@ -289,7 +327,15 @@ const generateSystemCredentials = (system, template, user, systemConfig = null) 
 
   // Find password field and track LDAP sources used in pattern
   const passwordField = structure.fields.find(f => f.name === 'password');
-  const password = generatePassword(passwordField?.pattern, normalizedValues);
+  const deterministicSeed = stableStringify({
+    userId: user.id,
+    system: systemIdKey,
+    templateVersion: template.version,
+    ldapAttributes,
+    normalizedValues,
+    passwordPattern: passwordField?.pattern || null
+  });
+  const password = generatePassword(passwordField?.pattern, normalizedValues, deterministicSeed);
 
   // Track LDAP sources used in password generation
   if (passwordField?.pattern) {

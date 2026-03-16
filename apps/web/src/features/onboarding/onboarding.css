@@ -1,0 +1,300 @@
+.onboarding-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.onboarding-shell {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.onboarding-subnav {
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: 18px;
+  background: var(--ui-surface-elevated);
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.4rem;
+  position: sticky;
+  top: calc(var(--workspace-topbar-height, 68px) + 1rem);
+}
+
+.onboarding-subnav-link {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  text-decoration: none;
+  color: var(--ui-text-secondary);
+  font-weight: 600;
+}
+
+.onboarding-subnav-link:hover {
+  background: var(--ui-surface-hover);
+  color: var(--ui-text-primary);
+  border-color: var(--ui-border-subtle);
+}
+
+.onboarding-subnav-link.is-active {
+  background: var(--ui-accent-muted);
+  color: var(--ui-text-primary);
+  border-color: var(--ui-accent-primary);
+}
+
+.onboarding-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.onboarding-split-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.onboarding-card {
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: 18px;
+  background: var(--ui-surface-elevated);
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.onboarding-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.onboarding-card-header h2,
+.onboarding-card-header h3 {
+  margin: 0;
+}
+
+.onboarding-card-subtitle {
+  margin: 0.35rem 0 0;
+  color: var(--ui-text-muted);
+}
+
+.onboarding-form-grid {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.onboarding-form-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.onboarding-form-field label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.onboarding-form-field input,
+.onboarding-form-field select,
+.onboarding-form-field textarea {
+  width: 100%;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: 12px;
+  background: var(--ui-surface-muted);
+  color: var(--ui-text-primary);
+  min-height: 2.75rem;
+  padding: 0.7rem 0.85rem;
+}
+
+.onboarding-form-field textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+}
+
+.onboarding-form-field.is-full {
+  grid-column: 1 / -1;
+}
+
+.onboarding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.onboarding-button,
+.onboarding-button-secondary,
+.onboarding-button-danger {
+  min-height: 2.75rem;
+  border-radius: 999px;
+  padding: 0 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.onboarding-button {
+  border: 1px solid var(--ui-accent-primary);
+  background: var(--ui-accent-primary);
+  color: var(--ui-text-inverse);
+}
+
+.onboarding-button-secondary {
+  border: 1px solid var(--ui-border-subtle);
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text-primary);
+}
+
+.onboarding-button-danger {
+  border: 1px solid color-mix(in srgb, var(--ui-feedback-error) 35%, var(--ui-border-subtle));
+  background: color-mix(in srgb, var(--ui-feedback-error) 10%, var(--ui-surface-elevated));
+  color: var(--ui-feedback-error);
+}
+
+.onboarding-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.onboarding-list-item {
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: 14px;
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.onboarding-list-item-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.onboarding-list-item-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.onboarding-list-item-meta {
+  margin: 0.3rem 0 0;
+  color: var(--ui-text-muted);
+  font-size: 0.9rem;
+}
+
+.onboarding-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.8rem;
+  padding: 0 0.65rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: var(--ui-accent-muted);
+  color: var(--ui-accent-primary);
+}
+
+.onboarding-badge.is-muted {
+  background: var(--ui-surface-muted);
+  color: var(--ui-text-secondary);
+}
+
+.onboarding-mode-switch {
+  display: inline-flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.onboarding-mode-option {
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: 999px;
+  background: var(--ui-surface-muted);
+  color: var(--ui-text-primary);
+}
+
+.onboarding-selection-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.onboarding-selection-card {
+  display: grid;
+  gap: 0.45rem;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: 14px;
+  padding: 0.85rem;
+  background: var(--ui-surface-elevated);
+}
+
+.onboarding-selection-card label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 700;
+}
+
+.onboarding-selection-card p {
+  margin: 0;
+  color: var(--ui-text-muted);
+  font-size: 0.9rem;
+}
+
+.onboarding-setup-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.onboarding-setup-table th,
+.onboarding-setup-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.8rem;
+  border-bottom: 1px solid var(--ui-border-subtle);
+}
+
+.onboarding-setup-table th {
+  color: var(--ui-text-muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.onboarding-muted {
+  margin: 0;
+  color: var(--ui-text-muted);
+}
+
+.onboarding-empty {
+  border: 1px dashed var(--ui-border-subtle);
+  border-radius: 16px;
+  padding: 1rem;
+  color: var(--ui-text-muted);
+}
+
+.onboarding-inline-panel {
+  border-top: 1px solid var(--ui-border-subtle);
+  padding-top: 0.85rem;
+  display: grid;
+  gap: 0.85rem;
+}
+
+@media (max-width: 960px) {
+  .onboarding-shell,
+  .onboarding-split-grid,
+  .onboarding-form-grid,
+  .onboarding-selection-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .onboarding-subnav {
+    position: static;
+  }
+}

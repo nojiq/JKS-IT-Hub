@@ -1,0 +1,32 @@
+.maintenance-config-page {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.maintenance-config-page h1 {
+    font-size: 2rem;
+    margin-bottom: 2rem;
+    color: #202124;
+}
+
+.maintenance-config-page .btn-primary {
+    margin-bottom: 1rem;
+}
+
+.maintenance-config-state {
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    background: #f6f8fb;
+    color: #1f2933;
+}
+
+.maintenance-config-state--empty {
+    border: 1px dashed #b7c4d6;
+}
+
+.maintenance-config-state--error {
+    border: 1px solid #f1b2b2;
+    background: #fff5f5;
+    color: #842029;
+}

@@ -1,0 +1,107 @@
+/* Touch Checkbox - Large touch-friendly checkbox component */
+
+.touch-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background-color 150ms ease;
+    min-height: var(--touch-target-min, 44px);
+    user-select: none;
+}
+
+.touch-checkbox:hover:not(.disabled) {
+    background-color: var(--color-surface-hover);
+}
+
+.touch-checkbox:active:not(.disabled) {
+    background-color: var(--color-surface-active);
+}
+
+.touch-checkbox.disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.touch-checkbox:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.touch-checkbox-box {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    min-height: 28px;
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 150ms ease;
+    background-color: var(--color-background);
+}
+
+.touch-checkbox-box.checked {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.touch-checkbox.disabled .touch-checkbox-box {
+    background-color: var(--color-surface);
+    border-color: var(--color-border);
+}
+
+.touch-checkbox-checkmark {
+    animation: checkmark-appear 200ms ease-out;
+}
+
+@keyframes checkmark-appear {
+    0% {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.touch-checkbox-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.touch-checkbox-label {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--color-text-primary);
+    font-weight: 500;
+}
+
+.touch-checkbox.disabled .touch-checkbox-label {
+    color: var(--color-text-secondary);
+}
+
+.touch-checkbox-required {
+    color: var(--color-error);
+    margin-left: 0.25rem;
+    font-weight: 600;
+}
+
+.touch-checkbox-description {
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: var(--color-text-secondary);
+}
+
+/* Ensure adequate spacing between multiple checkboxes */
+.touch-checkbox+.touch-checkbox {
+    margin-top: 0.5rem;
+}

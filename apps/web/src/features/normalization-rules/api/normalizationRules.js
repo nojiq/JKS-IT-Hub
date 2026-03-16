@@ -14,12 +14,12 @@ const handleResponse = async (response) => {
 };
 
 export const getNormalizationRules = async () => {
-    const response = await apiFetch("/normalization-rules");
+    const response = await apiFetch("/api/v1/normalization-rules");
     return handleResponse(response);
 };
 
 export const createNormalizationRule = async (data) => {
-    const response = await apiFetch("/normalization-rules", {
+    const response = await apiFetch("/api/v1/normalization-rules", {
         method: "POST",
         body: JSON.stringify(data)
     });
@@ -27,7 +27,7 @@ export const createNormalizationRule = async (data) => {
 };
 
 export const updateNormalizationRule = async (ruleId, data) => {
-    const response = await apiFetch(`/normalization-rules/${ruleId}`, {
+    const response = await apiFetch(`/api/v1/normalization-rules/${ruleId}`, {
         method: "PUT",
         body: JSON.stringify(data)
     });
@@ -35,14 +35,14 @@ export const updateNormalizationRule = async (ruleId, data) => {
 };
 
 export const deleteNormalizationRule = async (ruleId) => {
-    const response = await apiFetch(`/normalization-rules/${ruleId}`, {
+    const response = await apiFetch(`/api/v1/normalization-rules/${ruleId}`, {
         method: "DELETE"
     });
     return handleResponse(response);
 };
 
 export const reorderNormalizationRules = async (ruleIds) => {
-    const response = await apiFetch("/normalization-rules/reorder", {
+    const response = await apiFetch("/api/v1/normalization-rules/reorder", {
         method: "POST",
         body: JSON.stringify({ ruleIds })
     });
@@ -50,7 +50,7 @@ export const reorderNormalizationRules = async (ruleIds) => {
 };
 
 export const previewNormalization = async (value, systemId = null) => {
-    const response = await apiFetch("/normalization-rules/preview", {
+    const response = await apiFetch("/api/v1/normalization-rules/preview", {
         method: "POST",
         body: JSON.stringify({ value, systemId })
     });

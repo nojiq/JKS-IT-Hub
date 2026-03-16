@@ -1,0 +1,90 @@
+.review-requests-page .requests-table-container {
+    margin-bottom: 0.75rem;
+}
+
+.review-requests-page .request-filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.review-requests-page .text-secondary {
+    color: var(--color-text-secondary);
+    font-size: 0.83rem;
+    margin-top: 0.2rem;
+}
+
+.review-requests-page .font-medium {
+    font-weight: 560;
+}
+
+.review-requests-page .invoice-indicator,
+.review-requests-page .invoice-indicator-empty {
+    color: var(--color-text-secondary);
+    font-weight: 560;
+}
+
+.review-requests-page .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.7rem;
+    margin-top: 0.9rem;
+    flex-wrap: wrap;
+}
+
+.review-requests-page .pagination span {
+    color: var(--color-text-secondary);
+    font-size: 0.88rem;
+}
+
+@media (max-width: 767px) {
+    .review-requests-page .workspace-table {
+        min-width: 100%;
+    }
+
+    .review-requests-page .workspace-table thead {
+        display: none;
+    }
+
+    .review-requests-page .workspace-table,
+    .review-requests-page .workspace-table tbody,
+    .review-requests-page .workspace-table tr,
+    .review-requests-page .workspace-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .review-requests-page .workspace-table tr {
+        border-bottom: 1px solid var(--color-border);
+        padding: 0.6rem 0;
+    }
+
+    .review-requests-page .workspace-table td {
+        border-bottom: none;
+        padding: 0.35rem 0.6rem;
+    }
+
+    .review-requests-page .workspace-table td::before {
+        content: attr(data-label);
+        display: block;
+        color: var(--color-text-secondary);
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.2rem;
+    }
+
+    .review-requests-page .workspace-table td[data-label="Select"]::before,
+    .review-requests-page .workspace-table td[data-label="Actions"]::before {
+        margin-bottom: 0.4rem;
+    }
+
+    .review-requests-page .workspace-table td[data-label="Actions"] {
+        padding-top: 0.65rem;
+    }
+
+    .review-requests-page .workspace-table td[data-label="Actions"] .workspace-inline-button {
+        width: 100%;
+    }
+}

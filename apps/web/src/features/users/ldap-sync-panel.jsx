@@ -77,6 +77,19 @@ export default function LdapSyncPanel() {
   const lastUpdated = data?.completedAt ?? data?.startedAt;
   const isRunning = status === "started";
 
+  // Fallback: poll while a run is in-progress in case SSE disconnects or events are dropped.
+  useEffect(() => {
+    if (!isRunning) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ["ldap-sync-latest"] });
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [isRunning, queryClient]);
+
   return (
     <section className="sync-panel">
       <header className="sync-header">

@@ -1,0 +1,56 @@
+.device-type-selector {
+    margin-bottom: 2rem;
+}
+
+.selector-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.device-options {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.device-option-btn {
+    background-color: var(--color-background-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 100px;
+}
+
+.device-option-btn:hover {
+    border-color: var(--color-primary);
+    background-color: var(--color-background-primary);
+}
+
+.device-option-btn.selected {
+    background-color: var(--color-primary-light);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.device-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.device-label {
+    font-weight: 500;
+}
+
+.check-mark {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 1rem;
+    color: var(--color-primary);
+}

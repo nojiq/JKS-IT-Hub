@@ -1,0 +1,78 @@
+.admin-approval-page .requests-table-container {
+    margin-bottom: 0.75rem;
+}
+
+.admin-approval-page .text-secondary {
+    color: var(--color-text-secondary);
+    font-size: 0.83rem;
+    margin-top: 0.2rem;
+}
+
+.admin-approval-page .font-medium {
+    font-weight: 560;
+}
+
+.admin-approval-page .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.7rem;
+    margin-top: 0.9rem;
+    flex-wrap: wrap;
+}
+
+.admin-approval-page .pagination span {
+    color: var(--color-text-secondary);
+    font-size: 0.88rem;
+}
+
+@media (max-width: 767px) {
+    .admin-approval-page .workspace-table {
+        min-width: 100%;
+    }
+
+    .admin-approval-page .workspace-table thead {
+        display: none;
+    }
+
+    .admin-approval-page .workspace-table,
+    .admin-approval-page .workspace-table tbody,
+    .admin-approval-page .workspace-table tr,
+    .admin-approval-page .workspace-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .admin-approval-page .workspace-table tr {
+        border-bottom: 1px solid var(--color-border);
+        padding: 0.6rem 0;
+    }
+
+    .admin-approval-page .workspace-table td {
+        border-bottom: none;
+        padding: 0.35rem 0.6rem;
+    }
+
+    .admin-approval-page .workspace-table td::before {
+        content: attr(data-label);
+        display: block;
+        color: var(--color-text-secondary);
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.2rem;
+    }
+
+    .admin-approval-page .workspace-table td[data-label="Select"]::before,
+    .admin-approval-page .workspace-table td[data-label="Actions"]::before {
+        margin-bottom: 0.4rem;
+    }
+
+    .admin-approval-page .workspace-table td[data-label="Actions"] {
+        padding-top: 0.65rem;
+    }
+
+    .admin-approval-page .workspace-table td[data-label="Actions"] .workspace-inline-button {
+        width: 100%;
+    }
+}

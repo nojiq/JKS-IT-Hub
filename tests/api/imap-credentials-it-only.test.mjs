@@ -20,8 +20,12 @@ async function build() {
 
 let app;
 let itUser;
+let headItUser;
+let adminUser;
 let nonItUser;
 let itToken;
+let headItToken;
+let adminToken;
 let nonItToken;
 let config;
 
@@ -34,6 +38,24 @@ before(async () => {
         data: {
             username: `it-user-${randomUUID()}`,
             role: "it",
+            status: "active"
+        }
+    });
+
+    // Create Head IT User
+    headItUser = await prisma.user.create({
+        data: {
+            username: `head-it-user-${randomUUID()}`,
+            role: "head_it",
+            status: "active"
+        }
+    });
+
+    // Create Admin User
+    adminUser = await prisma.user.create({
+        data: {
+            username: `admin-user-${randomUUID()}`,
+            role: "admin",
             status: "active"
         }
     });
@@ -53,6 +75,22 @@ before(async () => {
         payload: {
             username: itUser.username,
             role: itUser.role
+        }
+    }, config.jwt);
+
+    headItToken = await signSessionToken({
+        subject: headItUser.id,
+        payload: {
+            username: headItUser.username,
+            role: headItUser.role
+        }
+    }, config.jwt);
+
+    adminToken = await signSessionToken({
+        subject: adminUser.id,
+        payload: {
+            username: adminUser.username,
+            role: adminUser.role
         }
     }, config.jwt);
 
@@ -214,5 +252,41 @@ test("IMAP Credentials - IT-Only Access", async (t) => {
 
         assert.equal(hasNormalIt, true, "IT should see normal credential");
         assert.equal(hasImapIt, true, "IT should see IMAP credential");
+
+        // 3. Test Admin User -> GET credentials
+        // Should see BOTH (project policy: Admin has full access)
+        const responseAdmin = await app.inject({
+            method: "GET",
+            url: `/api/v1/credentials/users/${targetUser.id}`,
+            headers: { cookie: `it-hub-session=${adminToken}` }
+        });
+
+        assert.equal(responseAdmin.statusCode, 200, "Admin user should access credentials");
+        const bodyAdmin = JSON.parse(responseAdmin.body);
+        const credentialsAdmin = bodyAdmin.data;
+
+        const hasNormalAdmin = credentialsAdmin.some(c => c.systemId === normalSystemId);
+        const hasImapAdmin = credentialsAdmin.some(c => c.systemId === imapSystemId);
+
+        assert.equal(hasNormalAdmin, true, "Admin should see normal credential");
+        assert.equal(hasImapAdmin, true, "Admin should see IMAP credential");
+
+        // 4. Test Head of IT User -> GET credentials
+        // Should see BOTH
+        const responseHeadIt = await app.inject({
+            method: "GET",
+            url: `/api/v1/credentials/users/${targetUser.id}`,
+            headers: { cookie: `it-hub-session=${headItToken}` }
+        });
+
+        assert.equal(responseHeadIt.statusCode, 200, "Head of IT user should access credentials");
+        const bodyHeadIt = JSON.parse(responseHeadIt.body);
+        const credentialsHeadIt = bodyHeadIt.data;
+
+        const hasNormalHeadIt = credentialsHeadIt.some(c => c.systemId === normalSystemId);
+        const hasImapHeadIt = credentialsHeadIt.some(c => c.systemId === imapSystemId);
+
+        assert.equal(hasNormalHeadIt, true, "Head of IT should see normal credential");
+        assert.equal(hasImapHeadIt, true, "Head of IT should see IMAP credential");
     });
 });

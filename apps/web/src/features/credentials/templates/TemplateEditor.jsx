@@ -4,7 +4,10 @@ import { useTemplate, useCreateTemplate, useUpdateTemplate } from '../hooks/useT
 import TemplateForm from './TemplateForm';
 import './templates.css';
 
-export default function TemplateEditor() {
+export default function TemplateEditor({
+    createTitle = 'Create New Template',
+    editTitlePrefix = 'Edit Template'
+}) {
     const { id } = useParams();
     const navigate = useNavigate();
     const isEditing = !!id;
@@ -36,7 +39,7 @@ export default function TemplateEditor() {
     return (
         <div className="template-page">
             <header className="page-header">
-                <h1>{isEditing ? `Edit Template: ${template.name}` : 'Create New Template'}</h1>
+                <h1>{isEditing ? `${editTitlePrefix}: ${template.name}` : createTitle}</h1>
             </header>
             <TemplateForm
                 initialData={isEditing ? template : undefined}

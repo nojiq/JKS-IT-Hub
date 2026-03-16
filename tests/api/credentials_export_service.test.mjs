@@ -135,6 +135,40 @@ describe('Credential Export Service', () => {
 
       assert.ok(result.includes('legacy-system'));
     });
+
+    it('should sort entries alphabetically by system id', () => {
+      const user = {
+        id: 'user-123',
+        username: 'john.doe'
+      };
+
+      const credentials = [
+        {
+          username: 'jdoe',
+          password: 'z-password',
+          systemConfig: {
+            systemId: 'zeta-system',
+            description: 'Zeta System'
+          }
+        },
+        {
+          username: 'jdoe',
+          password: 'a-password',
+          systemConfig: {
+            systemId: 'alpha-system',
+            description: 'Alpha System'
+          }
+        }
+      ];
+
+      const result = formatCredentialExport(user, credentials);
+      const alphaIndex = result.indexOf('Alpha System');
+      const zetaIndex = result.indexOf('Zeta System');
+
+      assert.ok(alphaIndex > -1);
+      assert.ok(zetaIndex > -1);
+      assert.ok(alphaIndex < zetaIndex);
+    });
   });
 
   describe('DisabledUserError', () => {

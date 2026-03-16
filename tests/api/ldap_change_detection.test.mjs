@@ -136,5 +136,67 @@ describe("LDAP Change Detection", () => {
         const auditCalls = auditRepo.createAuditLog.mock.calls.map(c => c.arguments[0]);
         const updateLog = auditCalls.find(call => call.action === "user.ldap_update");
         assert.ok(!updateLog, "Should NOT invoke createAuditLog with user.ldap_update when data is identical");
+        assert.strictEqual(
+            userRepo.upsertUserFromLdap.mock.callCount(),
+            0,
+            "Should skip DB update for unchanged LDAP attributes"
+        );
+    });
+
+    it("should skip usernames matching exclude regex", async () => {
+        const config = {
+            ldapSync: {
+                usernameAttribute: "sAMAccountName",
+                attributes: ["cn", "mail"],
+                filter: "(objectClass=person)",
+                pageSize: 100,
+                excludeUsernameRegex: "^admin-[0-9a-f-]{8,}$"
+            }
+        };
+
+        const ldapService = {
+            searchEntries: mock.fn(async () => [
+                {
+                    dn: "cn=test-admin,dc=example,dc=com",
+                    sAMAccountName: "admin-123e4567-e89b-12d3-a456-426614174000",
+                    cn: "Test Admin",
+                    mail: "test-admin@example.com"
+                },
+                {
+                    dn: "cn=real-user,dc=example,dc=com",
+                    sAMAccountName: "jdoe",
+                    cn: "John Doe",
+                    mail: "jdoe@example.com"
+                }
+            ])
+        };
+
+        const userRepo = {
+            findUsersByUsernames: mock.fn(async () => []),
+            findUserByUsername: mock.fn(async () => null),
+            upsertUserFromLdap: mock.fn(async () => ({ id: "user-1" }))
+        };
+
+        const auditRepo = {
+            createAuditLog: mock.fn(async () => { })
+        };
+
+        const syncRepo = {
+            createSyncRun: mock.fn(async () => ({ id: "run-3", status: "started" })),
+            updateSyncRun: mock.fn(async (_id, updates) => ({ id: "run-3", status: "completed", ...updates })),
+            getActiveSyncRun: mock.fn(async () => null),
+            getLatestSyncRun: mock.fn(async () => null)
+        };
+        const eventChannel = { publish: mock.fn() };
+
+        const runner = createLdapSyncRunner({ config, ldapService, syncRepo, userRepo, auditRepo, eventChannel });
+
+        await runner.startScheduledSync();
+
+        assert.strictEqual(userRepo.upsertUserFromLdap.mock.callCount(), 1);
+        assert.strictEqual(
+            userRepo.upsertUserFromLdap.mock.calls[0].arguments[0].username,
+            "jdoe"
+        );
     });
 });

@@ -1,0 +1,99 @@
+.assignment-rule-list-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    background: var(--bg-primary);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.assignment-rule-list-table thead {
+    background: var(--bg-secondary);
+}
+
+.assignment-rule-list-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.assignment-rule-list-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.assignment-rule-list-table tbody tr:hover {
+    background: var(--bg-hover);
+}
+
+.assignment-rule-list-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.assignment-rule-list-empty {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.strategy-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.strategy-badge.fixed {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.strategy-badge.rotation {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.rotation-info {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.rotation-info .last-assigned {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+}
+
+.rotation-info-na {
+    color: var(--text-tertiary);
+    font-style: italic;
+}
+
+.actions-cell {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.status-badge.active {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.status-badge.inactive {
+    background: #fee2e2;
+    color: #991b1b;
+}

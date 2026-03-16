@@ -1,0 +1,63 @@
+.notification-list {
+    background: #fff;
+    border-radius: 4px;
+    /* Matches typical UI */
+    overflow: hidden;
+    /* If full page, might want to expand */
+    width: 100%;
+}
+
+.notification-list.compact {
+    max-height: 400px;
+    overflow-y: auto;
+    width: 320px;
+    /* Dropdown width */
+}
+
+.notification-loading,
+.notification-empty,
+.notification-error {
+    padding: 20px;
+    text-align: center;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.notification-actions {
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+    text-align: right;
+    background: #fdfdfd;
+}
+
+.mark-all-btn {
+    background: none;
+    border: none;
+    color: #007bff;
+    font-size: 0.8rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.mark-all-btn:hover {
+    background-color: #eef4ff;
+}
+
+.view-all {
+    padding: 10px;
+    text-align: center;
+    border-top: 1px solid #eee;
+    background: #fdfdfd;
+}
+
+.view-all-link {
+    color: #007bff;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.view-all-link:hover {
+    text-decoration: underline;
+}

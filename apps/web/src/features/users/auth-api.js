@@ -32,3 +32,17 @@ export const fetchSession = async () => {
 
   return payload.data ?? null;
 };
+
+export const logout = async () => {
+  const response = await apiFetch("/auth/logout", {
+    method: "POST"
+  });
+
+  if (!response.ok && response.status !== 401) {
+    const payload = await response.json().catch(() => ({}));
+    const message = payload?.detail ?? "Unable to sign out.";
+    throw new Error(message);
+  }
+
+  return true;
+};

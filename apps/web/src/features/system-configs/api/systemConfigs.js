@@ -14,17 +14,17 @@ const handleResponse = async (response) => {
 };
 
 export const getSystemConfigs = async () => {
-    const response = await apiFetch("/system-configs");
+    const response = await apiFetch("/api/v1/system-configs");
     return handleResponse(response);
 };
 
 export const getSystemConfig = async (systemId) => {
-    const response = await apiFetch(`/system-configs/${systemId}`);
+    const response = await apiFetch(`/api/v1/system-configs/${systemId}`);
     return handleResponse(response);
 };
 
 export const createSystemConfig = async (data) => {
-    const response = await apiFetch("/system-configs", {
+    const response = await apiFetch("/api/v1/system-configs", {
         method: "POST",
         body: JSON.stringify(data)
     });
@@ -32,7 +32,7 @@ export const createSystemConfig = async (data) => {
 };
 
 export const updateSystemConfig = async (systemId, data) => {
-    const response = await apiFetch(`/system-configs/${systemId}`, {
+    const response = await apiFetch(`/api/v1/system-configs/${systemId}`, {
         method: "PUT",
         body: JSON.stringify(data)
     });
@@ -40,13 +40,13 @@ export const updateSystemConfig = async (systemId, data) => {
 };
 
 export const deleteSystemConfig = async (systemId) => {
-    const response = await apiFetch(`/system-configs/${systemId}`, {
+    const response = await apiFetch(`/api/v1/system-configs/${systemId}`, {
         method: "DELETE"
     });
     return handleResponse(response);
 };
 
 export const getAvailableLdapFields = async () => {
-    const response = await apiFetch("/system-configs/ldap-fields/available");
+    const response = await apiFetch("/api/v1/system-configs/ldap-fields/available");
     return handleResponse(response);
 };

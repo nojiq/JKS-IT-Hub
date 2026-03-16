@@ -1,0 +1,53 @@
+
+.cycle-list-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.cycle-list-table th, .cycle-list-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.cycle-list-table th {
+    background-color: #f5f5f5;
+    font-weight: 600;
+}
+
+.cycle-list-empty {
+    padding: 2rem;
+    text-align: center;
+    color: #666;
+}
+
+.status-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.status-badge.active {
+    background-color: #e6f4ea;
+    color: #1e7e34;
+}
+
+.status-badge.inactive {
+    background-color: #f1f3f4;
+    color: #5f6368;
+}
+
+.btn-secondary {
+    padding: 0.4rem 0.8rem;
+    background-color: #fff;
+    border: 1px solid #dadce0;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+.btn-secondary:hover {
+    background-color: #f8f9fa;
+}

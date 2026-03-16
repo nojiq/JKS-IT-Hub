@@ -1,31 +1,72 @@
-import { z } from "zod";
 import { requireAuthenticated } from "../../shared/auth/requireAuthenticated.js";
 import { createProblemDetails, sendProblem } from "../../shared/errors/problemDetails.js";
-import { previewRequestSchema, confirmCredentialsSchema, regenerateRequestSchema, confirmRegenerationSchema, overridePreviewSchema, confirmOverrideSchema, lockCredentialSchema, unlockCredentialSchema } from "./schema.js";
-import { CredentialsLockedError, DisabledUserError, NoChangesDetectedError } from "./service.js";
+import {
+    createTemplateSchema,
+    updateTemplateSchema,
+    previewRequestSchema,
+    confirmCredentialsSchema,
+    regenerateRequestSchema,
+    confirmRegenerationSchema,
+    overridePreviewSchema,
+    confirmOverrideSchema,
+    lockCredentialSchema,
+    unlockCredentialSchema,
+    historyQuerySchema,
+    compareVersionsSchema,
+    versionIdSchema
+} from "./schema.js";
+import { CredentialLockedError, CredentialsLockedError, DisabledUserError, NoChangesDetectedError } from "./service.js";
 import { hasItRole } from "../../shared/auth/rbac.js";
-
-const createTemplateSchema = z.object({
-    name: z.string().min(3).max(100),
-    description: z.string().optional(),
-    structure: z.record(z.string(), z.any())
-});
+import { requireItRole } from "../../shared/auth/middleware.js";
 
 export default async function credentialRoutes(app, { config, userRepo, credentialService, auditRepo }) {
+    const ensureTemplateAccess = (actor, reply, detail) => {
+        if (hasItRole(actor)) {
+            return true;
+        }
+
+        sendProblem(reply, createProblemDetails({
+            status: 403,
+            title: "Forbidden",
+            detail
+        }));
+        return false;
+    };
+
+    const logBlockedCredentialOperation = async (actorUserId, attemptedAction, targetUserId, reason = "user_disabled") => {
+        if (!auditRepo) return;
+
+        const actionMap = {
+            generate: "credential.generation.blocked",
+            regenerate: "credential.regeneration.blocked",
+            override: "credential.override.blocked",
+            override_confirm: "credential.override.blocked"
+        };
+        const entityTypeMap = {
+            generate: "User",
+            regenerate: "UserCredential",
+            override: "User",
+            override_confirm: "User"
+        };
+
+        await auditRepo.createAuditLog({
+            action: actionMap[attemptedAction] ?? "credential.operation.blocked",
+            actorUserId,
+            entityType: entityTypeMap[attemptedAction] ?? "User",
+            entityId: targetUserId,
+            metadata: {
+                attemptedOperation: attemptedAction,
+                reason,
+                userStatus: "disabled"
+            }
+        });
+    };
 
     app.post("/", async (request, reply) => {
         const actor = await requireAuthenticated(request, reply, { config, userRepo });
         if (!actor) return;
 
-        // specific RBAC check: IT roles
-        if (!hasItRole(actor)) {
-            sendProblem(reply, createProblemDetails({
-                status: 403,
-                title: "Forbidden",
-                detail: "Only IT roles can manage credential templates"
-            }));
-            return;
-        }
+        if (!ensureTemplateAccess(actor, reply, "Only IT roles can manage credential templates")) return;
 
         const validation = createTemplateSchema.safeParse(request.body);
         if (!validation.success) {
@@ -56,14 +97,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         const actor = await requireAuthenticated(request, reply, { config, userRepo });
         if (!actor) return;
 
-        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
-            sendProblem(reply, createProblemDetails({
-                status: 403,
-                title: "Forbidden",
-                detail: "Only IT roles can view credential templates"
-            }));
-            return;
-        }
+        if (!ensureTemplateAccess(actor, reply, "Only IT roles can view credential templates")) return;
 
         const templates = await credentialService.listTemplates();
         reply.send({ data: templates });
@@ -73,14 +107,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         const actor = await requireAuthenticated(request, reply, { config, userRepo });
         if (!actor) return;
 
-        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
-            sendProblem(reply, createProblemDetails({
-                status: 403,
-                title: "Forbidden",
-                detail: "Only IT roles can view credential templates"
-            }));
-            return;
-        }
+        if (!ensureTemplateAccess(actor, reply, "Only IT roles can view credential templates")) return;
 
         const { id } = request.params;
         const template = await credentialService.getTemplate(id);
@@ -101,17 +128,10 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         const actor = await requireAuthenticated(request, reply, { config, userRepo });
         if (!actor) return;
 
-        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
-            sendProblem(reply, createProblemDetails({
-                status: 403,
-                title: "Forbidden",
-                detail: "Only IT roles can update credential templates"
-            }));
-            return;
-        }
+        if (!ensureTemplateAccess(actor, reply, "Only IT roles can update credential templates")) return;
 
         const { id } = request.params;
-        const validation = createTemplateSchema.safeParse(request.body);
+        const validation = updateTemplateSchema.safeParse(request.body);
 
         if (!validation.success) {
             sendProblem(reply, createProblemDetails({
@@ -164,9 +184,19 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         }
 
         const { userId } = request.params;
+        const generationValidation = previewRequestSchema.safeParse(request.body || {});
+        if (!generationValidation.success) {
+            sendProblem(reply, createProblemDetails({
+                status: 400,
+                title: "Invalid Input",
+                detail: generationValidation.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ')
+            }));
+            return;
+        }
+        const { systemId } = generationValidation.data;
 
         try {
-            const result = await credentialService.generateUserCredentials(actor.id, userId);
+            const result = await credentialService.generateUserCredentials(actor.id, userId, systemId);
 
             // Audit log the generation
             if (auditRepo) {
@@ -176,7 +206,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                     entityType: "UserCredential",
                     entityId: userId,
                     metadata: {
-                        systems: result.credentials.map(c => c.system),
+                        systems: result.credentials.map(c => c.systemId),
                         templateVersion: result.templateVersion,
                         credentialCount: result.credentials.length
                     }
@@ -187,7 +217,8 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                 data: {
                     userId: result.userId,
                     credentials: result.credentials,
-                    templateVersion: result.templateVersion
+                    templateVersion: result.templateVersion,
+                    metadata: result.metadata
                 }
             });
         } catch (error) {
@@ -204,19 +235,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                 }));
 
                 // Audit log the blocked generation attempt
-                if (auditRepo) {
-                    await auditRepo.createAuditLog({
-                        action: "credential.generation.blocked",
-                        actorUserId: actor.id,
-                        entityType: "User",
-                        entityId: userId,
-                        metadata: {
-                            attemptedOperation: "generate",
-                            reason: "user_disabled",
-                            userStatus: "disabled"
-                        }
-                    });
-                }
+                await logBlockedCredentialOperation(actor.id, "generate", userId);
                 return;
             }
 
@@ -247,12 +266,11 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         if (!actor) return;
 
         const { userId } = request.params;
-        const isItRole = ['it', 'head_it'].includes(actor.role);
-        const isAdmin = actor.role === 'admin';
+        const hasPrivilegedCredentialAccess = hasItRole(actor);
         const isSelf = actor.id === userId;
 
-        // RBAC: Allow IT, Admin, or Self
-        if (!isItRole && !isAdmin && !isSelf) {
+        // RBAC: Allow privileged roles or self
+        if (!hasPrivilegedCredentialAccess && !isSelf) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
@@ -261,7 +279,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
             return;
         }
 
-        const includeItOnly = isItRole;
+        const includeItOnly = hasPrivilegedCredentialAccess;
 
         try {
             const credentials = await credentialService.listUserCredentials(userId, includeItOnly);
@@ -299,12 +317,11 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                 return;
             }
 
-            const isItRole = ['it', 'head_it'].includes(actor.role);
-            const isAdmin = actor.role === 'admin';
+            const hasPrivilegedCredentialAccess = hasItRole(actor);
             const isSelf = actor.id === credential.userId;
 
             // RBAC Check
-            if (!isItRole && !isAdmin && !isSelf) {
+            if (!hasPrivilegedCredentialAccess && !isSelf) {
                 sendProblem(reply, createProblemDetails({
                     status: 403,
                     title: "Forbidden",
@@ -313,34 +330,16 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                 return;
             }
 
-            // IT-Only Check (IMAP Security)
-            if (credential.systemConfig?.isItOnly && !isItRole) {
-                // Audit Log
-                if (auditRepo) {
-                    await auditRepo.createAuditLog({
-                        action: 'credential.imap.access.denied',
-                        actorUserId: actor.id,
-                        entityType: 'user_credential',
-                        entityId: credential.id,
-                        metadata: {
-                            reason: 'insufficient_permissions',
-                            requiredRole: 'it',
-                            actualRole: actor.role,
-                            systemId: credential.systemConfig?.systemId,
-                            targetUserId: credential.userId
-                        }
-                    });
+            // IMAP credentials require privileged roles (IT/Admin/Head IT).
+            if (credential.systemConfig?.isItOnly) {
+                const hasImapAccess = await requireItRole(request, reply, {
+                    auditRepo,
+                    targetUserId: credential.userId,
+                    targetCredentialId: credential.id
+                });
+                if (!hasImapAccess) {
+                    return;
                 }
-
-                sendProblem(reply, createProblemDetails({
-                    type: '/problems/insufficient-permissions',
-                    title: 'Insufficient Permissions',
-                    status: 403,
-                    detail: 'IT role required to access IMAP credentials',
-                    requiredRole: 'it',
-                    actualRole: actor.role
-                }));
-                return;
             }
 
             reply.send({ data: credential });
@@ -415,9 +414,10 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         }
 
         const { userId } = request.params;
+        const { systemId } = validation.data;
 
         try {
-            const preview = await credentialService.previewUserCredentials(userId);
+            const preview = await credentialService.previewUserCredentials(userId, systemId);
 
             if (!preview.success) {
                 sendProblem(reply, createProblemDetails({
@@ -440,10 +440,25 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                     credentials: preview.credentials,
                     templateVersion: preview.templateVersion,
                     previewToken: previewToken,
-                    expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString() // 5 minutes
+                    expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 minutes
+                    metadata: preview.metadata
                 }
             });
         } catch (error) {
+            if (error instanceof DisabledUserError) {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/disabled-user',
+                    status: 422,
+                    title: "Disabled User",
+                    detail: "Cannot generate credentials for disabled users",
+                    userId: error.userId,
+                    userStatus: "disabled",
+                    suggestion: "Enable the user before generating credentials"
+                }));
+                await logBlockedCredentialOperation(actor.id, "generate", userId);
+                return;
+            }
+
             console.error('Preview credentials error:', error);
             sendProblem(reply, createProblemDetails({
                 status: 500,
@@ -518,6 +533,19 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                 return;
             }
 
+            // Verify it's a generation session (older sessions may not have type but must include generation fields).
+            const isGenerationSession =
+                previewSession.type === "generation" ||
+                (previewSession.type === undefined && Array.isArray(previewSession.credentials));
+            if (!isGenerationSession) {
+                sendProblem(reply, createProblemDetails({
+                    status: 400,
+                    title: "Invalid Preview Token",
+                    detail: "The preview token is not valid for credential generation."
+                }));
+                return;
+            }
+
             // Save the credentials from preview
             const result = await credentialService.savePreviewedCredentials(actor.id, previewSession);
 
@@ -532,7 +560,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                     entityType: "UserCredential",
                     entityId: userId,
                     metadata: {
-                        systems: result.credentials.map(c => c.system),
+                        systems: result.credentials.map(c => c.systemId),
                         templateVersion: result.templateVersion,
                         credentialCount: result.credentials.length,
                         source: "preview-confirmation"
@@ -549,6 +577,20 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
             });
         } catch (error) {
             console.error('Confirm credentials error:', error);
+
+            if (error instanceof DisabledUserError) {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/disabled-user',
+                    status: 422,
+                    title: "Disabled User",
+                    detail: "Cannot generate credentials for disabled users",
+                    userId: error.userId,
+                    userStatus: "disabled",
+                    suggestion: "Enable the user before generating credentials"
+                }));
+                await logBlockedCredentialOperation(actor.id, "generate", userId);
+                return;
+            }
 
             // Handle specific error types
             if (error.code === 'PREVIEW_EXPIRED') {
@@ -601,7 +643,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
 
         try {
             // Preview the regeneration with comparison
-            const preview = await credentialService.previewCredentialRegeneration(userId);
+            const preview = await credentialService.previewCredentialRegeneration(userId, validation.data.systemId);
 
             // Store in preview session
             const previewToken = await credentialService.storeRegenerationPreview(userId, preview);
@@ -631,35 +673,25 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                     newTemplateVersion: preview.newTemplateVersion,
                     comparisons: preview.comparisons,
                     previewToken: previewToken,
-                    expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString() // 5 minutes
+                    expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 minutes
+                    metadata: preview.metadata
                 }
             });
-} catch (error) {
-    // Handle disabled user error
-    if (error instanceof DisabledUserError) {
-      sendProblem(reply, createProblemDetails({
-        type: '/problems/disabled-user',
-        status: 422,
-        title: "Disabled User",
-        detail: "Cannot regenerate credentials for disabled users",
-        userId: error.userId,
-        userStatus: "disabled",
-        suggestion: "Enable the user before regenerating credentials"
-      }));
+        } catch (error) {
+            // Handle disabled user error
+            if (error instanceof DisabledUserError) {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/disabled-user',
+                    status: 422,
+                    title: "Disabled User",
+                    detail: "Cannot regenerate credentials for disabled users",
+                    userId: error.userId,
+                    userStatus: "disabled",
+                    suggestion: "Enable the user before regenerating credentials"
+                }));
 
-      // Audit log the blocked attempt
-                if (auditRepo) {
-                    await auditRepo.createAuditLog({
-                        action: "credentials.regenerate.blocked",
-                        actorUserId: actor.id,
-                        entityType: "UserCredential",
-                        entityId: userId,
-                        metadata: {
-                            reason: "user_disabled",
-                            userStatus: "disabled"
-                        }
-                    });
-                }
+                // Audit log the blocked attempt
+                await logBlockedCredentialOperation(actor.id, "regenerate", userId);
                 return;
             }
 
@@ -730,22 +762,23 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                     expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString()
                 }
             });
-} catch (error) {
-    // Handle errors same as /regenerate endpoint
-    if (error instanceof DisabledUserError) {
-      sendProblem(reply, createProblemDetails({
-        type: '/problems/disabled-user',
-        status: 422,
-        title: "Disabled User",
-        detail: "Cannot regenerate credentials for disabled users",
-        userId: error.userId,
-        userStatus: "disabled",
-        suggestion: "Enable the user before regenerating credentials"
-      }));
-      return;
-    }
+        } catch (error) {
+            // Handle errors same as /regenerate endpoint
+            if (error instanceof DisabledUserError) {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/disabled-user',
+                    status: 422,
+                    title: "Disabled User",
+                    detail: "Cannot regenerate credentials for disabled users",
+                    userId: error.userId,
+                    userStatus: "disabled",
+                    suggestion: "Enable the user before regenerating credentials"
+                }));
+                await logBlockedCredentialOperation(actor.id, "regenerate", userId);
+                return;
+            }
 
-    if (error instanceof NoChangesDetectedError) {
+            if (error instanceof NoChangesDetectedError) {
                 sendProblem(reply, createProblemDetails({
                     type: '/problems/no-changes-detected',
                     status: 400,
@@ -801,7 +834,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         }
 
         const { userId } = request.params;
-        const { previewToken, confirmed } = validation.data;
+        const { previewToken, confirmed, skipLocked, force } = validation.data;
 
         // Validate explicit confirmation
         if (!confirmed) {
@@ -889,36 +922,37 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                     performedAt: result.performedAt
                 }
             });
-} catch (error) {
-    console.error('Confirm regeneration error:', error);
+        } catch (error) {
+            console.error('Confirm regeneration error:', error);
 
-    // Handle disabled user error during confirmation
-    if (error instanceof DisabledUserError) {
-      sendProblem(reply, createProblemDetails({
-        type: '/problems/disabled-user',
-        status: 422,
-        title: "Disabled User",
-        detail: "User was disabled during the regeneration process",
-        userId: error.userId,
-        userStatus: "disabled",
-        suggestion: "Enable the user before regenerating credentials"
-      }));
-      return;
-    }
+            // Handle disabled user error during confirmation
+            if (error instanceof DisabledUserError) {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/disabled-user',
+                    status: 422,
+                    title: "Disabled User",
+                    detail: "User was disabled during the regeneration process",
+                    userId: error.userId,
+                    userStatus: "disabled",
+                    suggestion: "Enable the user before regenerating credentials"
+                }));
+                await logBlockedCredentialOperation(actor.id, "regenerate", userId);
+                return;
+            }
 
-    if (error instanceof CredentialsLockedError) {
-        sendProblem(reply, createProblemDetails({
-            type: '/problems/credentials-locked',
-            status: 422,
-            title: "Credentials Cannot Be Regenerated",
-            detail: "Some credentials are locked and cannot be regenerated",
-            lockedCredentials: error.lockedCredentials,
-            suggestion: "Unlock the credentials or skip locked credentials to proceed"
-        }));
-        return;
-    }
+            if (error instanceof CredentialsLockedError) {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/credentials-locked',
+                    status: 422,
+                    title: "Credentials Cannot Be Regenerated",
+                    detail: "Some credentials are locked and cannot be regenerated",
+                    lockedCredentials: error.lockedCredentials,
+                    suggestion: "Unlock the credentials or skip locked credentials to proceed"
+                }));
+                return;
+            }
 
-    sendProblem(reply, createProblemDetails({
+            sendProblem(reply, createProblemDetails({
                 status: 500,
                 title: "Failed to Regenerate Credentials",
                 detail: error.message || "Failed to complete credential regeneration"
@@ -928,25 +962,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
 
     // Credential History Routes (Story 2.5)
 
-    // Zod schemas for credential history endpoints
-    const credentialHistoryQuerySchema = z.object({
-        system: z.string().optional(),
-        startDate: z.string().datetime().optional(),
-        endDate: z.string().datetime().optional(),
-        page: z.string().transform(Number).pipe(z.number().int().min(1)).default('1'),
-        limit: z.string().transform(Number).pipe(z.number().int().min(1).max(100)).default('20')
-    });
-
-    const compareVersionsSchema = z.object({
-        versionId1: z.string().min(1, "First version ID is required"),
-        versionId2: z.string().min(1, "Second version ID is required")
-    });
-
-    const versionIdSchema = z.object({
-        versionId: z.string().min(1, "Version ID is required")
-    });
-
-    // GET /api/v1/users/:userId/credentials/history - List history with filtering
+    // GET /api/v1/credential-templates/users/:userId/history (also under /api/v1/credentials) - List history with filtering
     app.get("/users/:userId/history", async (request, reply) => {
         const actor = await requireAuthenticated(request, reply, { config, userRepo });
         if (!actor) return;
@@ -964,7 +980,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         const { userId } = request.params;
 
         // Validate query parameters
-        const validation = credentialHistoryQuerySchema.safeParse(request.query || {});
+        const validation = historyQuerySchema.safeParse(request.query || {});
         if (!validation.success) {
             sendProblem(reply, createProblemDetails({
                 status: 400,
@@ -1012,7 +1028,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         }
     });
 
-    // GET /api/v1/credential-versions/:versionId - Get version details
+    // GET /api/v1/credential-templates/versions/:versionId (also under /api/v1/credentials) - Get version details
     app.get("/versions/:versionId", async (request, reply) => {
         const actor = await requireAuthenticated(request, reply, { config, userRepo });
         if (!actor) return;
@@ -1078,7 +1094,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         }
     });
 
-    // POST /api/v1/credential-versions/compare - Compare two versions
+    // POST /api/v1/credential-templates/versions/compare (also under /api/v1/credentials) - Compare two versions
     app.post("/versions/compare", async (request, reply) => {
         const actor = await requireAuthenticated(request, reply, { config, userRepo });
         if (!actor) return;
@@ -1159,7 +1175,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         }
     });
 
-    // POST /api/v1/credential-versions/:versionId/reveal - Reveal password
+    // POST /api/v1/credential-templates/versions/:versionId/reveal (also under /api/v1/credentials) - Reveal password
     app.post("/versions/:versionId/reveal", async (request, reply) => {
         const actor = await requireAuthenticated(request, reply, { config, userRepo });
         if (!actor) return;
@@ -1293,11 +1309,27 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
             if (error instanceof DisabledUserError) {
                 sendProblem(reply, createProblemDetails({
                     type: '/problems/disabled-user',
-                    status: 403,
+                    status: 422,
                     title: "Disabled User",
                     detail: "Cannot override credentials for disabled users",
                     userId: error.userId,
+                    userStatus: "disabled",
                     suggestion: "Re-enable the user first"
+                }));
+                await logBlockedCredentialOperation(actor.id, "override", userId);
+                return;
+            }
+
+            if (error instanceof CredentialLockedError) {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/credential-locked',
+                    status: 409,
+                    title: "Credential Locked",
+                    detail: "This credential is locked and must be unlocked before override.",
+                    userId: error.userId,
+                    system: error.systemId,
+                    lockDetails: error.lockDetails,
+                    suggestion: "Unlock the credential first, then retry override."
                 }));
                 return;
             }
@@ -1427,9 +1459,6 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                 token: previewToken
             });
 
-            // Clean up preview session
-            await credentialService.deletePreviewSession(previewToken);
-
             reply.code(201).send({
                 data: {
                     credentialId: result.credentialId,
@@ -1445,11 +1474,27 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
             if (error instanceof DisabledUserError) {
                 sendProblem(reply, createProblemDetails({
                     type: '/problems/disabled-user',
-                    status: 403,
+                    status: 422,
                     title: "Disabled User",
                     detail: "User was disabled during the override process",
                     userId: error.userId,
+                    userStatus: "disabled",
                     suggestion: "Re-enable the user first"
+                }));
+                await logBlockedCredentialOperation(actor.id, "override_confirm", userId);
+                return;
+            }
+
+            if (error instanceof CredentialLockedError) {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/credential-locked',
+                    status: 409,
+                    title: "Credential Locked",
+                    detail: "This credential is locked and must be unlocked before override.",
+                    userId: error.userId,
+                    system: error.systemId,
+                    lockDetails: error.lockDetails,
+                    suggestion: "Unlock the credential first, then retry override."
                 }));
                 return;
             }
@@ -1462,6 +1507,30 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                     title: "User Not Found",
                     detail: "User not found",
                     userId: error.userId
+                }));
+                return;
+            }
+
+            if (error.code === 'NO_ACTIVE_CREDENTIAL') {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/no-active-credential',
+                    status: 404,
+                    title: "No Active Credential",
+                    detail: "No active credential found for this system",
+                    userId: error.userId,
+                    system: error.system
+                }));
+                return;
+            }
+
+            if (error.code === 'CREDENTIAL_CHANGED_SINCE_PREVIEW') {
+                sendProblem(reply, createProblemDetails({
+                    type: '/problems/preview-conflict',
+                    status: 409,
+                    title: "Preview Conflict",
+                    detail: "Credential changed since preview. Generate a new preview and confirm again.",
+                    userId: error.userId,
+                    system: error.system
                 }));
                 return;
             }

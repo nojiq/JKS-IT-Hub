@@ -81,6 +81,7 @@ const CredentialRegeneration = ({
                 userId,
                 previewToken: previewData.previewToken,
                 confirmed: true,
+                acknowledgedWarnings: acknowledged,
                 skipLocked
             });
             setResult(response.data);
@@ -136,7 +137,7 @@ const CredentialRegeneration = ({
             const { type, title, detail, status } = error.problemDetails;
             
             // Disabled user error
-            if (type === '/problems/regeneration-blocked') {
+            if (type === '/problems/disabled-user' || type === '/problems/regeneration-blocked') {
                 return {
                     title: 'Regeneration Blocked',
                     message: detail || 'Cannot regenerate credentials for this user.',

@@ -1,0 +1,191 @@
+/* Filter Panel - Collapsible filter controls */
+
+/* Mobile: Full-width collapsible panel */
+.filter-panel {
+    margin-bottom: 1rem;
+}
+
+.filter-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    cursor: pointer;
+    min-height: var(--touch-target-min, 44px);
+    color: var(--color-text-primary);
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 150ms ease;
+}
+
+.filter-toggle-btn:hover {
+    background: var(--color-surface-hover);
+    border-color: var(--color-primary);
+}
+
+.filter-toggle-btn:active {
+    background: var(--color-surface-active);
+}
+
+.filter-toggle-text {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.filter-badge {
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+    border-radius: 999px;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    min-width: 20px;
+    text-align: center;
+}
+
+.filter-toggle-icon {
+    transition: transform 200ms ease;
+}
+
+.filter-toggle-icon.open {
+    transform: rotate(180deg);
+}
+
+.filter-content {
+    display: none;
+    padding: 1rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    margin-top: -1px;
+}
+
+.filter-content.open {
+    display: block;
+}
+
+.filter-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.filter-actions {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.filter-clear-btn {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 150ms ease;
+    min-height: var(--touch-target-min, 44px);
+}
+
+.filter-clear-btn:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-text-primary);
+    border-color: var(--color-error);
+}
+
+.filter-clear-btn:active {
+    background: var(--color-surface-active);
+}
+
+.filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    background: var(--color-primary-muted);
+    border-radius: 999px;
+    font-size: 0.875rem;
+    color: var(--color-text-primary);
+}
+
+.filter-chip-label {
+    line-height: 1.4;
+}
+
+.filter-chip-remove {
+    min-width: var(--touch-target-min, 44px);
+    min-height: var(--touch-target-min, 44px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: var(--color-text-secondary);
+    border-radius: 50%;
+    padding: 0;
+    transition: all 150ms ease;
+    margin: -0.25rem;
+}
+
+.filter-chip-remove:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-text-primary);
+}
+
+.filter-chip-remove:active {
+    background: var(--color-surface-active);
+}
+
+/* Desktop: Always visible inline */
+@media (min-width: 768px) {
+    .filter-toggle-btn {
+        display: none;
+    }
+
+    .filter-content {
+        display: block;
+        border: none;
+        background: none;
+        padding: 0;
+        margin-top: 0;
+    }
+
+    .filter-controls {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: flex-end;
+    }
+
+    .filter-controls>* {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .filter-actions {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+    }
+
+    .filter-clear-btn {
+        width: auto;
+        padding: 0.5rem 1rem;
+    }
+}

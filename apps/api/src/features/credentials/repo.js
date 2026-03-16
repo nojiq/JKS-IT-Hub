@@ -1,4 +1,101 @@
 import { prisma } from "../../shared/db/prisma.js";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+
+const ENCRYPTED_SECRET_PREFIX = "enc:v1";
+const ENCRYPTED_SECRET_PATTERN = /^enc:v1:([^:]+):([^:]+):(.+)$/;
+let cachedEncryptionKey = null;
+
+const getEncryptionKey = () => {
+    if (cachedEncryptionKey) {
+        return cachedEncryptionKey;
+    }
+
+    const source =
+        process.env.CREDENTIAL_ENCRYPTION_KEY ||
+        process.env.JWT_SECRET ||
+        process.env.AUTH_JWT_SECRET;
+
+    if (!source) {
+        throw new Error(
+            "Missing credential encryption key. Set CREDENTIAL_ENCRYPTION_KEY (preferred) or JWT_SECRET."
+        );
+    }
+
+    cachedEncryptionKey = createHash("sha256").update(source).digest();
+    return cachedEncryptionKey;
+};
+
+const isEncryptedSecret = (value) => {
+    return typeof value === "string" && value.startsWith(`${ENCRYPTED_SECRET_PREFIX}:`);
+};
+
+const encryptSecret = (value) => {
+    if (value === null || value === undefined) {
+        return value;
+    }
+
+    if (isEncryptedSecret(value)) {
+        return value;
+    }
+
+    const iv = randomBytes(12);
+    const cipher = createCipheriv("aes-256-gcm", getEncryptionKey(), iv);
+    const encrypted = Buffer.concat([cipher.update(String(value), "utf8"), cipher.final()]);
+    const tag = cipher.getAuthTag();
+
+    return `${ENCRYPTED_SECRET_PREFIX}:${iv.toString("base64url")}:${tag.toString("base64url")}:${encrypted.toString("base64url")}`;
+};
+
+const decryptSecret = (value) => {
+    if (typeof value !== "string" || !isEncryptedSecret(value)) {
+        return value;
+    }
+
+    const parts = value.match(ENCRYPTED_SECRET_PATTERN);
+    if (!parts) {
+        return value;
+    }
+
+    const [, ivBase64, tagBase64, ciphertextBase64] = parts;
+    const decipher = createDecipheriv(
+        "aes-256-gcm",
+        getEncryptionKey(),
+        Buffer.from(ivBase64, "base64url")
+    );
+    decipher.setAuthTag(Buffer.from(tagBase64, "base64url"));
+
+    const decrypted = Buffer.concat([
+        decipher.update(Buffer.from(ciphertextBase64, "base64url")),
+        decipher.final()
+    ]);
+
+    return decrypted.toString("utf8");
+};
+
+const decryptPasswordFields = (value) => {
+    if (Array.isArray(value)) {
+        return value.map(decryptPasswordFields);
+    }
+
+    if (!value || typeof value !== "object") {
+        return value;
+    }
+
+    if (value instanceof Date || value instanceof Uint8Array || Buffer.isBuffer(value)) {
+        return value;
+    }
+
+    const result = {};
+    for (const [key, val] of Object.entries(value)) {
+        if (key === "password" && typeof val === "string") {
+            result[key] = decryptSecret(val);
+        } else {
+            result[key] = decryptPasswordFields(val);
+        }
+    }
+
+    return result;
+};
 
 export const createCredentialTemplate = async (data, tx = prisma) => {
     return tx.credentialTemplate.create({ data });
@@ -41,15 +138,25 @@ export const getUserById = async (id, tx = prisma) => {
 };
 
 export const createUserCredential = async (data, tx = prisma) => {
-    return tx.userCredential.create({ data });
+    return tx.userCredential.create({
+        data: {
+            ...data,
+            password: encryptSecret(data.password)
+        }
+    });
 };
 
 export const updateUserCredential = async (id, data, tx = prisma) => {
-    return tx.userCredential.update({ where: { id }, data });
+    const nextData = { ...data };
+    if (Object.hasOwn(nextData, "password")) {
+        nextData.password = encryptSecret(nextData.password);
+    }
+
+    return tx.userCredential.update({ where: { id }, data: nextData });
 };
 
 export const getUserCredentials = async (userId, includeItOnly = false, tx = prisma) => {
-    return tx.userCredential.findMany({
+    const credentials = await tx.userCredential.findMany({
         where: {
             userId,
             isActive: true,
@@ -57,30 +164,38 @@ export const getUserCredentials = async (userId, includeItOnly = false, tx = pri
                 systemConfig: { isItOnly: false }
             })
         },
-        include: { versions: true, systemConfig: true },
+        include: { systemConfig: true },
         orderBy: { systemId: 'asc' }
     });
+
+    return decryptPasswordFields(credentials);
 };
 
 export const getUserCredentialById = async (id, tx = prisma) => {
-    return tx.userCredential.findUnique({
+    const credential = await tx.userCredential.findUnique({
         where: { id },
-        include: { versions: true, systemConfig: true }
+        include: { systemConfig: true }
     });
+
+    return decryptPasswordFields(credential);
 };
 
 export const getUserCredentialBySystem = async (userId, system, tx = prisma) => {
-    return tx.userCredential.findFirst({
+    const credential = await tx.userCredential.findFirst({
         where: { userId, systemId: system, isActive: true }
     });
+
+    return decryptPasswordFields(credential);
 };
 
 export const getActiveCredentialsForUser = async (userId, tx = prisma) => {
-    return tx.userCredential.findMany({
+    const credentials = await tx.userCredential.findMany({
         where: { userId, isActive: true },
         include: { versions: true },
         orderBy: { systemId: 'asc' }
     });
+
+    return decryptPasswordFields(credentials);
 };
 
 export const deactivateUserCredentials = async (userId, tx = prisma) => {
@@ -100,7 +215,12 @@ export const deactivateUserCredential = async (id, tx = prisma) => {
 // Credential Version Repository Functions
 
 export const createCredentialVersion = async (data, tx = prisma) => {
-    return tx.credentialVersion.create({ data });
+    return tx.credentialVersion.create({
+        data: {
+            ...data,
+            password: encryptSecret(data.password)
+        }
+    });
 };
 
 // History Repository Functions
@@ -108,10 +228,12 @@ export const createCredentialVersion = async (data, tx = prisma) => {
 export const getCredentialHistoryByUser = async (userId, filters = {}, tx = prisma) => {
     const { system, startDate, endDate, page = 1, limit = 20 } = filters;
 
-    const where = { userId };
+    const where = {
+        credential: { userId }
+    };
 
     if (system) {
-        where.credential = { systemId: system };
+        where.credential.systemId = system;
     }
 
     if (startDate || endDate) {
@@ -132,9 +254,22 @@ export const getCredentialHistoryByUser = async (userId, filters = {}, tx = pris
             orderBy: { createdAt: 'desc' },
             skip,
             take: limit,
-            include: {
+            select: {
+                id: true,
+                username: true,
+                reason: true,
+                createdAt: true,
                 createdByUser: {
                     select: { id: true, username: true }
+                },
+                credential: {
+                    select: {
+                        id: true,
+                        userId: true,
+                        systemId: true,
+                        templateVersion: true,
+                        isActive: true
+                    }
                 }
             }
         }),
@@ -153,37 +288,58 @@ export const getCredentialHistoryByUser = async (userId, filters = {}, tx = pris
 };
 
 export const getCredentialVersionById = async (versionId, tx = prisma) => {
-    return tx.credentialVersion.findUnique({
+    const version = await tx.credentialVersion.findUnique({
         where: { id: versionId },
         include: {
             createdByUser: {
                 select: { id: true, username: true }
             },
-            user: {
-                select: { id: true, username: true }
+            credential: {
+                select: {
+                    id: true,
+                    userId: true,
+                    systemId: true,
+                    templateVersion: true,
+                    isActive: true
+                }
             }
         }
     });
+
+    return decryptPasswordFields(version);
 };
 
 export const getCredentialVersionsForComparison = async (versionIds, tx = prisma) => {
-    return tx.credentialVersion.findMany({
+    const versions = await tx.credentialVersion.findMany({
         where: {
             id: { in: versionIds }
         },
         include: {
             createdByUser: {
                 select: { id: true, username: true }
+            },
+            credential: {
+                select: {
+                    id: true,
+                    userId: true,
+                    systemId: true,
+                    templateVersion: true,
+                    isActive: true
+                }
             }
         }
     });
+
+    return decryptPasswordFields(versions);
 };
 
 export const getCredentialVersions = async (credentialId, tx = prisma) => {
-    return tx.credentialVersion.findMany({
+    const versions = await tx.credentialVersion.findMany({
         where: { credentialId },
         orderBy: { createdAt: 'desc' }
     });
+
+    return decryptPasswordFields(versions);
 };
 
 // Preview Session Storage (In-Memory with Expiration)

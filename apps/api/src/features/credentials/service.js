@@ -5,6 +5,7 @@ import { createAuditLog } from "../audit/repo.js";
 import { prisma } from "../../shared/db/prisma.js";
 import { generateCredentials, previewCredentials, MissingLdapFieldsError, NoActiveTemplateError } from "./generator.js";
 import * as normalizationRuleService from "../normalization-rules/service.js";
+import { randomUUID } from "node:crypto";
 
 /**
  * Error for disabled user blocking regeneration
@@ -70,6 +71,24 @@ export class CredentialsLockedError extends Error {
     }
 }
 
+export class CredentialLockedError extends Error {
+    constructor(userId, systemId, lockDetails = null) {
+        super(`Credential for user ${userId} on system ${systemId} is locked`);
+        this.name = 'CredentialLockedError';
+        this.code = 'CREDENTIAL_LOCKED';
+        this.userId = userId;
+        this.systemId = systemId;
+        this.lockDetails = lockDetails;
+    }
+}
+
+export const mapRegenerationReason = (changeType) => {
+    if (changeType === "template_change" || changeType === "both") {
+        return "template_change";
+    }
+    return "ldap_update";
+};
+
 export const createTemplate = async (userId, data) => {
     return prisma.$transaction(async (tx) => {
         const isActive = data.isActive !== false; // Default true
@@ -121,14 +140,24 @@ export const getActiveTemplate = async () => {
 
 // Credential Generation Services
 
-export const previewUserCredentials = async (userId, systemId = null) => {
+export const previewUserCredentials = async (userId, systemId = null, deps = {}) => {
+    const repoApi = deps.repo ?? repo;
+    const userRepoApi = deps.userRepo ?? userRepo;
+    const systemConfigRepoApi = deps.systemConfigRepo ?? systemConfigRepo;
+    const normalizationRuleServiceApi = deps.normalizationRuleService ?? normalizationRuleService;
+
     const [template, user] = await Promise.all([
-        repo.getActiveCredentialTemplate(),
-        repo.getUserById(userId)
+        repoApi.getActiveCredentialTemplate(),
+        repoApi.getUserById(userId)
     ]);
 
     if (!user) {
         throw new Error('User not found');
+    }
+
+    // FR19 guardrail: disabled users cannot enter generation flows.
+    if (userRepoApi.isUserDisabled(user)) {
+        throw new DisabledUserError(userId);
     }
 
     // Look up system configuration if systemId provided
@@ -141,8 +170,8 @@ export const previewUserCredentials = async (userId, systemId = null) => {
     };
 
     if (systemId) {
-        systemConfig = await systemConfigRepo.getSystemConfigById(systemId);
-        generationMetadata.systemId = systemId;
+            systemConfig = await systemConfigRepoApi.getSystemConfigById(systemId);
+            generationMetadata.systemId = systemId;
 
         // If system config found, extract username using configured field
         if (systemConfig) {
@@ -153,7 +182,7 @@ export const previewUserCredentials = async (userId, systemId = null) => {
             generationMetadata.isFallback = extractionResult.isFallback;
 
             // Apply normalization
-            const normResult = await normalizationRuleService.applyNormalizationRules(extractionResult.username, systemId);
+            const normResult = await normalizationRuleServiceApi.applyNormalizationRules(extractionResult.username, systemId);
             generationMetadata.normalizationRulesApplied = normResult.rulesApplied;
 
             // Attach system config info to user for generator
@@ -418,6 +447,7 @@ export const storePreviewSession = async (userId, preview) => {
     const token = `preview_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
 
     const sessionData = {
+        type: "generation",
         userId,
         credentials: preview.credentials,
         templateVersion: preview.templateVersion,
@@ -438,19 +468,32 @@ export const deletePreviewSession = async (token) => {
 
 // Save credentials from preview session
 
-export const savePreviewedCredentials = async (generatedByUserId, previewSession) => {
-    return prisma.$transaction(async (tx) => {
+export const savePreviewedCredentials = async (generatedByUserId, previewSession, deps = {}) => {
+    const repoApi = deps.repo ?? repo;
+    const userRepoApi = deps.userRepo ?? userRepo;
+    const prismaClient = deps.prisma ?? prisma;
+
+    return prismaClient.$transaction(async (tx) => {
         const { userId, credentials, templateVersion } = previewSession;
 
+        // Re-check user state at confirm time to prevent stale preview bypass.
+        const user = await repoApi.getUserById(userId, tx);
+        if (!user) {
+            throw new Error('User not found');
+        }
+        if (userRepoApi.isUserDisabled(user)) {
+            throw new DisabledUserError(userId);
+        }
+
         // Deactivate existing credentials for the user
-        await repo.deactivateUserCredentials(userId, tx);
+        await repoApi.deactivateUserCredentials(userId, tx);
 
         // Create new credentials for each system
         const createdCredentials = [];
         for (const cred of credentials) {
-            const created = await repo.createUserCredential({
+            const created = await repoApi.createUserCredential({
                 userId: userId,
-                system: cred.system,
+                systemId: cred.system,
                 username: cred.username,
                 password: cred.password,
                 templateVersion: cred.templateVersion || templateVersion,
@@ -458,14 +501,10 @@ export const savePreviewedCredentials = async (generatedByUserId, previewSession
             }, tx);
 
             // Create initial version record
-            await repo.createCredentialVersion({
+            await repoApi.createCredentialVersion({
                 credentialId: created.id,
-                userId: userId,
-                system: cred.system,
                 username: cred.username,
                 password: cred.password,
-                templateVersion: cred.templateVersion || templateVersion,
-                isActive: true,
                 reason: 'initial',
                 createdBy: generatedByUserId
             }, tx);
@@ -491,7 +530,6 @@ export const savePreviewedCredentials = async (generatedByUserId, previewSession
  * @returns {Object} - Change detection result
  */
 export const detectChanges = (user, existingCredentials, template) => {
-    const ldapAttributes = user.ldapAttributes || {};
     const changes = {
         ldapChanged: false,
         templateChanged: false,
@@ -513,24 +551,18 @@ export const detectChanges = (user, existingCredentials, template) => {
         changes.templateChanged = true;
     }
 
-    // Check LDAP field changes - compare stored ldapSources with current values
+    // Track LDAP sources that were used during previous generation (if available).
+    // We cannot infer changed values from these pointers alone.
     for (const cred of existingCredentials) {
         if (cred.ldapSources) {
-            for (const [field, ldapSource] of Object.entries(cred.ldapSources)) {
-                if (ldapAttributes[ldapSource] !== undefined) {
-                    const currentValue = ldapAttributes[ldapSource];
-                    // For now, assume change if we have the field
-                    // More sophisticated comparison could be added
-                    if (!changes.changedLdapFields.includes(ldapSource)) {
-                        changes.changedLdapFields.push(ldapSource);
-                    }
+            for (const ldapSource of Object.values(cred.ldapSources)) {
+                if (typeof ldapSource !== "string") continue;
+                if (!changes.changedLdapFields.includes(ldapSource)) {
+                    changes.changedLdapFields.push(ldapSource);
                 }
             }
         }
     }
-
-    // Consider LDAP changed if we have any changed fields
-    changes.ldapChanged = changes.changedLdapFields.length > 0;
 
     return changes;
 };
@@ -568,7 +600,7 @@ export const buildCredentialComparison = (oldCredentials, newCredentials, change
             } : null,
             changes: [],
             skipped: lockedMap.has(system) && lockedMap.get(system).isLocked,
-            skipReason: (lockedMap.has(system) && lockedMap.get(system).isLocked) ? 'Credential is locked' : null
+            skipReason: (lockedMap.has(system) && lockedMap.get(system).isLocked) ? "credential_locked" : null
         };
 
         // Detect specific changes
@@ -608,7 +640,7 @@ export const previewCredentialRegeneration = async (userId, systemId = null) => 
     }
 
     // Check if user is disabled (FR19 guardrail)
-    if (user.status === 'disabled') {
+    if (userRepo.isUserDisabled(user)) {
         throw new DisabledUserError(userId);
     }
 
@@ -627,16 +659,8 @@ export const previewCredentialRegeneration = async (userId, systemId = null) => 
         buildLockedCredentialSummary(lock, lockedByMap)
     );
 
-    // Detect changes
+    // Detect baseline metadata changes (template version + known LDAP source pointers).
     const changes = detectChanges(user, existingCredentials, template);
-
-    // If no changes detected, throw error
-    if (!changes.ldapChanged && !changes.templateChanged) {
-        const lastGeneratedAt = existingCredentials.length > 0
-            ? existingCredentials[0].generatedAt
-            : null;
-        throw new NoChangesDetectedError(userId, lastGeneratedAt);
-    }
 
     // Look up system configuration if systemId provided
     let systemConfig = null;
@@ -708,6 +732,18 @@ export const previewCredentialRegeneration = async (userId, systemId = null) => 
     // Build comparison
     const comparisons = buildCredentialComparison(existingCredentials, newCredentials, changes, lockedMap);
 
+    // Treat credential output diffs as LDAP-driven changes when template version did not change.
+    const credentialOutputChanged = comparisons.some((comparison) => comparison.changes.length > 0);
+    changes.ldapChanged = credentialOutputChanged;
+
+    // If no template version change and no credential output change, there is nothing to regenerate.
+    if (!changes.templateChanged && !changes.ldapChanged) {
+        const lastGeneratedAt = existingCredentials.length > 0
+            ? existingCredentials[0].generatedAt
+            : null;
+        throw new NoChangesDetectedError(userId, lastGeneratedAt);
+    }
+
     // Determine change type
     let changeType = 'ldap_update';
     if (changes.templateChanged && changes.ldapChanged) {
@@ -729,7 +765,7 @@ export const previewCredentialRegeneration = async (userId, systemId = null) => 
         newCredentials,
         existingCredentials: existingCredentials.map(c => ({
             id: c.id,
-            system: c.system,
+            system: c.systemId || c.system,
             username: c.username,
             password: c.password,
             templateVersion: c.templateVersion
@@ -779,13 +815,14 @@ export const confirmRegeneration = async (performedByUserId, previewSession, opt
             changeType,
             comparisons
         } = previewSession;
+        const regenerationReason = mapRegenerationReason(changeType);
 
         // Get user to verify not disabled
         const user = await repo.getUserById(userId, tx);
         if (!user) {
             throw new Error('User not found');
         }
-        if (user.status === 'disabled') {
+        if (userRepo.isUserDisabled(user)) {
             throw new DisabledUserError(userId);
         }
 
@@ -812,7 +849,7 @@ export const confirmRegeneration = async (performedByUserId, previewSession, opt
                 const locked = lockedMap.get(comparison.system);
                 skippedCredentials.push({
                     system: comparison.system,
-                    reason: 'Credential is locked',
+                    reason: "credential_locked",
                     lockedAt: toIsoString(locked?.lockedAt),
                     lockReason: locked?.lockReason || null
                 });
@@ -843,7 +880,7 @@ export const confirmRegeneration = async (performedByUserId, previewSession, opt
                     credentialId: existingCred.id,
                     username: existingCred.username,
                     password: existingCred.password,
-                    reason: 'regeneration',
+                    reason: regenerationReason,
                     createdBy: performedByUserId
                 }, tx);
 
@@ -872,7 +909,7 @@ export const confirmRegeneration = async (performedByUserId, previewSession, opt
                 credentialId: created.id,
                 username: newCred.username,
                 password: newCred.password,
-                reason: 'initial',
+                reason: regenerationReason,
                 createdBy: performedByUserId
             }, tx);
 
@@ -908,7 +945,10 @@ export const confirmRegeneration = async (performedByUserId, previewSession, opt
  */
 export const getCredentialHistory = async (userId, filters = {}) => {
     const history = await repo.getCredentialHistoryByUser(userId, filters);
-    return history;
+    return {
+        data: history.data.map(formatHistoryEntry),
+        meta: history.meta
+    };
 };
 
 /**
@@ -918,7 +958,8 @@ export const getCredentialHistory = async (userId, filters = {}) => {
  */
 export const getCredentialVersion = async (versionId) => {
     const version = await repo.getCredentialVersionById(versionId);
-    return version;
+    if (!version) return null;
+    return formatHistoryEntry(version);
 };
 
 /**
@@ -927,37 +968,49 @@ export const getCredentialVersion = async (versionId) => {
  * @param {string} versionId2 - Second version ID
  * @returns {Object} - Comparison result with differences
  */
-export const compareCredentialVersions = async (versionId1, versionId2) => {
-    const versions = await repo.getCredentialVersionsForComparison([versionId1, versionId2]);
+export const compareCredentialVersions = async (
+    versionId1,
+    versionId2,
+    loadVersions = repo.getCredentialVersionsForComparison
+) => {
+    const versions = await loadVersions([versionId1, versionId2]);
 
     if (versions.length !== 2) {
         throw new Error('One or both version IDs not found');
     }
 
-    const version1 = versions.find(v => v.id === versionId1);
-    const version2 = versions.find(v => v.id === versionId2);
+    const requestedVersion1 = versions.find(v => v.id === versionId1);
+    const requestedVersion2 = versions.find(v => v.id === versionId2);
+
+    const [olderVersion, newerVersion] =
+        new Date(requestedVersion1.createdAt) <= new Date(requestedVersion2.createdAt)
+            ? [requestedVersion1, requestedVersion2]
+            : [requestedVersion2, requestedVersion1];
+
+    const olderContext = getVersionContext(olderVersion);
+    const newerContext = getVersionContext(newerVersion);
 
     // Validate same system
-    if (version1.system !== version2.system) {
+    if (olderContext.system !== newerContext.system) {
         const error = new Error('Cannot compare versions from different systems');
         error.code = 'DIFFERENT_SYSTEMS';
-        error.system1 = version1.system;
-        error.system2 = version2.system;
+        error.system1 = olderContext.system;
+        error.system2 = newerContext.system;
         throw error;
     }
 
     // Build differences array
     const differences = [];
 
-    if (version1.username !== version2.username) {
+    if (olderVersion.username !== newerVersion.username) {
         differences.push({
             field: 'username',
-            oldValue: version1.username,
-            newValue: version2.username
+            oldValue: olderVersion.username,
+            newValue: newerVersion.username
         });
     }
 
-    if (version1.password !== version2.password) {
+    if (olderVersion.password !== newerVersion.password) {
         differences.push({
             field: 'password',
             changed: true,
@@ -965,16 +1018,20 @@ export const compareCredentialVersions = async (versionId1, versionId2) => {
         });
     }
 
-    if (version1.templateVersion !== version2.templateVersion) {
+    if (
+        olderContext.templateVersion !== null &&
+        newerContext.templateVersion !== null &&
+        olderContext.templateVersion !== newerContext.templateVersion
+    ) {
         differences.push({
             field: 'templateVersion',
-            oldValue: version1.templateVersion,
-            newValue: version2.templateVersion
+            oldValue: olderContext.templateVersion,
+            newValue: newerContext.templateVersion
         });
     }
 
-    // Calculate time gap with precise formatting
-    const timeDiff = new Date(version2.createdAt) - new Date(version1.createdAt);
+    // Calculate positive time gap with precise formatting.
+    const timeDiff = Math.abs(new Date(newerVersion.createdAt) - new Date(olderVersion.createdAt));
     const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
@@ -992,10 +1049,10 @@ export const compareCredentialVersions = async (versionId1, versionId2) => {
     }
 
     return {
-        version1: formatHistoryEntry(version1),
-        version2: formatHistoryEntry(version2),
+        version1: formatHistoryEntry(olderVersion),
+        version2: formatHistoryEntry(newerVersion),
         differences,
-        system: version1.system,
+        system: olderContext.system,
         timeGap
     };
 };
@@ -1005,7 +1062,15 @@ export const compareCredentialVersions = async (versionId1, versionId2) => {
  * @param {Object} version - Raw version from database
  * @returns {Object} - Formatted entry
  */
-const formatHistoryEntry = (version) => {
+export const getVersionContext = (version) => ({
+    userId: version.userId ?? version.credential?.userId ?? null,
+    system: version.system ?? version.credential?.systemId ?? null,
+    templateVersion: version.templateVersion ?? version.credential?.templateVersion ?? null,
+    isCurrent: version.isActive ?? version.credential?.isActive ?? false,
+    ldapFields: version.ldapSources ? Object.keys(version.ldapSources) : []
+});
+
+export const formatHistoryEntry = (version) => {
     const reasonLabels = {
         'initial': 'Initial Generation',
         'regeneration': 'Regenerated',
@@ -1014,10 +1079,15 @@ const formatHistoryEntry = (version) => {
         'override': 'Manual Override'
     };
 
+    const context = getVersionContext(version);
+    const timestamp = version.createdAt instanceof Date
+        ? version.createdAt.toISOString()
+        : new Date(version.createdAt).toISOString();
+
     return {
         id: version.id,
-        userId: version.userId,
-        system: version.system,
+        userId: context.userId,
+        system: context.system,
         username: version.username,
         password: {
             masked: '••••••••',
@@ -1025,14 +1095,14 @@ const formatHistoryEntry = (version) => {
         },
         reason: version.reason,
         reasonLabel: reasonLabels[version.reason] || version.reason,
-        timestamp: version.createdAt.toISOString(),
+        timestamp,
         createdBy: version.createdByUser ? {
             id: version.createdByUser.id,
             name: version.createdByUser.username
         } : null,
-        templateVersion: version.templateVersion,
-        ldapFields: version.ldapSources ? Object.keys(version.ldapSources) : [],
-        isCurrent: version.isActive
+        templateVersion: context.templateVersion,
+        ldapFields: context.ldapFields,
+        isCurrent: context.isCurrent
     };
 };
 
@@ -1071,9 +1141,28 @@ export const revealCredentialPassword = async (versionId, actorUserId) => {
  * @param {Object} overrideData - Override data containing username, password, reason
  * @returns {Object} - Preview result with comparison
  */
-export const previewCredentialOverride = async (userId, system, overrideData) => {
+const assertCredentialUnlocked = async (repoApi, userId, systemId, tx = undefined) => {
+    if (typeof repoApi.getLockRecord !== "function") {
+        return;
+    }
+
+    const lockRecord = await repoApi.getLockRecord(userId, systemId, tx);
+    if (!lockRecord?.isLocked) {
+        return;
+    }
+
+    throw new CredentialLockedError(userId, systemId, {
+        lockedAt: toIsoString(lockRecord.lockedAt),
+        lockReason: lockRecord.lockReason || null
+    });
+};
+
+export const previewCredentialOverride = async (userId, system, overrideData, deps = {}) => {
+    const repoApi = deps.repo ?? repo;
+    const userRepoApi = deps.userRepo ?? userRepo;
+
     // 1. Check user exists and is enabled
-    const user = await repo.getUserById(userId);
+    const user = await repoApi.getUserById(userId);
     if (!user) {
         const error = new Error('User not found');
         error.code = 'USER_NOT_FOUND';
@@ -1081,12 +1170,15 @@ export const previewCredentialOverride = async (userId, system, overrideData) =>
         throw error;
     }
 
-    if (user.status === 'disabled') {
+    if (userRepoApi.isUserDisabled(user)) {
         throw new DisabledUserError(userId);
     }
 
+    // 2. Block override when credential is locked.
+    await assertCredentialUnlocked(repoApi, userId, system);
+
     // 2. Get active credential for this system
-    const credential = await repo.getUserCredentialBySystem(userId, system);
+    const credential = await repoApi.getUserCredentialBySystem(userId, system);
     if (!credential) {
         const error = new Error('No active credential for system');
         error.code = 'NO_ACTIVE_CREDENTIAL';
@@ -1114,7 +1206,7 @@ export const previewCredentialOverride = async (userId, system, overrideData) =>
         system,
         currentCredential: {
             id: credential.id,
-            system: credential.system,
+            system: credential.systemId,
             username: credential.username,
             password: {
                 masked: '••••••••'
@@ -1134,7 +1226,19 @@ export const previewCredentialOverride = async (userId, system, overrideData) =>
     };
 
     // 5. Store preview session
-    const token = await storeOverridePreview(userId, system, preview);
+    const token = await storeOverridePreview(
+        userId,
+        system,
+        preview,
+        {
+            username: proposedCredential.username,
+            password: proposedCredential.password
+        },
+        {
+            repo: repoApi,
+            tokenFactory: deps.tokenFactory
+        }
+    );
 
     return {
         previewToken: token,
@@ -1150,21 +1254,23 @@ export const previewCredentialOverride = async (userId, system, overrideData) =>
  * @param {Object} preview - Override preview data
  * @returns {string} - Preview token
  */
-export const storeOverridePreview = async (userId, system, preview) => {
-    const token = `override_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+export const storeOverridePreview = async (userId, system, preview, proposedCredential, opts = {}) => {
+    const repoApi = opts.repo ?? repo;
+    const tokenFactory = opts.tokenFactory ?? (() => `override_${randomUUID()}`);
+    const token = tokenFactory();
 
     const sessionData = {
         type: 'override',
         userId,
         system,
-        proposedCredential: preview.proposedCredential,
-        currentCredential: preview.currentCredential,
+        proposedCredential,
+        currentCredentialId: preview.currentCredential.id,
         changes: preview.changes,
         reason: preview.reason,
         createdAt: new Date().toISOString()
     };
 
-    await repo.storePreviewSession(token, sessionData);
+    await repoApi.storePreviewSession(token, sessionData);
     return token;
 };
 
@@ -1174,18 +1280,21 @@ export const storeOverridePreview = async (userId, system, preview) => {
  * @param {Object} previewSession - Stored preview session
  * @returns {Object} - Override result
  */
-export const confirmCredentialOverride = async (performedByUserId, previewSession) => {
-    return prisma.$transaction(async (tx) => {
+export const confirmCredentialOverride = async (performedByUserId, previewSession, deps = {}) => {
+    const repoApi = deps.repo ?? repo;
+    const prismaClient = deps.prisma ?? prisma;
+
+    return prismaClient.$transaction(async (tx) => {
         const {
             userId,
             system,
             proposedCredential,
-            currentCredential,
+            currentCredentialId,
             reason
         } = previewSession;
 
         // 1. Re-validate user is still enabled
-        const user = await repo.getUserById(userId, tx);
+        const user = await repoApi.getUserById(userId, tx);
         if (!user) {
             const error = new Error('User not found');
             error.code = 'USER_NOT_FOUND';
@@ -1193,46 +1302,56 @@ export const confirmCredentialOverride = async (performedByUserId, previewSessio
             throw error;
         }
 
-        if (user.status === 'disabled') {
+        if (userRepo.isUserDisabled(user)) {
             throw new DisabledUserError(userId);
         }
 
+        const currentCredential = await repoApi.getUserCredentialBySystem(userId, system, tx);
+        if (!currentCredential) {
+            const error = new Error('No active credential for system');
+            error.code = 'NO_ACTIVE_CREDENTIAL';
+            error.userId = userId;
+            error.system = system;
+            throw error;
+        }
+
+        if (currentCredentialId && currentCredential.id !== currentCredentialId) {
+            const error = new Error('Credential changed since preview. Please regenerate preview.');
+            error.code = 'CREDENTIAL_CHANGED_SINCE_PREVIEW';
+            error.userId = userId;
+            error.system = system;
+            throw error;
+        }
+
+        await assertCredentialUnlocked(repoApi, userId, system, tx);
+
         // 2. Create history record for current credential before deactivating
-        await repo.createCredentialVersion({
+        await repoApi.createCredentialVersion({
             credentialId: currentCredential.id,
-            userId: userId,
-            system: system,
             username: currentCredential.username,
-            password: currentCredential.password, // Note: This should come from actual DB record
-            templateVersion: currentCredential.templateVersion,
-            isActive: false,
+            password: currentCredential.password,
             reason: 'override',
             createdBy: performedByUserId
         }, tx);
 
         // 3. Deactivate current credential
-        await repo.deactivateUserCredential(currentCredential.id, tx);
+        await repoApi.deactivateUserCredential(currentCredential.id, tx);
 
         // 4. Create new credential with override values
-        // Note: We need to get the actual password from previewSession since currentCredential only has masked
-        const created = await repo.createUserCredential({
+        const created = await repoApi.createUserCredential({
             userId: userId,
-            system: system,
+            systemId: system,
             username: proposedCredential.username,
-            password: proposedCredential.password, // This comes from preview session
-            templateVersion: currentCredential.templateVersion, // Keep same template version
+            password: proposedCredential.password,
+            templateVersion: currentCredential.templateVersion,
             generatedBy: performedByUserId
         }, tx);
 
         // 5. Create version record for new credential
-        const newVersion = await repo.createCredentialVersion({
+        const newVersion = await repoApi.createCredentialVersion({
             credentialId: created.id,
-            userId: userId,
-            system: system,
             username: proposedCredential.username,
             password: proposedCredential.password,
-            templateVersion: currentCredential.templateVersion,
-            isActive: true,
             reason: 'override',
             createdBy: performedByUserId
         }, tx);
@@ -1255,7 +1374,7 @@ export const confirmCredentialOverride = async (performedByUserId, previewSessio
         });
 
         // 7. Delete preview session
-        await repo.deletePreviewSession(previewSession.token || `override_${Date.now()}`);
+        await repoApi.deletePreviewSession(previewSession.token || `override_${Date.now()}`);
 
         return {
             credentialId: created.id,

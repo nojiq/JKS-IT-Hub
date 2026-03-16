@@ -18,12 +18,13 @@ export class LdapFieldNotFoundError extends Error {
  * Error when system is already in use and cannot be deleted
  */
 export class SystemInUseError extends Error {
-    constructor(systemId, credentialCount) {
+    constructor(systemId, credentialCount, affectedUsers = []) {
         super(`Cannot delete system '${systemId}' because it has ${credentialCount} active credentials`);
         this.name = 'SystemInUseError';
         this.code = 'SYSTEM_IN_USE';
         this.systemId = systemId;
         this.credentialCount = credentialCount;
+        this.affectedUsers = affectedUsers;
     }
 }
 
@@ -193,9 +194,9 @@ export const deleteSystemConfig = async (systemId, performedBy) => {
         }
 
         // 2. Check if system is in use
-        const usageCount = await repo.getCredentialCountForSystem(systemId, tx);
-        if (usageCount > 0) {
-            throw new SystemInUseError(systemId, usageCount);
+        const affectedUsers = await repo.getCredentialUsersForSystem(systemId, tx);
+        if (affectedUsers.length > 0) {
+            throw new SystemInUseError(systemId, affectedUsers.length, affectedUsers);
         }
 
         // 3. Delete configuration

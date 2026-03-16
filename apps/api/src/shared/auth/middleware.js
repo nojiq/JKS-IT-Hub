@@ -1,19 +1,25 @@
 import { createProblemDetails, sendProblem } from "../errors/problemDetails.js";
 
-const IT_ONLY_ROLES = new Set(["it", "head_it"]);
+const IMAP_ACCESS_ROLES = new Set(["it", "admin", "head_it"]);
 
 export const requireItRole = async (
     request,
     reply,
-    { auditRepo, forbiddenDetail = "IT role required to access IMAP credentials" } = {}
+    {
+        auditRepo,
+        forbiddenDetail = "Privileged role required to access IMAP credentials",
+        requiredRoleLabel = "it|admin|head_it",
+        targetUserId,
+        targetCredentialId
+    } = {}
 ) => {
-    const user = request.user; // Assumes user is already authenticated and attached to request
+    const user = request.user;
 
     if (!user) {
         sendProblem(
             reply,
             createProblemDetails({
-                status: 401, // Or 403 if we consider "no user" as insufficient permissions but usually 401
+                status: 401,
                 title: "Unauthorized",
                 detail: "User not authenticated."
             })
@@ -21,22 +27,21 @@ export const requireItRole = async (
         return false;
     }
 
-    if (!IT_ONLY_ROLES.has(user.role)) {
-        // Log access denied if auditRepo is provided
-        if (auditRepo) {
-            // Best effort to get target context. 
-            // Task 6 requires logging "Target user (whose IMAP credentials were requested)".
-            // Usually accessing /users/:id/credentials, so target is params.id
-            const targetUserId = request.params?.id || request.body?.targetUserId;
+    if (!IMAP_ACCESS_ROLES.has(user.role)) {
+        const resolvedTargetUserId = targetUserId || request.params?.userId || request.params?.id || request.body?.targetUserId;
+        const resolvedEntityId = targetCredentialId || request.params?.id || resolvedTargetUserId;
 
-            await auditRepo.create({
+        if (auditRepo?.createAuditLog) {
+            await auditRepo.createAuditLog({
                 action: 'credential.imap.access.denied',
                 actorUserId: user.id,
+                entityType: 'user_credential',
+                entityId: resolvedEntityId,
                 metadata: {
                     reason: 'insufficient_permissions',
-                    requiredRole: 'it',
+                    requiredRole: requiredRoleLabel,
                     actualRole: user.role,
-                    targetUserId: targetUserId
+                    targetUserId: resolvedTargetUserId
                 }
             });
         }
@@ -48,10 +53,8 @@ export const requireItRole = async (
                 title: "Insufficient Permissions",
                 detail: forbiddenDetail,
                 type: '/problems/insufficient-permissions',
-                extensions: { // Custom extensions matching RFC 9457 structured checks if supported by createProblemDetails
-                    requiredRole: 'it',
-                    actualRole: user.role
-                }
+                requiredRole: requiredRoleLabel,
+                actualRole: user.role
             })
         );
         return false;

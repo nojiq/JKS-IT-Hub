@@ -24,20 +24,31 @@ const handleResponse = async (response) => {
     return data;
 };
 
-export const generateCredentials = async (userId) => {
+const toIsoDateTimeFilter = (value, endOfDay = false) => {
+    if (!value) return value;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        const suffix = endOfDay ? 'T23:59:59.999Z' : 'T00:00:00.000Z';
+        return `${value}${suffix}`;
+    }
+    return value;
+};
+
+export const generateCredentials = async (userId, systemId = undefined) => {
     const response = await fetch(`${API_BASE}/credential-templates/users/${userId}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'
+        credentials: 'include',
+        body: JSON.stringify(systemId ? { systemId } : {})
     });
     return handleResponse(response);
 };
 
-export const previewCredentials = async (userId) => {
+export const previewCredentials = async (userId, systemId = undefined) => {
     const response = await fetch(`${API_BASE}/credential-templates/users/${userId}/preview`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'
+        credentials: 'include',
+        body: JSON.stringify(systemId ? { systemId } : {})
     });
     return handleResponse(response);
 };
@@ -75,11 +86,12 @@ export const confirmCredentials = async (userId, { previewToken, confirmed }) =>
 
 // Credential Regeneration API (Story 2.4)
 
-export const initiateRegeneration = async (userId) => {
+export const initiateRegeneration = async (userId, systemId = undefined) => {
     const response = await fetch(`${API_BASE}/credential-templates/users/${userId}/regenerate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'
+        credentials: 'include',
+        body: JSON.stringify(systemId ? { systemId } : {})
     });
     return handleResponse(response);
 };
@@ -93,12 +105,12 @@ export const previewRegeneration = async (userId) => {
     return handleResponse(response);
 };
 
-export const confirmRegeneration = async (userId, { previewToken, confirmed, skipLocked, force }) => {
+export const confirmRegeneration = async (userId, { previewToken, confirmed, acknowledgedWarnings, skipLocked, force }) => {
     const response = await fetch(`${API_BASE}/credential-templates/users/${userId}/regenerate/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ previewToken, confirmed, skipLocked, force })
+        body: JSON.stringify({ previewToken, confirmed, acknowledgedWarnings, skipLocked, force })
     });
     return handleResponse(response);
 };
@@ -109,13 +121,13 @@ export const getCredentialHistory = async (userId, filters = {}) => {
     const params = new URLSearchParams();
     
     if (filters.system) params.append('system', filters.system);
-    if (filters.startDate) params.append('startDate', filters.startDate);
-    if (filters.endDate) params.append('endDate', filters.endDate);
+    if (filters.startDate) params.append('startDate', toIsoDateTimeFilter(filters.startDate, false));
+    if (filters.endDate) params.append('endDate', toIsoDateTimeFilter(filters.endDate, true));
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());
     
     const queryString = params.toString();
-    const url = `${API_BASE}/credential-templates/users/${userId}/credentials/history${queryString ? `?${queryString}` : ''}`;
+    const url = `${API_BASE}/credential-templates/users/${userId}/history${queryString ? `?${queryString}` : ''}`;
     
     const response = await fetch(url, {
         credentials: 'include'
@@ -124,14 +136,14 @@ export const getCredentialHistory = async (userId, filters = {}) => {
 };
 
 export const getCredentialVersion = async (versionId) => {
-    const response = await fetch(`${API_BASE}/credential-templates/credential-versions/${versionId}`, {
+    const response = await fetch(`${API_BASE}/credential-templates/versions/${versionId}`, {
         credentials: 'include'
     });
     return handleResponse(response);
 };
 
 export const compareCredentialVersions = async (versionId1, versionId2) => {
-    const response = await fetch(`${API_BASE}/credential-templates/credential-versions/compare`, {
+    const response = await fetch(`${API_BASE}/credential-templates/versions/compare`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -141,7 +153,7 @@ export const compareCredentialVersions = async (versionId1, versionId2) => {
 };
 
 export const revealCredentialPassword = async (versionId) => {
-    const response = await fetch(`${API_BASE}/credential-templates/credential-versions/${versionId}/reveal`, {
+    const response = await fetch(`${API_BASE}/credential-templates/versions/${versionId}/reveal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include'

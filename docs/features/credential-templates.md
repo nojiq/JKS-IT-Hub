@@ -4,6 +4,8 @@
 
 Credential templates enable IT staff to define standard formats for generating credentials across different systems. These templates ensure consistency and reduce manual errors during credential creation.
 
+For per-system username mapping and LDAP field selection, see `docs/features/system-configs.md`.
+
 ## Features
 
 - **Template Management**: Create, view, update, and manage credential templates.
@@ -16,8 +18,8 @@ Credential templates enable IT staff to define standard formats for generating c
 
 ### CredentialTemplate
 
+| --- | --- | --- |
 | Field | Type | Description |
-|Struture|---|---|
 | id | UUID | Unique identifier |
 | name | String | Human-readable name |
 | description | String | Optional description |
@@ -286,7 +288,8 @@ Regenerate credentials when:
 
 ## Security
 
-- RBAC: Restricted to `it`, `admin`, and `head_it` roles.
+- RBAC: Template CRUD (`/api/v1/credential-templates`) is restricted to `it` role only.
+- RBAC: Broader credential operations (generation/regeneration/history/locks) allow `it`, `admin`, and `head_it` as documented per endpoint.
 - Audit Logging: All create, update, and regeneration actions are logged.
 - Disabled User Guardrail: Regeneration is blocked for disabled users (FR19).
 - Explicit Confirmation: Users must explicitly acknowledge before overwriting.

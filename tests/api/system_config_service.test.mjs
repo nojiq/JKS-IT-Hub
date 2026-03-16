@@ -6,6 +6,8 @@ import * as service from "../../apps/api/src/features/system-configs/service.js"
 import * as repo from "../../apps/api/src/features/system-configs/repo.js";
 import { createUser } from "../../apps/api/src/features/users/repo.js";
 
+const uniqueSystemId = (prefix) => `${prefix}-${randomUUID().slice(0, 8)}`;
+
 after(async () => {
     await prisma.$disconnect();
 });
@@ -14,13 +16,14 @@ test("System Config Service - Create", async (t) => {
     const actor = await createUser({ username: `test-${randomUUID()}`, role: "it" });
 
     await t.test("createSystemConfig creates config with valid data", async () => {
+        const systemId = uniqueSystemId("test-email");
         const config = await service.createSystemConfig({
-            systemId: "test-email",
+            systemId,
             usernameLdapField: "mail",
             description: "Test email system"
         }, actor.id);
 
-        assert.equal(config.systemId, "test-email");
+        assert.equal(config.systemId, systemId);
         assert.equal(config.usernameLdapField, "mail");
         assert.equal(config.description, "Test email system");
         assert.ok(config.id);
@@ -38,16 +41,17 @@ test("System Config Service - Create", async (t) => {
     });
 
     await t.test("createSystemConfig rejects duplicate systemId", async () => {
+        const systemId = uniqueSystemId("test-vpn");
         // First create should succeed
         await service.createSystemConfig({
-            systemId: "test-vpn",
+            systemId,
             usernameLdapField: "sAMAccountName"
         }, actor.id);
 
         // Second create with same ID should fail
         await assert.rejects(
             service.createSystemConfig({
-                systemId: "test-vpn",
+                systemId,
                 usernameLdapField: "uid"
             }, actor.id),
             { code: "DUPLICATE_SYSTEM" }
@@ -57,7 +61,7 @@ test("System Config Service - Create", async (t) => {
     await t.test("createSystemConfig validates LDAP field exists", async () => {
         await assert.rejects(
             service.createSystemConfig({
-                systemId: "test-wifi",
+                systemId: uniqueSystemId("test-wifi"),
                 usernameLdapField: "nonExistentField123"
             }, actor.id),
             { code: "LDAP_FIELD_NOT_FOUND" }
@@ -73,15 +77,16 @@ test("System Config Service - Read", async (t) => {
 
     await t.test("getSystemConfig returns single config by ID", async () => {
         const actor = await createUser({ username: `test-${randomUUID()}`, role: "it" });
+        const systemId = uniqueSystemId("test-get");
         
         const created = await service.createSystemConfig({
-            systemId: "test-get",
+            systemId,
             usernameLdapField: "mail"
         }, actor.id);
 
-        const retrieved = await service.getSystemConfig("test-get");
+        const retrieved = await service.getSystemConfig(systemId);
         assert.equal(retrieved.id, created.id);
-        assert.equal(retrieved.systemId, "test-get");
+        assert.equal(retrieved.systemId, systemId);
     });
 
     await t.test("getSystemConfig returns null for non-existent", async () => {
@@ -94,13 +99,14 @@ test("System Config Service - Update", async (t) => {
     const actor = await createUser({ username: `test-${randomUUID()}`, role: "it" });
 
     await t.test("updateSystemConfig updates fields", async () => {
+        const systemId = uniqueSystemId("test-update");
         const created = await service.createSystemConfig({
-            systemId: "test-update",
+            systemId,
             usernameLdapField: "mail",
             description: "Original description"
         }, actor.id);
 
-        const updated = await service.updateSystemConfig("test-update", {
+        const updated = await service.updateSystemConfig(systemId, {
             description: "Updated description"
         }, actor.id);
 
@@ -109,13 +115,14 @@ test("System Config Service - Update", async (t) => {
     });
 
     await t.test("updateSystemConfig validates new LDAP field", async () => {
+        const systemId = uniqueSystemId("test-update-ldap");
         await service.createSystemConfig({
-            systemId: "test-update-ldap",
+            systemId,
             usernameLdapField: "mail"
         }, actor.id);
 
         await assert.rejects(
-            service.updateSystemConfig("test-update-ldap", {
+            service.updateSystemConfig(systemId, {
                 usernameLdapField: "invalidField"
             }, actor.id),
             { code: "LDAP_FIELD_NOT_FOUND" }
@@ -136,33 +143,53 @@ test("System Config Service - Delete", async (t) => {
     const actor = await createUser({ username: `test-${randomUUID()}`, role: "it" });
 
     await t.test("deleteSystemConfig removes unused system", async () => {
+        const systemId = uniqueSystemId("test-delete");
         await service.createSystemConfig({
-            systemId: "test-delete",
+            systemId,
             usernameLdapField: "mail"
         }, actor.id);
 
-        const result = await service.deleteSystemConfig("test-delete", actor.id);
+        const result = await service.deleteSystemConfig(systemId, actor.id);
         assert.equal(result.success, true);
 
-        const retrieved = await service.getSystemConfig("test-delete");
+        const retrieved = await service.getSystemConfig(systemId);
         assert.equal(retrieved, null);
     });
 
     await t.test("deleteSystemConfig blocks when system in use", async () => {
-        // Create a system config
+        const systemId = uniqueSystemId("test-delete-blocked");
         await service.createSystemConfig({
-            systemId: "test-delete-blocked",
+            systemId,
             usernameLdapField: "mail"
         }, actor.id);
 
-        // Simulate the system being in use by creating a credential
-        // This would normally be done through the credential service
-        // For testing, we directly check the usage count function
-        const usageCount = await repo.getCredentialCountForSystem("test-delete-blocked");
-        assert.equal(usageCount, 0);
+        const credentialOwner = await createUser({ username: `owner-${randomUUID()}`, role: "requester" });
+        await prisma.userCredential.create({
+            data: {
+                userId: credentialOwner.id,
+                systemId,
+                username: "owner@example.test",
+                password: "secret",
+                templateVersion: 1,
+                generatedBy: actor.id
+            }
+        });
 
-        // The actual test for blocking would require creating a credential
-        // which depends on the credential service being properly set up
+        const usageCount = await repo.getCredentialCountForSystem(systemId);
+        assert.equal(usageCount, 1);
+
+        let thrownError = null;
+        try {
+            await service.deleteSystemConfig(systemId, actor.id);
+        } catch (error) {
+            thrownError = error;
+        }
+
+        assert.ok(thrownError);
+        assert.equal(thrownError.code, "SYSTEM_IN_USE");
+        assert.equal(thrownError.credentialCount, 1);
+        assert.ok(Array.isArray(thrownError.affectedUsers));
+        assert.equal(thrownError.affectedUsers[0]?.id, credentialOwner.id);
     });
 
     await t.test("deleteSystemConfig throws for non-existent system", async () => {
@@ -183,17 +210,19 @@ test("System Config Service - LDAP Fields", async (t) => {
 });
 
 test("System Config Repo Functions", async (t) => {
-    const actor = await createUser({ username: `test-${randomUUID()}`, role: "it" });
+    let repoTestSystemId = "";
 
     await t.test("repo.createSystemConfig creates in database", async () => {
+        const systemId = uniqueSystemId("repo-test");
         const config = await repo.createSystemConfig({
-            systemId: "repo-test",
+            systemId,
             usernameLdapField: "mail",
             description: "Repo test"
         });
+        repoTestSystemId = systemId;
 
         assert.ok(config.id);
-        assert.equal(config.systemId, "repo-test");
+        assert.equal(config.systemId, systemId);
     });
 
     await t.test("repo.getSystemConfigs returns ordered list", async () => {
@@ -206,13 +235,13 @@ test("System Config Repo Functions", async (t) => {
     });
 
     await t.test("repo.getSystemConfigById finds by systemId", async () => {
-        const config = await repo.getSystemConfigById("repo-test");
+        const config = await repo.getSystemConfigById(repoTestSystemId);
         assert.ok(config);
-        assert.equal(config.systemId, "repo-test");
+        assert.ok(config.systemId.startsWith("repo-test"));
     });
 
     await t.test("repo.updateSystemConfig modifies fields", async () => {
-        const updated = await repo.updateSystemConfig("repo-test", {
+        const updated = await repo.updateSystemConfig(repoTestSystemId, {
             description: "Updated repo test"
         });
 
@@ -220,8 +249,8 @@ test("System Config Repo Functions", async (t) => {
     });
 
     await t.test("repo.deleteSystemConfig removes record", async () => {
-        await repo.deleteSystemConfig("repo-test");
-        const deleted = await repo.getSystemConfigById("repo-test");
+        await repo.deleteSystemConfig(repoTestSystemId);
+        const deleted = await repo.getSystemConfigById(repoTestSystemId);
         assert.equal(deleted, null);
     });
 

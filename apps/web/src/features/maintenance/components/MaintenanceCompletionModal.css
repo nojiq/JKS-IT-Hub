@@ -1,0 +1,261 @@
+/* Maintenance Completion Modal - Mobile-first styles */
+
+.window-summary {
+    background: var(--color-surface-hover);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.window-summary p {
+    margin: 0.5rem 0;
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+}
+
+.window-summary strong {
+    color: var(--color-text-secondary);
+    font-weight: 600;
+}
+
+.checklist-section {
+    margin-bottom: 1.5rem;
+}
+
+.checklist-section h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.checklist-items {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.checklist-item {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.checklist-item:last-child {
+    border-bottom: none;
+}
+
+.req-star {
+    color: var(--color-error);
+    margin-left: 2px;
+    font-weight: 700;
+}
+
+.item-desc {
+    margin: 0.5rem 0 0 0;
+    padding-left: 3rem;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+}
+
+.notes-section {
+    margin-bottom: 1.5rem;
+}
+
+.notes-section label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+}
+
+.notes-section textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    resize: vertical;
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    font-size: 1rem;
+    font-family: inherit;
+    min-height: 100px;
+    transition: border-color 150ms ease;
+}
+
+.notes-section textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-muted);
+}
+
+.notes-section textarea::placeholder {
+    color: var(--color-text-secondary);
+}
+
+.assisted-signoff-section {
+    margin-bottom: 1.5rem;
+}
+
+.assisted-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-text-primary);
+    font-weight: 600;
+}
+
+.assisted-toggle input {
+    width: 1rem;
+    height: 1rem;
+}
+
+.assisted-fields {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.assisted-fields label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.assisted-fields input {
+    width: 100%;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+}
+
+.assisted-fields input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-muted);
+}
+
+.signature-pad {
+    width: 100%;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: #ffffff;
+    touch-action: none;
+    cursor: crosshair;
+}
+
+.signature-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.clear-signature-btn {
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+
+.signature-hint {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+}
+
+.modal-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+.cancel-btn,
+.submit-btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 1rem;
+    transition: all 150ms ease;
+    min-height: var(--touch-target-min, 44px);
+    width: 100%;
+}
+
+.cancel-btn {
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+}
+
+.cancel-btn:hover {
+    background: var(--color-surface-hover);
+    border-color: var(--color-primary);
+}
+
+.cancel-btn:active {
+    background: var(--color-surface-active);
+}
+
+.submit-btn {
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+    border: none;
+}
+
+.submit-btn:hover:not(:disabled) {
+    background: var(--color-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.submit-btn:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+.submit-btn:disabled {
+    background: var(--color-primary-muted);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.error-message {
+    background-color: var(--color-error-muted);
+    color: var(--color-error);
+    padding: 0.75rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    border: 1px solid var(--color-error);
+    font-size: 0.875rem;
+}
+
+/* Desktop enhancements */
+@media (min-width: 768px) {
+    .modal-actions {
+        flex-direction: row;
+        justify-content: flex-end;
+    }
+
+    .cancel-btn,
+    .submit-btn {
+        width: auto;
+        min-width: 120px;
+        padding: 0.5rem 1rem;
+        min-height: auto;
+    }
+
+    .window-summary p {
+        font-size: 1rem;
+    }
+
+    .notes-section textarea {
+        min-height: 120px;
+    }
+}

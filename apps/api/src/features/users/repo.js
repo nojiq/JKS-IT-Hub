@@ -138,3 +138,59 @@ export const updateUserStatus = async (id, status) => {
     }
   });
 };
+
+export const listUsersFiltered = async (filters = {}, pagination = {}) => {
+  const { page = 1, perPage = 20 } = pagination;
+  const skip = (page - 1) * perPage;
+
+  // Build where clause dynamically
+  const where = {};
+
+  // Text search across multiple fields
+  if (filters.search) {
+    where.OR = [
+      { username: { contains: filters.search } },
+      {
+        ldapAttributes: {
+          path: '$.displayName',
+          string_contains: filters.search
+        }
+      },
+      {
+        ldapAttributes: {
+          path: '$.department',
+          string_contains: filters.search
+        }
+      }
+    ];
+  }
+
+  // Exact match filters
+  if (filters.role) {
+    where.role = filters.role;
+  }
+
+  if (filters.status) {
+    where.status = filters.status;
+  }
+
+  const [total, data] = await prisma.$transaction([
+    prisma.user.count({ where }),
+    prisma.user.findMany({
+      where,
+      skip,
+      take: perPage,
+      orderBy: { username: 'asc' },
+      select: {
+        id: true,
+        username: true,
+        role: true,
+        status: true,
+        ldapAttributes: true,
+        ldapSyncedAt: true
+      }
+    })
+  ]);
+
+  return { data, total, page, perPage };
+};

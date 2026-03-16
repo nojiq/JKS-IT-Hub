@@ -29,7 +29,7 @@ const baseConfig = {
     sameSite: "lax"
   },
   cors: {
-    origin: "http://localhost:5173"
+    origin: "http://localhost:5176"
   }
 };
 

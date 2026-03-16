@@ -1,14 +1,40 @@
 import test, { after, before } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { build } from "../../apps/api/src/app.js";
+import { createRequire } from "node:module";
 import { prisma } from "../../apps/api/src/shared/db/prisma.js";
+import appPlugin from "../../apps/api/src/server.js";
+import { signSessionToken } from "../../apps/api/src/shared/auth/jwt.js";
+import { getAuthConfig } from "../../apps/api/src/config/authConfig.js";
+
+const require = createRequire(new URL("../../apps/api/package.json", import.meta.url));
+const Fastify = require("fastify");
+
+async function build() {
+    const app = Fastify();
+    await app.register(appPlugin);
+    return app;
+}
+
+const uniqueSystemId = (prefix) => `${prefix}-${randomUUID().slice(0, 8)}`;
 
 let app;
 let authToken;
 let testUser;
+let config;
+
+const createAuthToken = async (user) => {
+    return signSessionToken({
+        subject: user.id,
+        payload: {
+            username: user.username,
+            role: user.role
+        }
+    }, config.jwt);
+};
 
 before(async () => {
+    config = getAuthConfig();
     app = await build();
     
     // Create a test IT user and login
@@ -19,30 +45,7 @@ before(async () => {
         }
     });
 
-    // Login to get auth token
-    const loginResponse = await app.inject({
-        method: "POST",
-        url: "/api/v1/auth/login",
-        payload: {
-            username: testUser.username,
-            password: "test-password" // This will need to be mocked or use test credentials
-        }
-    });
-
-    // Note: In real tests, we'd need to handle LDAP authentication
-    // For now, we'll create a session directly
-    const sessionResponse = await app.inject({
-        method: "POST",
-        url: "/api/v1/auth/test-session",
-        payload: {
-            userId: testUser.id
-        }
-    });
-    
-    if (sessionResponse.statusCode === 200) {
-        const cookies = sessionResponse.cookies;
-        authToken = cookies?.find(c => c.name === "it-hub-session")?.value;
-    }
+    authToken = await createAuthToken(testUser);
 });
 
 after(async () => {
@@ -52,6 +55,7 @@ after(async () => {
 
 test("System Config API - Create (POST /api/v1/system-configs)", async (t) => {
     await t.test("creates system config with valid data", async () => {
+        const systemId = uniqueSystemId("api-test-email");
         const response = await app.inject({
             method: "POST",
             url: "/api/v1/system-configs",
@@ -59,7 +63,7 @@ test("System Config API - Create (POST /api/v1/system-configs)", async (t) => {
                 cookie: `it-hub-session=${authToken}`
             },
             payload: {
-                systemId: "api-test-email",
+                systemId,
                 usernameLdapField: "mail",
                 description: "API test email system"
             }
@@ -68,7 +72,7 @@ test("System Config API - Create (POST /api/v1/system-configs)", async (t) => {
         assert.equal(response.statusCode, 201);
         const body = JSON.parse(response.body);
         assert.ok(body.data);
-        assert.equal(body.data.systemId, "api-test-email");
+        assert.equal(body.data.systemId, systemId);
         assert.equal(body.data.usernameLdapField, "mail");
     });
 
@@ -91,6 +95,7 @@ test("System Config API - Create (POST /api/v1/system-configs)", async (t) => {
     });
 
     await t.test("returns 409 for duplicate systemId", async () => {
+        const systemId = uniqueSystemId("api-duplicate-test");
         // Create first
         await app.inject({
             method: "POST",
@@ -99,7 +104,7 @@ test("System Config API - Create (POST /api/v1/system-configs)", async (t) => {
                 cookie: `it-hub-session=${authToken}`
             },
             payload: {
-                systemId: "api-duplicate-test",
+                systemId,
                 usernameLdapField: "mail"
             }
         });
@@ -112,7 +117,7 @@ test("System Config API - Create (POST /api/v1/system-configs)", async (t) => {
                 cookie: `it-hub-session=${authToken}`
             },
             payload: {
-                systemId: "api-duplicate-test",
+                systemId,
                 usernameLdapField: "uid"
             }
         });
@@ -128,7 +133,7 @@ test("System Config API - Create (POST /api/v1/system-configs)", async (t) => {
                 cookie: `it-hub-session=${authToken}`
             },
             payload: {
-                systemId: "api-bad-ldap",
+                systemId: uniqueSystemId("api-bad-ldap"),
                 usernameLdapField: "nonExistentFieldXYZ"
             }
         });
@@ -147,15 +152,7 @@ test("System Config API - Create (POST /api/v1/system-configs)", async (t) => {
             }
         });
 
-        const sessionResponse = await app.inject({
-            method: "POST",
-            url: "/api/v1/auth/test-session",
-            payload: {
-                userId: regularUser.id
-            }
-        });
-
-        const regularToken = sessionResponse.cookies?.find(c => c.name === "it-hub-session")?.value;
+        const regularToken = await createAuthToken(regularUser);
 
         const response = await app.inject({
             method: "POST",
@@ -164,7 +161,7 @@ test("System Config API - Create (POST /api/v1/system-configs)", async (t) => {
                 cookie: `it-hub-session=${regularToken}`
             },
             payload: {
-                systemId: "unauthorized-test",
+                systemId: uniqueSystemId("unauthorized-test"),
                 usernameLdapField: "mail"
             }
         });
@@ -198,15 +195,7 @@ test("System Config API - List (GET /api/v1/system-configs)", async (t) => {
             }
         });
 
-        const sessionResponse = await app.inject({
-            method: "POST",
-            url: "/api/v1/auth/test-session",
-            payload: {
-                userId: regularUser.id
-            }
-        });
-
-        const regularToken = sessionResponse.cookies?.find(c => c.name === "it-hub-session")?.value;
+        const regularToken = await createAuthToken(regularUser);
 
         const response = await app.inject({
             method: "GET",
@@ -221,6 +210,7 @@ test("System Config API - List (GET /api/v1/system-configs)", async (t) => {
 });
 
 test("System Config API - Get Single (GET /api/v1/system-configs/:systemId)", async (t) => {
+    const systemId = uniqueSystemId("api-get-test");
     // Create a config first
     await app.inject({
         method: "POST",
@@ -229,7 +219,7 @@ test("System Config API - Get Single (GET /api/v1/system-configs/:systemId)", as
             cookie: `it-hub-session=${authToken}`
         },
         payload: {
-            systemId: "api-get-test",
+            systemId,
             usernameLdapField: "mail"
         }
     });
@@ -237,7 +227,7 @@ test("System Config API - Get Single (GET /api/v1/system-configs/:systemId)", as
     await t.test("returns single system config", async () => {
         const response = await app.inject({
             method: "GET",
-            url: "/api/v1/system-configs/api-get-test",
+            url: `/api/v1/system-configs/${systemId}`,
             headers: {
                 cookie: `it-hub-session=${authToken}`
             }
@@ -245,7 +235,7 @@ test("System Config API - Get Single (GET /api/v1/system-configs/:systemId)", as
 
         assert.equal(response.statusCode, 200);
         const body = JSON.parse(response.body);
-        assert.equal(body.data.systemId, "api-get-test");
+        assert.equal(body.data.systemId, systemId);
     });
 
     await t.test("returns 404 for non-existent system", async () => {
@@ -262,6 +252,7 @@ test("System Config API - Get Single (GET /api/v1/system-configs/:systemId)", as
 });
 
 test("System Config API - Update (PUT /api/v1/system-configs/:systemId)", async (t) => {
+    const systemId = uniqueSystemId("api-update-test");
     // Create a config first
     await app.inject({
         method: "POST",
@@ -270,7 +261,7 @@ test("System Config API - Update (PUT /api/v1/system-configs/:systemId)", async 
             cookie: `it-hub-session=${authToken}`
         },
         payload: {
-            systemId: "api-update-test",
+            systemId,
             usernameLdapField: "mail",
             description: "Original"
         }
@@ -279,7 +270,7 @@ test("System Config API - Update (PUT /api/v1/system-configs/:systemId)", async 
     await t.test("updates system config", async () => {
         const response = await app.inject({
             method: "PUT",
-            url: "/api/v1/system-configs/api-update-test",
+            url: `/api/v1/system-configs/${systemId}`,
             headers: {
                 cookie: `it-hub-session=${authToken}`
             },
@@ -311,7 +302,7 @@ test("System Config API - Update (PUT /api/v1/system-configs/:systemId)", async 
     await t.test("returns 400 for invalid LDAP field", async () => {
         const response = await app.inject({
             method: "PUT",
-            url: "/api/v1/system-configs/api-update-test",
+            url: `/api/v1/system-configs/${systemId}`,
             headers: {
                 cookie: `it-hub-session=${authToken}`
             },
@@ -325,6 +316,7 @@ test("System Config API - Update (PUT /api/v1/system-configs/:systemId)", async 
 });
 
 test("System Config API - Delete (DELETE /api/v1/system-configs/:systemId)", async (t) => {
+    const deleteSystemId = uniqueSystemId("api-delete-test");
     // Create a config first
     await app.inject({
         method: "POST",
@@ -333,7 +325,7 @@ test("System Config API - Delete (DELETE /api/v1/system-configs/:systemId)", asy
             cookie: `it-hub-session=${authToken}`
         },
         payload: {
-            systemId: "api-delete-test",
+            systemId: deleteSystemId,
             usernameLdapField: "mail"
         }
     });
@@ -341,7 +333,7 @@ test("System Config API - Delete (DELETE /api/v1/system-configs/:systemId)", asy
     await t.test("deletes unused system config", async () => {
         const response = await app.inject({
             method: "DELETE",
-            url: "/api/v1/system-configs/api-delete-test",
+            url: `/api/v1/system-configs/${deleteSystemId}`,
             headers: {
                 cookie: `it-hub-session=${authToken}`
             }
@@ -365,8 +357,51 @@ test("System Config API - Delete (DELETE /api/v1/system-configs/:systemId)", asy
     });
 
     await t.test("returns 409 when system in use", async () => {
-        // This test would require creating a credential that uses the system
-        // Skipping for now as it requires credential service integration
+        const blockedSystemId = uniqueSystemId("api-delete-blocked");
+        await app.inject({
+            method: "POST",
+            url: "/api/v1/system-configs",
+            headers: {
+                cookie: `it-hub-session=${authToken}`
+            },
+            payload: {
+                systemId: blockedSystemId,
+                usernameLdapField: "mail"
+            }
+        });
+
+        const targetUser = await prisma.user.create({
+            data: {
+                username: `blocked-owner-${randomUUID()}`,
+                role: "requester"
+            }
+        });
+
+        await prisma.userCredential.create({
+            data: {
+                userId: targetUser.id,
+                systemId: blockedSystemId,
+                username: "blocked-owner@example.test",
+                password: "secret",
+                templateVersion: 1,
+                generatedBy: testUser.id
+            }
+        });
+
+        const response = await app.inject({
+            method: "DELETE",
+            url: `/api/v1/system-configs/${blockedSystemId}`,
+            headers: {
+                cookie: `it-hub-session=${authToken}`
+            }
+        });
+
+        assert.equal(response.statusCode, 409);
+        const body = JSON.parse(response.body);
+        assert.equal(body.type, "/problems/system-in-use");
+        assert.equal(body.credentialCount, 1);
+        assert.ok(Array.isArray(body.affectedUsers));
+        assert.equal(body.affectedUsers[0]?.id, targetUser.id);
     });
 });
 
@@ -394,15 +429,7 @@ test("System Config API - LDAP Fields (GET /api/v1/system-configs/ldap-fields/av
             }
         });
 
-        const sessionResponse = await app.inject({
-            method: "POST",
-            url: "/api/v1/auth/test-session",
-            payload: {
-                userId: regularUser.id
-            }
-        });
-
-        const regularToken = sessionResponse.cookies?.find(c => c.name === "it-hub-session")?.value;
+        const regularToken = await createAuthToken(regularUser);
 
         const response = await app.inject({
             method: "GET",

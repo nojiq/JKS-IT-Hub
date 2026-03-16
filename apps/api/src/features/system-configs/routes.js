@@ -267,6 +267,7 @@ export default async function systemConfigRoutes(app, { config, userRepo, system
                     detail: error.message,
                     systemId: error.systemId,
                     credentialCount: error.credentialCount,
+                    affectedUsers: error.affectedUsers,
                     suggestion: "Remove all credentials for this system before deleting"
                 }));
                 return;

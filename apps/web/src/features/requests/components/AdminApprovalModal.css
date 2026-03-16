@@ -1,0 +1,206 @@
+.admin-approval-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.modal-body-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.detail-section {
+    margin-bottom: 0.5rem;
+}
+
+.section-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+}
+
+.section-content {
+    color: var(--color-text-primary);
+    font-size: 1rem;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+}
+
+.detail-item label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+}
+
+.detail-item div {
+    color: var(--color-text-primary);
+    font-size: 1rem;
+}
+
+.requester-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.dept-tag {
+    padding: 0.125rem 0.5rem;
+    background: var(--color-surface-hover);
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    width: fit-content;
+}
+
+.priority-tag {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.priority-tag.medium {
+    background: var(--color-warning-muted);
+    color: var(--color-warning);
+}
+
+.review-box {
+    background-color: var(--color-success-muted);
+    border: 1px solid var(--color-success);
+    padding: 1rem;
+    border-radius: 12px;
+}
+
+.review-meta {
+    font-size: 0.75rem;
+    color: var(--color-success);
+    margin-bottom: 0.5rem;
+}
+
+.review-content {
+    color: var(--color-text-primary);
+    font-style: italic;
+    white-space: pre-wrap;
+    margin: 0;
+}
+
+.invoice-preview-container {
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    overflow: hidden;
+    max-height: 250px;
+}
+
+.action-area {
+    margin-top: 1rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+}
+
+.btn-approve-primary {
+    background-color: var(--color-success);
+    color: var(--color-success-foreground);
+    border: none;
+    padding: 0.875rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 1rem;
+    min-height: var(--touch-target-min, 44px);
+    width: 100%;
+    transition: all 150ms ease;
+}
+
+.btn-approve-primary:hover {
+    background-color: var(--color-success-hover);
+}
+
+.confirmation-box {
+    background: var(--color-surface-hover);
+    border: 1px solid var(--color-warning);
+    padding: 1.25rem;
+    border-radius: 12px;
+    width: 100%;
+}
+
+.confirmation-box p {
+    margin: 0 0 1.25rem 0;
+    color: var(--color-text-primary);
+    font-weight: 500;
+    text-align: center;
+}
+
+.confirm-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.btn-secondary {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    min-height: var(--touch-target-min, 44px);
+}
+
+.btn-confirm {
+    background: var(--color-success);
+    color: var(--color-success-foreground);
+    border: none;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    min-height: var(--touch-target-min, 44px);
+}
+
+.error-message {
+    color: var(--color-error);
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: var(--color-error-muted);
+    border-radius: 8px;
+    font-size: 0.875rem;
+}
+
+/* Desktop enhancement */
+@media (min-width: 768px) {
+    .detail-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .confirm-buttons {
+        flex-direction: row;
+        justify-content: flex-end;
+    }
+
+    .btn-approve-primary {
+        width: auto;
+        align-self: flex-end;
+    }
+
+    .confirmation-box p {
+        text-align: left;
+    }
+}

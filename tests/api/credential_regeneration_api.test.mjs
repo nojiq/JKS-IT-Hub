@@ -1,414 +1,337 @@
-/**
- * Credential Regeneration API Tests
- * 
- * Integration tests for Story 2.4: Regeneration with Confirmation
- * - POST /api/v1/users/:userId/credentials/regenerate
- * - POST /api/v1/users/:userId/credentials/regenerate/preview
- * - POST /api/v1/users/:userId/credentials/regenerate/confirm
- * - Error handling (403, 400, 422, 410)
- * - RBAC enforcement
- * - Audit logging verification
- */
+import test from "node:test";
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+process.env.DATABASE_URL ??= "mysql://test:test@127.0.0.1:3306/it_hub_test";
 
-describe('Credential Regeneration API', () => {
-  const API_BASE = 'http://localhost:3000/api/v1';
-  let authCookie = '';
-  let testUserId = '';
+const { default: credentialRoutes } = await import("../../apps/api/src/features/credentials/routes.js");
+const {
+  CredentialsLockedError,
+  DisabledUserError,
+  NoChangesDetectedError
+} = await import("../../apps/api/src/features/credentials/service.js");
+import { signSessionToken } from "../../apps/api/src/shared/auth/jwt.js";
 
-  beforeAll(async () => {
-    // Login as IT user
-    const loginResponse = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: 'it_user',
-        password: 'test_password'
-      })
-    });
-    
-    if (loginResponse.ok) {
-      const cookies = loginResponse.headers.get('set-cookie');
-      if (cookies) {
-        authCookie = cookies.split(';')[0];
+const require = createRequire(new URL("../../apps/api/package.json", import.meta.url));
+const Fastify = require("fastify");
+const cookie = require("@fastify/cookie");
+
+const config = {
+  jwt: {
+    secret: "test-secret-test-secret",
+    issuer: "it-hub",
+    audience: "it-hub-web",
+    expiresIn: "1h"
+  },
+  cookie: {
+    name: "it-hub-session",
+    secure: true,
+    sameSite: "lax"
+  }
+};
+
+const actor = {
+  id: "it-actor-1",
+  username: "it-actor",
+  role: "it",
+  status: "active"
+};
+
+const buildApp = async () => {
+  const app = Fastify({ logger: false });
+  await app.register(cookie);
+
+  const previewSessions = new Map();
+  const deletedTokens = [];
+  const auditEntries = [];
+
+  const userRepo = {
+    findUserByUsername: async (username) => (username === actor.username ? actor : null),
+    isUserDisabled: (user) => user?.status === "disabled"
+  };
+
+  const credentialService = {
+    previewCredentialRegeneration: async (userId) => {
+      if (userId === "disabled-user-id") {
+        throw new DisabledUserError(userId);
       }
-    }
-
-    // Create test user or get existing
-    // This would typically be done through a test setup
-    testUserId = 'test-user-id';
-  });
-
-  describe('POST /users/:userId/regenerate', () => {
-    it('should initiate regeneration and return comparison preview', async () => {
-      // This test requires:
-      // 1. Active credential template
-      // 2. User with existing credentials
-      // 3. Changes in LDAP or template
-      
-      const response = await fetch(
-        `${API_BASE}/credential-templates/users/${testUserId}/regenerate`,
-        {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Cookie': authCookie
-          },
-          credentials: 'include'
-        }
-      );
-
-      if (response.status === 200) {
-        const data = await response.json();
-        
-        expect(data.data).toHaveProperty('userId');
-        expect(data.data).toHaveProperty('changeType');
-        expect(data.data).toHaveProperty('comparisons');
-        expect(data.data).toHaveProperty('previewToken');
-        expect(data.data).toHaveProperty('expiresAt');
-        expect(Array.isArray(data.data.comparisons)).toBe(true);
-        
-        // Verify comparison structure
-        if (data.data.comparisons.length > 0) {
-          const comparison = data.data.comparisons[0];
-          expect(comparison).toHaveProperty('system');
-          expect(comparison).toHaveProperty('old');
-          expect(comparison).toHaveProperty('new');
-          expect(comparison).toHaveProperty('changes');
-        }
-      } else if (response.status === 400) {
-        const error = await response.json();
-        expect(error.type).toBe('/problems/no-changes-detected');
+      if (userId === "no-changes-user-id") {
+        throw new NoChangesDetectedError(userId, "2026-02-09T00:00:00.000Z");
       }
-    });
-
-    it('should return 403 for disabled users', async () => {
-      // This test requires a disabled user
-      const disabledUserId = 'disabled-user-id';
-      
-      const response = await fetch(
-        `${API_BASE}/credential-templates/users/${disabledUserId}/regenerate`,
-        {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Cookie': authCookie
-          },
-          credentials: 'include'
-        }
-      );
-
-      expect(response.status).toBe(403);
-      
-      const error = await response.json();
-      expect(error.type).toBe('/problems/regeneration-blocked');
-      expect(error.userStatus).toBe('disabled');
-      expect(error.resolution).toContain('Re-enable');
-    });
-
-    it('should return 403 for non-IT roles', async () => {
-      // Login as non-IT user
-      const requesterLogin = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: 'requester_user',
-          password: 'test_password'
-        })
+      return {
+        userId,
+        changeType: "ldap_update",
+        changedLdapFields: ["mail"],
+        oldTemplateVersion: 1,
+        newTemplateVersion: 2,
+        comparisons: [
+          {
+            system: "email",
+            old: { username: "old@example.com", password: "old" },
+            new: { username: "new@example.com", password: "new" },
+            changes: ["username", "password"],
+            skipped: false,
+            skipReason: null
+          }
+        ],
+        hasLockedCredentials: userId === "locked-user-id",
+        lockedCredentials: userId === "locked-user-id"
+          ? [{ userId, systemId: "email", reason: "policy_lock" }]
+          : []
+      };
+    },
+    storeRegenerationPreview: async (userId, preview) => {
+      const token = `regen-test-${userId}`;
+      previewSessions.set(token, {
+        type: "regeneration",
+        userId,
+        changeType: preview.changeType,
+        newTemplateVersion: preview.newTemplateVersion,
+        comparisons: preview.comparisons,
+        newCredentials: [{ system: "email", username: "new@example.com", password: "new" }],
+        existingCredentialIds: ["cred-1"]
       });
-
-      let requesterCookie = '';
-      if (requesterLogin.ok) {
-        const cookies = requesterLogin.headers.get('set-cookie');
-        if (cookies) {
-          requesterCookie = cookies.split(';')[0];
-        }
+      return token;
+    },
+    getPreviewSession: async (token) => previewSessions.get(token) ?? null,
+    deletePreviewSession: async (token) => {
+      deletedTokens.push(token);
+      previewSessions.delete(token);
+      return true;
+    },
+    confirmRegeneration: async (performedByUserId, previewSession, options = {}) => {
+      if (previewSession.userId === "locked-user-id" && options.skipLocked !== true) {
+        throw new CredentialsLockedError([
+          {
+            userId: "locked-user-id",
+            systemId: "email",
+            reason: "credential_locked"
+          }
+        ]);
       }
 
-      const response = await fetch(
-        `${API_BASE}/credential-templates/users/${testUserId}/regenerate`,
-        {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Cookie': requesterCookie
-          },
-          credentials: 'include'
-        }
-      );
+      return {
+        userId: previewSession.userId,
+        changeType: previewSession.changeType,
+        regeneratedCredentials: [{ system: "email", username: "new@example.com" }],
+        preservedHistory: [{ system: "email", previousUsername: "old@example.com" }],
+        skippedCredentials: options.skipLocked === true
+          ? [{ system: "email", reason: "credential_locked" }]
+          : [],
+        templateVersion: previewSession.newTemplateVersion,
+        forced: options.force === true,
+        performedBy: performedByUserId,
+        performedAt: "2026-02-10T00:00:00.000Z"
+      };
+    }
+  };
 
-      expect(response.status).toBe(403);
-      
-      const error = await response.json();
-      expect(error.detail).toContain('Only IT roles');
-    });
+  const auditRepo = {
+    createAuditLog: async (entry) => {
+      auditEntries.push(entry);
+      return entry;
+    }
+  };
 
-    it('should return 400 when no changes detected', async () => {
-      // This test requires a user with credentials and no changes
-      const noChangesUserId = 'no-changes-user-id';
-      
-      const response = await fetch(
-        `${API_BASE}/credential-templates/users/${noChangesUserId}/regenerate`,
-        {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Cookie': authCookie
-          },
-          credentials: 'include'
-        }
-      );
-
-      if (response.status === 400) {
-        const error = await response.json();
-        expect(error.type).toBe('/problems/no-changes-detected');
-        expect(error.suggestion).toContain('up-to-date');
-      }
-    });
-
-    it('should return 401 when not authenticated', async () => {
-      const response = await fetch(
-        `${API_BASE}/credential-templates/users/${testUserId}/regenerate`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
-
-      expect(response.status).toBe(401);
-    });
+  await app.register(credentialRoutes, {
+    prefix: "/api/v1/credentials",
+    config,
+    userRepo,
+    credentialService,
+    auditRepo
   });
 
-  describe('POST /users/:userId/regenerate/confirm', () => {
-    it('should confirm regeneration and update credentials', async () => {
-      // First, initiate regeneration to get preview token
-      const initiateResponse = await fetch(
-        `${API_BASE}/credential-templates/users/${testUserId}/regenerate`,
-        {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Cookie': authCookie
-          },
-          credentials: 'include'
-        }
-      );
-
-      if (initiateResponse.status !== 200) {
-        // Skip if no changes detected
-        return;
+  const token = await signSessionToken(
+    {
+      subject: actor.id,
+      payload: {
+        username: actor.username,
+        role: actor.role,
+        status: actor.status
       }
+    },
+    config.jwt
+  );
 
-      const initiateData = await initiateResponse.json();
-      const previewToken = initiateData.data.previewToken;
+  return {
+    app,
+    auditEntries,
+    deletedTokens,
+    authHeader: { cookie: `${config.cookie.name}=${token}` }
+  };
+};
 
-      // Confirm regeneration
-      const confirmResponse = await fetch(
-        `${API_BASE}/credential-templates/users/${testUserId}/regenerate/confirm`,
-        {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Cookie': authCookie
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            previewToken,
-            confirmed: true
-          })
-        }
-      );
+test("Credential regeneration routes: success + guardrails", async (t) => {
+  await t.test("POST /users/:id/regenerate returns preview payload", async () => {
+    const { app, authHeader } = await buildApp();
 
-      expect(confirmResponse.status).toBe(201);
-
-      const data = await confirmResponse.json();
-      expect(data.data).toHaveProperty('userId');
-      expect(data.data).toHaveProperty('changeType');
-      expect(data.data).toHaveProperty('regeneratedCredentials');
-      expect(data.data).toHaveProperty('preservedHistory');
-      expect(Array.isArray(data.data.regeneratedCredentials)).toBe(true);
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/credentials/users/user-1/regenerate",
+      headers: authHeader,
+      payload: {}
     });
 
-    it('should return 400 without explicit confirmation', async () => {
-      const response = await fetch(
-        `${API_BASE}/credential-templates/users/${testUserId}/regenerate/confirm`,
-        {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Cookie': authCookie
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            previewToken: 'some-token',
-            confirmed: false
-          })
-        }
-      );
+    assert.equal(response.statusCode, 200);
+    const body = response.json();
+    assert.equal(body.data.userId, "user-1");
+    assert.equal(body.data.changeType, "ldap_update");
+    assert.match(body.data.previewToken, /^regen-test-user-1$/);
+    assert.ok(Array.isArray(body.data.comparisons));
 
-      expect(response.status).toBe(400);
-      
-      const error = await response.json();
-      expect(error.type).toBe('/problems/confirmation-required');
-    });
-
-    it('should return 410 when preview session expired', async () => {
-      const response = await fetch(
-        `${API_BASE}/credential-templates/users/${testUserId}/regenerate/confirm`,
-        {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Cookie': authCookie
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            previewToken: 'expired-token',
-            confirmed: true
-          })
-        }
-      );
-
-      if (response.status === 410) {
-        const error = await response.json();
-        expect(error.type).toBe('/problems/preview-expired');
-        expect(error.detail).toContain('expired');
-      }
-    });
-
-    it('should return 400 when preview token does not match user', async () => {
-      // This test verifies that the preview token is tied to the correct user
-      const otherUserId = 'other-user-id';
-      
-      const response = await fetch(
-        `${API_BASE}/credential-templates/users/${otherUserId}/regenerate/confirm`,
-        {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Cookie': authCookie
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            previewToken: 'token-for-different-user',
-            confirmed: true
-          })
-        }
-      );
-
-      if (response.status === 400) {
-        const error = await response.json();
-        expect(error.detail).toContain('does not match');
-      }
-    });
+    await app.close();
   });
 
-  describe('Audit Logging', () => {
-    it('should log regeneration initiation', async () => {
-      // Initiate regeneration
-      await fetch(
-        `${API_BASE}/credential-templates/users/${testUserId}/regenerate`,
-        {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Cookie': authCookie
-          },
-          credentials: 'include'
-        }
-      );
+  await t.test("POST /users/:id/regenerate returns 422 disabled-user + blocked audit", async () => {
+    const { app, authHeader, auditEntries } = await buildApp();
 
-      // Check audit logs
-      const auditResponse = await fetch(
-        `${API_BASE}/audit-logs?action=credentials.regenerate.initiate`,
-        {
-          headers: { 'Cookie': authCookie },
-          credentials: 'include'
-        }
-      );
-
-      if (auditResponse.ok) {
-        const auditData = await auditResponse.json();
-        const initLog = auditData.data.find(log => 
-          log.action === 'credentials.regenerate.initiate' &&
-          log.entityId === testUserId
-        );
-
-        if (initLog) {
-          expect(initLog.metadata).toHaveProperty('changeType');
-        }
-      }
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/credentials/users/disabled-user-id/regenerate",
+      headers: authHeader,
+      payload: {}
     });
 
-    it('should log blocked regeneration for disabled user', async () => {
-      const disabledUserId = 'disabled-user-id';
-      
-      // Attempt regeneration for disabled user
-      await fetch(
-        `${API_BASE}/credential-templates/users/${disabledUserId}/regenerate`,
-        {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Cookie': authCookie
-          },
-          credentials: 'include'
-        }
-      );
+    assert.equal(response.statusCode, 422);
+    const body = response.json();
+    assert.equal(body.type, "/problems/disabled-user");
+    assert.equal(body.userStatus, "disabled");
 
-      // Check audit logs
-      const auditResponse = await fetch(
-        `${API_BASE}/audit-logs?action=credentials.regenerate.blocked`,
-        {
-          headers: { 'Cookie': authCookie },
-          credentials: 'include'
-        }
-      );
+    const latestAudit = auditEntries.at(-1);
+    assert.equal(latestAudit.action, "credential.regeneration.blocked");
+    assert.equal(latestAudit.metadata.attemptedOperation, "regenerate");
 
-      if (auditResponse.ok) {
-        const auditData = await auditResponse.json();
-        const blockLog = auditData.data.find(log => 
-          log.action === 'credentials.regenerate.blocked' &&
-          log.entityId === disabledUserId
-        );
-
-        if (blockLog) {
-          expect(blockLog.metadata.reason).toBe('user_disabled');
-        }
-      }
-    });
+    await app.close();
   });
 
-  describe('RFC 9457 Problem Details', () => {
-    it('should return valid problem details for errors', async () => {
-      const disabledUserId = 'disabled-user-id';
-      
-      const response = await fetch(
-        `${API_BASE}/credential-templates/users/${disabledUserId}/regenerate`,
-        {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Cookie': authCookie
-          },
-          credentials: 'include'
-        }
-      );
+  await t.test("POST /users/:id/regenerate returns 400 when no changes detected", async () => {
+    const { app, authHeader } = await buildApp();
 
-      if (response.status === 403) {
-        const error = await response.json();
-        
-        // Verify RFC 9457 structure
-        expect(error).toHaveProperty('type');
-        expect(error).toHaveProperty('title');
-        expect(error).toHaveProperty('status');
-        expect(error).toHaveProperty('detail');
-        
-        // Verify content-type header
-        const contentType = response.headers.get('content-type');
-        expect(contentType).toContain('application/problem+json');
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/credentials/users/no-changes-user-id/regenerate",
+      headers: authHeader,
+      payload: {}
+    });
+
+    assert.equal(response.statusCode, 400);
+    const body = response.json();
+    assert.equal(body.type, "/problems/no-changes-detected");
+
+    await app.close();
+  });
+
+  await t.test("POST /users/:id/regenerate/confirm requires explicit confirmation", async () => {
+    const { app, authHeader } = await buildApp();
+
+    const init = await app.inject({
+      method: "POST",
+      url: "/api/v1/credentials/users/user-1/regenerate",
+      headers: authHeader,
+      payload: {}
+    });
+    const { previewToken } = init.json().data;
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/credentials/users/user-1/regenerate/confirm",
+      headers: authHeader,
+      payload: {
+        previewToken,
+        confirmed: false
       }
     });
+
+    assert.equal(response.statusCode, 400);
+    const body = response.json();
+    assert.equal(body.title, "Invalid Input");
+
+    await app.close();
+  });
+
+  await t.test("POST /users/:id/regenerate/confirm returns 410 for missing preview token", async () => {
+    const { app, authHeader } = await buildApp();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/credentials/users/user-1/regenerate/confirm",
+      headers: authHeader,
+      payload: {
+        previewToken: "missing-token",
+        confirmed: true,
+        acknowledgedWarnings: true
+      }
+    });
+
+    assert.equal(response.statusCode, 410);
+    const body = response.json();
+    assert.equal(body.type, "/problems/preview-expired");
+
+    await app.close();
+  });
+
+  await t.test("POST /users/:id/regenerate/confirm returns 422 when credentials are locked", async () => {
+    const { app, authHeader } = await buildApp();
+
+    const init = await app.inject({
+      method: "POST",
+      url: "/api/v1/credentials/users/locked-user-id/regenerate",
+      headers: authHeader,
+      payload: {}
+    });
+    const { previewToken } = init.json().data;
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/credentials/users/locked-user-id/regenerate/confirm",
+      headers: authHeader,
+      payload: {
+        previewToken,
+        confirmed: true,
+        acknowledgedWarnings: true,
+        skipLocked: false
+      }
+    });
+
+    assert.equal(response.statusCode, 422);
+    const body = response.json();
+    assert.equal(body.type, "/problems/credentials-locked");
+
+    await app.close();
+  });
+
+  await t.test("POST /users/:id/regenerate/confirm returns 201 and clears preview", async () => {
+    const { app, authHeader, deletedTokens, auditEntries } = await buildApp();
+
+    const init = await app.inject({
+      method: "POST",
+      url: "/api/v1/credentials/users/user-1/regenerate",
+      headers: authHeader,
+      payload: {}
+    });
+    const { previewToken } = init.json().data;
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/credentials/users/user-1/regenerate/confirm",
+      headers: authHeader,
+      payload: {
+        previewToken,
+        confirmed: true,
+        acknowledgedWarnings: true,
+        skipLocked: true
+      }
+    });
+
+    assert.equal(response.statusCode, 201);
+    const body = response.json();
+    assert.equal(body.data.userId, "user-1");
+    assert.ok(Array.isArray(body.data.regeneratedCredentials));
+    assert.ok(deletedTokens.includes(previewToken));
+
+    const latestAudit = auditEntries.at(-1);
+    assert.equal(latestAudit.action, "credentials.regenerate.confirm");
+
+    await app.close();
   });
 });

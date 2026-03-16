@@ -9,17 +9,17 @@ const parsePayload = async (response) => {
 };
 
 export const fetchTemplates = async () => {
-    const response = await apiFetch("/credential-templates");
+    const response = await apiFetch("/api/v1/credential-templates");
     return parsePayload(response);
 };
 
 export const fetchTemplate = async (id) => {
-    const response = await apiFetch(`/credential-templates/${id}`);
+    const response = await apiFetch(`/api/v1/credential-templates/${id}`);
     return parsePayload(response);
 };
 
 export const createTemplate = async (data) => {
-    const response = await apiFetch("/credential-templates", {
+    const response = await apiFetch("/api/v1/credential-templates", {
         method: "POST",
         body: JSON.stringify(data)
     });
@@ -27,7 +27,7 @@ export const createTemplate = async (data) => {
 };
 
 export const updateTemplate = async (id, data) => {
-    const response = await apiFetch(`/credential-templates/${id}`, {
+    const response = await apiFetch(`/api/v1/credential-templates/${id}`, {
         method: "PUT",
         body: JSON.stringify(data)
     });

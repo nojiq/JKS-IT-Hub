@@ -9,30 +9,22 @@
  */
 
 import { describe, it, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { CredentialExportButton } from '../../apps/web/src/features/exports/components/CredentialExportButton.jsx';
 
 vi.mock('../../apps/web/src/features/exports/api/exports.js', () => ({
   exportCredentials: vi.fn()
 }));
 
-vi.mock('@testing-library/react', async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    waitFor: vi.fn(actual.waitFor)
-  };
-});
-
 describe('CredentialExportButton', () => {
   let mockExportCredentials;
   const userId = 'test-user-123';
   const username = 'testuser';
 
-  beforeEach(() => {
+  beforeEach(async () => {
     const { exportCredentials } = await import('../../apps/web/src/features/exports/api/exports.js');
     mockExportCredentials = exportCredentials;
+    localStorage.clear();
     vi.clearAllMocks();
   });
 
@@ -54,7 +46,7 @@ describe('CredentialExportButton', () => {
     render(<CredentialExportButton userId={userId} username={username} />);
 
     const button = screen.getByRole('button', { name: /export credentials/i });
-    await userEvent.click(button);
+    fireEvent.click(button);
 
     expect(button).toBeDisabled();
     expect(button).toHaveTextContent('Exporting...');
@@ -66,7 +58,7 @@ describe('CredentialExportButton', () => {
     render(<CredentialExportButton userId={userId} username={username} />);
 
     const button = screen.getByRole('button', { name: /export credentials/i });
-    await userEvent.click(button);
+    fireEvent.click(button);
 
     await waitFor(() => {
       const notification = screen.getByText('Credentials exported successfully');
@@ -80,10 +72,10 @@ describe('CredentialExportButton', () => {
     render(<CredentialExportButton userId={userId} username={username} />);
 
     const button = screen.getByRole('button', { name: /export credentials/i });
-    await userEvent.click(button);
+    fireEvent.click(button);
 
     await waitFor(() => {
-      const notification = screen.queryByText(/failed to export/i);
+      const notification = screen.queryByText(/network error/i);
       expect(notification).toBeInTheDocument();
     });
   });
@@ -95,7 +87,7 @@ describe('CredentialExportButton', () => {
     render(<CredentialExportButton userId={userId} username={username} />);
 
     const button = screen.getByRole('button', { name: /export credentials/i });
-    await userEvent.click(button);
+    fireEvent.click(button);
 
     await waitFor(() => {
       const notification = screen.getByText(errorMessage);
@@ -109,8 +101,7 @@ describe('CredentialExportButton', () => {
     render(<CredentialExportButton userId={userId} username={username} />);
 
     const button = screen.getByRole('button', { name: /export credentials/i });
-    
-    await userEvent.click(button);
+    fireEvent.click(button);
     expect(button).toBeDisabled();
 
     await waitFor(() => {
@@ -125,10 +116,10 @@ describe('CredentialExportButton', () => {
     render(<CredentialExportButton userId={userId} username={username} />);
 
     const button = screen.getByRole('button', { name: /export credentials/i });
-    await userEvent.click(button);
+    fireEvent.click(button);
 
     await waitFor(() => {
-      expect(mockExportCredentials).toHaveBeenCalledWith(userId);
+      expect(mockExportCredentials).toHaveBeenCalledWith(userId, 'standard');
     });
   });
 
@@ -145,7 +136,7 @@ describe('CredentialExportButton', () => {
     render(<CredentialExportButton userId={userId} username={username} />);
 
     const button = screen.getByRole('button', { name: /export credentials/i });
-    await userEvent.click(button);
+    fireEvent.click(button);
 
     await waitFor(() => {
       const notification = screen.getByText('Credentials exported successfully');
@@ -153,7 +144,7 @@ describe('CredentialExportButton', () => {
     });
 
     const closeButton = screen.getByRole('button', { name: '×' });
-    await userEvent.click(closeButton);
+    fireEvent.click(closeButton);
 
     await waitFor(() => {
       const notification = screen.queryByText('Credentials exported successfully');

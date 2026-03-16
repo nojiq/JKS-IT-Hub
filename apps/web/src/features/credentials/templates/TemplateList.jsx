@@ -3,7 +3,13 @@ import { Link } from 'react-router-dom';
 import { useTemplates } from '../hooks/useTemplates.js';
 import './templates.css';
 
-export default function TemplateList() {
+export default function TemplateList({
+    pageTitle = 'Credential Templates',
+    pageDescription = '',
+    createLabel = 'Create Template',
+    emptyTitle = 'No credential templates found.',
+    emptyActionLabel = 'Create Your First Template'
+}) {
     const { data: templates, isLoading, error } = useTemplates();
 
     if (isLoading) return <div className="loading">Loading templates...</div>;
@@ -12,8 +18,11 @@ export default function TemplateList() {
     return (
         <div className="template-page">
             <header className="page-header">
-                <h1>Credential Templates</h1>
-                <Link to="new" className="btn btn-primary">Create Template</Link>
+                <div>
+                    <h1>{pageTitle}</h1>
+                    {pageDescription ? <p className="description">{pageDescription}</p> : null}
+                </div>
+                <Link to="new" className="btn btn-primary">{createLabel}</Link>
             </header>
 
             <div className="template-grid">
@@ -28,6 +37,7 @@ export default function TemplateList() {
                         <p className="description">{template.description || "No description provided."}</p>
                         <div className="meta">
                             <span>Version: {template.version}</span>
+                            <span>History: v1 - v{template.version}</span>
                             <span>Updated: {new Date(template.updatedAt).toLocaleDateString()}</span>
                         </div>
                         <div className="actions">
@@ -37,8 +47,8 @@ export default function TemplateList() {
                 ))}
                 {(templates || []).length === 0 && (
                     <div className="empty-state">
-                        <p>No credential templates found.</p>
-                        <Link to="new" className="btn btn-primary">Create Your First Template</Link>
+                        <p>{emptyTitle}</p>
+                        <Link to="new" className="btn btn-primary">{emptyActionLabel}</Link>
                     </div>
                 )}
             </div>

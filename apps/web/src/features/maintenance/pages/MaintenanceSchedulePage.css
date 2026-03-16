@@ -1,0 +1,87 @@
+.maintenance-schedule-page {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.maintenance-schedule-page h1 {
+    font-size: 2rem;
+    margin-bottom: 2rem;
+    color: #202124;
+}
+
+.schedule-generate-section {
+    margin-bottom: 1.5rem;
+    padding: 0.9rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #f9fafb;
+}
+
+.schedule-generate-section h2 {
+    margin: 0 0 0.7rem;
+    font-size: 1rem;
+    color: #111827;
+}
+
+.schedule-generate-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.schedule-generate-empty {
+    color: #4b5563;
+    font-size: 0.95rem;
+}
+
+.maintenance-window-detail-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1100;
+    padding: 1rem;
+}
+
+.maintenance-window-detail-modal {
+    width: min(640px, 100%);
+    max-height: 90vh;
+    overflow: auto;
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    padding: 1rem;
+}
+
+.maintenance-window-detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.maintenance-window-detail-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.maintenance-window-detail-body p {
+    margin: 0 0 0.5rem;
+    color: #374151;
+}
+
+.maintenance-window-detail-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+@media (max-width: 768px) {
+    .maintenance-schedule-page {
+        padding: 1rem;
+    }
+}

@@ -1,7 +1,9 @@
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import fastifySse from "fastify-sse-v2";
+import fastifyMultipart from "@fastify/multipart";
 import { getAuthConfig } from "./config/authConfig.js";
+import { fastifySchedule } from "@fastify/schedule";
 
 const normalizeCorsOrigins = (originValue) => {
   if (originValue === undefined || originValue === null) return [];
@@ -40,8 +42,16 @@ export default async function app(fastify, options) {
   });
   await fastify.register(fastifySse);
 
+  // Register multipart for file uploads
+  await fastify.register(fastifyMultipart, {
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB
+      files: 1 // Only one file per request
+    }
+  });
+
   // Register scheduler
-  await fastify.register(import("./plugins/scheduler.js"));
+  await fastify.register(fastifySchedule);
 
   fastify.get("/health", async () => ({ status: "ok" }));
 
@@ -49,6 +59,16 @@ export default async function app(fastify, options) {
   // Shared Repos
   const userRepo = await import("./features/users/repo.js");
   const auditRepo = await import("./features/audit/repo.js");
+  const requestRepo = await import("./features/requests/repo.js");
+  const maintenanceRepo = await import("./features/maintenance/repo.js");
+
+  // Static file serving for uploads (with authentication)
+  await fastify.register(import("./plugins/staticFiles.js"), {
+    config,
+    userRepo,
+    requestRepo,
+    maintenanceRepo
+  });
 
   // Feature routes will be registered here as they are implemented in future stories
   await fastify.register(import("./features/auth/routes.js"), {
@@ -114,6 +134,16 @@ export default async function app(fastify, options) {
     auditRepo
   });
 
+  // Onboarding routes
+  const onboardingService = await import("./features/onboarding/service.js");
+  await fastify.register(import("./features/onboarding/routes.js"), {
+    prefix: "/api/v1/onboarding",
+    config,
+    userRepo,
+    onboardingService,
+    auditRepo
+  });
+
   // Normalization rules routes
   const normalizationRulesService = await import("./features/normalization-rules/service.js");
   await fastify.register(import("./features/normalization-rules/routes.js"), {
@@ -122,6 +152,47 @@ export default async function app(fastify, options) {
     userRepo,
     normalizationRulesService,
     auditRepo
+  });
+
+  // Maintenance Routes & Jobs
+  const maintenanceService = await import("./features/maintenance/service.js");
+  const { createMaintenanceJob } = await import("./features/maintenance/jobs.js");
+
+  await fastify.register(import("./features/maintenance/routes.js"), {
+    prefix: "/api/v1/maintenance",
+    config,
+    userRepo,
+    maintenanceService,
+    auditRepo
+  });
+
+  const maintenanceJob = createMaintenanceJob({ logger: fastify.log, config });
+  if (maintenanceJob && fastify.scheduler) {
+    fastify.scheduler.addCronJob(maintenanceJob);
+    fastify.log.info("Maintenance scheduled job registered");
+  } else if (!maintenanceJob) {
+    fastify.log.info("Maintenance scheduled job is disabled");
+  } else {
+    fastify.log.warn("Scheduler not available, Maintenance status job NOT registered");
+  }
+
+  // Request Routes
+  await fastify.register(import("./features/requests/routes.js"), {
+    prefix: "/api/v1/requests",
+    config,
+    userRepo,
+    auditRepo
+  });
+
+  // SSE Route
+  const { registerSSERoute } = await import("./features/notifications/sseHandler.js");
+  registerSSERoute(fastify, { config, userRepo });
+
+  // Notification Routes
+  await fastify.register(import("./features/notifications/routes.js"), {
+    prefix: "/api/v1/notifications",
+    config,
+    userRepo
   });
 
   // Export routes

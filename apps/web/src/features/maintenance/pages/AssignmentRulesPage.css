@@ -1,0 +1,38 @@
+.assignment-rules-page {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.page-header h1 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+}
+
+.page-description {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 1rem;
+}
+
+.page-actions {
+    margin-bottom: 1.5rem;
+}
+
+.loading,
+.error-message {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.error-message {
+    color: #dc2626;
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+    border-radius: 4px;
+}

@@ -1,0 +1,247 @@
+.request-review-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.modal-body-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.detail-section {
+    margin-bottom: 0.5rem;
+}
+
+.section-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+}
+
+.section-content {
+    color: var(--color-text-primary);
+    font-size: 1rem;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+}
+
+.detail-item label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+}
+
+.detail-item div {
+    color: var(--color-text-primary);
+    font-size: 1rem;
+}
+
+.requester-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.dept-tag {
+    padding: 0.125rem 0.5rem;
+    background: var(--color-surface-hover);
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    width: fit-content;
+}
+
+.priority-tag {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.priority-tag.urgent {
+    background-color: var(--color-error-muted);
+    color: var(--color-error);
+}
+
+.priority-tag.high {
+    background-color: var(--color-warning-muted);
+    color: var(--color-warning);
+}
+
+.priority-tag.medium {
+    background-color: var(--color-info-muted);
+    color: var(--color-info);
+}
+
+.priority-tag.low {
+    background-color: var(--color-success-muted);
+    color: var(--color-success);
+}
+
+.invoice-preview-container {
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    overflow: hidden;
+    max-height: 250px;
+}
+
+.main-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.btn-action {
+    padding: 0.875rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    color: white;
+    font-size: 1rem;
+    min-height: var(--touch-target-min, 44px);
+    width: 100%;
+    transition: all 150ms ease;
+}
+
+.btn-review {
+    background-color: var(--color-primary);
+}
+
+.btn-review:hover {
+    background-color: var(--color-primary-hover);
+}
+
+.btn-purchased {
+    background-color: var(--color-warning);
+}
+
+.btn-purchased:hover {
+    background-color: var(--color-warning-hover);
+}
+
+.btn-reject {
+    background-color: var(--color-error);
+}
+
+.btn-reject:hover {
+    background-color: var(--color-error-hover);
+}
+
+.action-form {
+    padding: 0.5rem 0;
+}
+
+.action-form h3 {
+    margin-top: 0;
+    margin-bottom: 1.25rem;
+    font-size: 1.1rem;
+    color: var(--color-text-primary);
+}
+
+.action-input {
+    width: 100%;
+    padding: 0.875rem;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    font-family: inherit;
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    font-size: 1rem;
+}
+
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.btn-secondary {
+    padding: 0.75rem 1rem;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    min-height: var(--touch-target-min, 44px);
+}
+
+.btn-submit {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    min-height: var(--touch-target-min, 44px);
+}
+
+.btn-primary {
+    background-color: var(--color-primary);
+}
+
+.btn-warning {
+    background-color: var(--color-warning);
+}
+
+.btn-danger {
+    background-color: var(--color-error);
+}
+
+.error-message {
+    color: var(--color-error);
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background-color: var(--color-error-muted);
+    border-radius: 8px;
+}
+
+/* Desktop enhancement */
+@media (min-width: 768px) {
+    .detail-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 2rem;
+    }
+
+    .main-actions {
+        flex-direction: row;
+        justify-content: flex-end;
+    }
+
+    .btn-action {
+        width: auto;
+    }
+
+    .action-buttons {
+        flex-direction: row;
+        justify-content: flex-end;
+    }
+
+    .btn-secondary,
+    .btn-submit {
+        width: auto;
+        min-width: 120px;
+    }
+}

@@ -51,7 +51,26 @@ const toUsername = (value) => {
   if (!value) {
     return null;
   }
-  return typeof value === "string" ? value : String(value);
+  const normalized = typeof value === "string" ? value : String(value);
+  const trimmed = normalized.trim();
+  return trimmed || null;
+};
+
+const toOptionalRegex = (pattern) => {
+  if (!pattern || typeof pattern !== "string") {
+    return null;
+  }
+
+  try {
+    const regex = new RegExp(pattern);
+    // Avoid stateful behavior if a global regex is provided.
+    if (regex.global) {
+      return new RegExp(regex.source, regex.flags.replace("g", ""));
+    }
+    return regex;
+  } catch {
+    return null;
+  }
 };
 
 const calculateDiff = (oldAttrs, newAttrs) => {
@@ -141,6 +160,18 @@ export const createLdapSyncRunner = ({
   auditRepo,
   eventChannel
 }) => {
+  const isStaleRun = (run) => {
+    const staleAfterMs = config?.ldapSync?.staleAfterMs ?? 60 * 60 * 1000;
+    if (!run || run.status !== "started" || !run.startedAt) {
+      return false;
+    }
+    const startedAt = new Date(run.startedAt);
+    if (Number.isNaN(startedAt.getTime())) {
+      return false;
+    }
+    return Date.now() - startedAt.getTime() > staleAfterMs;
+  };
+
   const publish = (type, run) => {
     if (!eventChannel) {
       return;
@@ -162,6 +193,7 @@ export const createLdapSyncRunner = ({
   const runSync = async (run) => {
     const syncConfig = config.ldapSync;
     const attributes = normalizeAttributes(syncConfig.attributes, syncConfig.usernameAttribute);
+    const excludedUsernameRegex = toOptionalRegex(syncConfig.excludeUsernameRegex);
 
     if (!attributes.length) {
       throw new Error("LDAP sync attributes are not configured");
@@ -186,6 +218,10 @@ export const createLdapSyncRunner = ({
         skippedCount += 1;
         continue;
       }
+      if (excludedUsernameRegex?.test(username)) {
+        skippedCount += 1;
+        continue;
+      }
       entriesWithUsernames.push({ entry, username });
     }
 
@@ -199,23 +235,23 @@ export const createLdapSyncRunner = ({
       const newLdapAttributes = mapEntryAttributes(entry, attributes);
 
       if (existingUser) {
+        const oldLdapAttributes = existingUser.ldapAttributes || {};
+        const changes = calculateDiff(oldLdapAttributes, newLdapAttributes);
+        if (changes.length === 0) {
+          skippedCount += 1;
+          continue;
+        }
+
         updatedCount += 1;
 
-        // Calculate diff and log audit if changed
-        // Ensure we have an ID for the user before logging audit
         if (auditRepo?.createAuditLog && existingUser.id) {
-          const oldLdapAttributes = existingUser.ldapAttributes || {};
-          const changes = calculateDiff(oldLdapAttributes, newLdapAttributes);
-
-          if (changes.length > 0) {
-            await auditRepo.createAuditLog({
-              action: "user.ldap_update",
-              actorUserId: null,
-              entityType: "user",
-              entityId: existingUser.id,
-              metadata: { changes }
-            });
-          }
+          await auditRepo.createAuditLog({
+            action: "user.ldap_update",
+            actorUserId: null,
+            entityType: "user",
+            entityId: existingUser.id,
+            metadata: { changes }
+          });
         }
       } else {
         createdCount += 1;
@@ -245,7 +281,14 @@ export const createLdapSyncRunner = ({
       (await syncRepo.getActiveSyncRun?.()) ??
       (await syncRepo.getLatestSyncRun?.());
 
-    if (activeRun?.status === "started") {
+    if (activeRun?.status === "started" && isStaleRun(activeRun) && syncRepo?.updateSyncRun) {
+      const recovered = await syncRepo.updateSyncRun(activeRun.id, {
+        status: "failed",
+        completedAt: new Date(),
+        errorMessage: "Recovered stale run (app restart or crash)"
+      });
+      publish("failed", recovered);
+    } else if (activeRun?.status === "started") {
       throw new LdapSyncInProgressError();
     }
 

@@ -38,6 +38,32 @@ export const getCredentialCountForSystem = async (systemId, tx = prisma) => {
     });
 };
 
+export const getCredentialUsersForSystem = async (systemId, tx = prisma) => {
+    const rows = await tx.userCredential.findMany({
+        where: {
+            systemId,
+            isActive: true
+        },
+        select: {
+            userId: true,
+            user: {
+                select: {
+                    id: true,
+                    username: true
+                }
+            }
+        },
+        distinct: ["userId"]
+    });
+
+    return rows
+        .map((row) => ({
+            id: row.user?.id ?? row.userId,
+            username: row.user?.username ?? null
+        }))
+        .filter((row) => row.id);
+};
+
 export const getAvailableLdapFields = async (tx = prisma) => {
     const sampleUsers = await tx.user.findMany({
         where: {

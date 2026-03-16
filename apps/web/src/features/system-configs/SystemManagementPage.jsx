@@ -20,6 +20,7 @@ import {
     NormalizationRuleForm,
     NormalizationPreviewer
 } from '../normalization-rules';
+import { useToast } from '../../shared/hooks/useToast.js';
 
 export default function SystemManagementPage() {
     const [activeSystemId, setActiveSystemId] = useState(null); // null means global rules
@@ -27,6 +28,7 @@ export default function SystemManagementPage() {
     const [editingSystem, setEditingSystem] = useState(null);
     const [showRuleForm, setShowRuleForm] = useState(false);
     const [editingRule, setEditingRule] = useState(null);
+    const toast = useToast();
 
     // System Config Queries/Mutations
     const { data: systemsResponse, isLoading: systemsLoading } = useSystemConfigs();
@@ -50,13 +52,35 @@ export default function SystemManagementPage() {
         try {
             if (editingSystem) {
                 await updateSystem.mutateAsync({ systemId: editingSystem.systemId, data });
+                toast.success("System updated", `Updated ${editingSystem.systemId}.`);
             } else {
                 await createSystem.mutateAsync(data);
+                toast.success("System created", `Created ${data.systemId}.`);
             }
             setShowSystemForm(false);
             setEditingSystem(null);
         } catch (err) {
             console.error('System config save failed:', err);
+            toast.error("System save failed", err?.message || "Unable to save system configuration.");
+        }
+    };
+
+    const handleSystemDelete = async (systemId) => {
+        if (!confirm(`Delete system "${systemId}"?`)) return;
+        try {
+            await deleteSystem.mutateAsync(systemId);
+            toast.success("System deleted", `Deleted ${systemId}.`);
+        } catch (err) {
+            console.error('System config delete failed:', err);
+            const userList = err?.problemDetails?.affectedUsers
+                ?.map((user) => user.username || user.id)
+                ?.filter(Boolean)
+                ?.slice(0, 5)
+                ?.join(", ");
+            const detail = userList
+                ? `In use by: ${userList}`
+                : (err?.message || "Unable to delete system configuration.");
+            toast.error("Delete blocked", detail);
         }
     };
 
@@ -122,7 +146,7 @@ export default function SystemManagementPage() {
                             configs={systems}
                             onCreate={() => { setEditingSystem(null); setShowSystemForm(true); }}
                             onEdit={(sys) => { setEditingSystem(sys); setShowSystemForm(true); }}
-                            onDelete={(id) => { if (confirm('Are you sure?')) deleteSystem.mutate(id); }}
+                            onDelete={handleSystemDelete}
                         />
                     </section>
 

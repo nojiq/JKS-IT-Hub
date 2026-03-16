@@ -36,7 +36,9 @@ const envSchema = z.object({
   LDAP_SYNC_FILTER: z.string().min(1),
   LDAP_SYNC_ATTRIBUTES: z.string().min(1),
   LDAP_SYNC_USERNAME_ATTRIBUTE: z.string().min(1),
+  LDAP_SYNC_EXCLUDE_USERNAME_REGEX: z.string().optional(),
   LDAP_SYNC_PAGE_SIZE: z.string().optional(),
+  LDAP_SYNC_STALE_AFTER_MINUTES: z.string().optional(),
   LDAP_USE_STARTTLS: z.string().optional(),
   LDAP_REJECT_UNAUTHORIZED: z.string().optional(),
   LDAP_TLS_CA_PATH: z.string().optional(),
@@ -46,11 +48,18 @@ const envSchema = z.object({
   JWT_EXPIRES_IN: z.string().min(1),
   AUTH_COOKIE_NAME: z.string().optional(),
   AUTH_COOKIE_SECURE: z.string().optional(),
-  CORS_ORIGIN: z.string().optional()
+  CORS_ORIGIN: z.string().optional(),
+  MAINTENANCE_SCHEDULE_ENABLED: z.string().optional(),
+  MAINTENANCE_SCHEDULE_CRON: z.string().optional(),
+  MAINTENANCE_SCHEDULE_TIMEZONE: z.string().optional(),
+  MAINTENANCE_SCHEDULE_RETRY_ATTEMPTS: z.string().optional(),
+  MAINTENANCE_SCHEDULE_RETRY_DELAY_MS: z.string().optional()
 });
 
 export const getAuthConfig = () => {
   const env = envSchema.parse(process.env);
+  const staleMinutesRaw = toNumber(env.LDAP_SYNC_STALE_AFTER_MINUTES);
+  const staleMinutes = staleMinutesRaw ? Math.max(1, staleMinutesRaw) : 60;
 
   return {
     ldap: {
@@ -80,10 +89,19 @@ export const getAuthConfig = () => {
       filter: env.LDAP_SYNC_FILTER,
       attributes: toCsvList(env.LDAP_SYNC_ATTRIBUTES),
       usernameAttribute: env.LDAP_SYNC_USERNAME_ATTRIBUTE,
-      pageSize: toNumber(env.LDAP_SYNC_PAGE_SIZE)
+      excludeUsernameRegex: env.LDAP_SYNC_EXCLUDE_USERNAME_REGEX,
+      pageSize: toNumber(env.LDAP_SYNC_PAGE_SIZE),
+      staleAfterMs: staleMinutes * 60 * 1000
     },
     cors: {
-      origin: env.CORS_ORIGIN ?? "http://localhost:5173"
+      origin: env.CORS_ORIGIN ?? "http://localhost:5176"
+    },
+    maintenance: {
+      enabled: toBoolean(env.MAINTENANCE_SCHEDULE_ENABLED, true),
+      schedule: env.MAINTENANCE_SCHEDULE_CRON ?? "0 0 * * *",
+      timezone: env.MAINTENANCE_SCHEDULE_TIMEZONE ?? "UTC",
+      retryAttempts: toNumber(env.MAINTENANCE_SCHEDULE_RETRY_ATTEMPTS) ?? 3,
+      retryDelayMs: toNumber(env.MAINTENANCE_SCHEDULE_RETRY_DELAY_MS) ?? 1000
     }
   };
 };

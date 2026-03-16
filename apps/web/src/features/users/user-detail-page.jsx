@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { fetchSession } from "./auth-api.js";
-import { fetchUserDetail, fetchUserHistory } from "./users-api.js";
+import { fetchUserDetail, fetchUserHistory, updateUserStatus } from "./users-api.js";
 import { CredentialRegeneration } from "../credentials/regeneration";
 import { useInitiateRegeneration, useConfirmRegeneration, useUnlockCredential } from "../credentials/hooks/useCredentials.js";
 import { useUserCredentials } from "../credentials/hooks/useCredentials.js";
 import CredentialList from "../credentials/components/CredentialList.jsx";
 import DisabledUserBanner from "../credentials/components/DisabledUserBanner.jsx";
+import CredentialGenerator from "../credentials/generation/CredentialGenerator.jsx";
 import { CredentialExportButton } from "../exports/components/CredentialExportButton.jsx";
 
 const formatValue = (value) => {
@@ -39,6 +40,7 @@ export default function UserDetailPage() {
   const navigate = useNavigate();
   const [showRegeneration, setShowRegeneration] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
+  const queryClient = useQueryClient();
 
   const sessionQuery = useQuery({
     queryKey: ["session"],
@@ -64,6 +66,17 @@ export default function UserDetailPage() {
   const confirmRegeneration = useConfirmRegeneration();
   const unlockCredential = useUnlockCredential();
   const canManageCredentials = sessionQuery.data?.role && ['it', 'admin', 'head_it'].includes(sessionQuery.data.role);
+  const canEnableUsers = sessionQuery.data?.role && ['admin', 'head_it'].includes(sessionQuery.data.role);
+  const updateUserStatusMutation = useMutation({
+    mutationFn: ({ userId, status }) => updateUserStatus(userId, status),
+    onSuccess: async () => {
+      await Promise.all([
+        userQuery.refetch(),
+        credentialsQuery.refetch()
+      ]);
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    }
+  });
 
   const payload = userQuery.data ?? { user: null, fields: [] };
   const user = payload.user;
@@ -88,6 +101,11 @@ export default function UserDetailPage() {
       navigate("/login", { replace: true });
     }
   }, [navigate, sessionQuery.data, sessionQuery.isLoading]);
+
+  const handleEnableUser = async () => {
+    if (!canEnableUsers || updateUserStatusMutation.isPending) return;
+    await updateUserStatusMutation.mutateAsync({ userId: id, status: "active" });
+  };
 
   if (sessionQuery.isLoading) {
     return <p className="status-text">Checking session…</p>;
@@ -150,7 +168,7 @@ export default function UserDetailPage() {
           <p className="users-alert-title">LDAP sync has not run yet.</p>
           <p className="users-alert-text">
             Run manual sync to populate LDAP fields.
-            <Link className="users-alert-link" to="/">
+            <Link className="users-alert-link" to="/users">
               Go to sync panel
             </Link>
           </p>
@@ -211,15 +229,21 @@ export default function UserDetailPage() {
               <div className="user-detail-credentials-header">
                 <h3>Credentials</h3>
                 <div className="credentials-actions">
-                  {credentialsQuery.data?.data?.length > 0 && canManageCredentials && (
+                  {canManageCredentials && (
                     <>
-                      <Link
-                        className="btn btn-secondary"
-                        to={`/users/${id}/credentials/history`}
-                      >
-                        View History
-                      </Link>
-                      <CredentialExportButton userId={id} username={user.username} />
+                      {credentialsQuery.data?.data?.length > 0 && (
+                        <Link
+                          className="btn btn-secondary"
+                          to={`/users/${id}/credentials/history`}
+                        >
+                          View History
+                        </Link>
+                      )}
+                      <CredentialExportButton
+                        userId={id}
+                        username={user.username}
+                        credentials={credentialsQuery.data?.data || []}
+                      />
                     </>
                   )}
                   {canManageCredentials && (
@@ -240,26 +264,36 @@ export default function UserDetailPage() {
                 </div>
               </div>
 
-              <DisabledUserBanner
-                userName={user.username}
-                userStatus={user.status}
-                canEnableUser={sessionQuery.data?.role && ['it', 'admin', 'head_it'].includes(sessionQuery.data.role)}
-              />
-
-              {credentialsQuery.isLoading ? (
-                <p className="credentials-loading">Loading credentials...</p>
-              ) : credentialsQuery.error ? (
-                <p className="credentials-error">Unable to load credentials</p>
-              ) : credentialsQuery.data?.data?.length > 0 ? (
-                <CredentialList
-                  credentials={credentialsQuery.data.data}
+              {canManageCredentials ? (
+                <CredentialGenerator
                   userId={id}
                   userName={user.username}
-                  userEmail={user.ldapFields?.mail}
-                  canManageLocks={canManageCredentials}
+                  userStatus={user.status}
+                  canEnableUser={canEnableUsers}
+                  onEnableUser={canEnableUsers ? handleEnableUser : undefined}
                 />
               ) : (
-                <p className="credentials-empty">No active credentials for this user.</p>
+                <>
+                  <DisabledUserBanner
+                    userName={user.username}
+                    userStatus={user.status}
+                  />
+                  {credentialsQuery.isLoading ? (
+                    <p className="credentials-loading">Loading credentials...</p>
+                  ) : credentialsQuery.error ? (
+                    <p className="credentials-error">Unable to load credentials</p>
+                  ) : credentialsQuery.data?.data?.length > 0 ? (
+                    <CredentialList
+                      credentials={credentialsQuery.data.data}
+                      userId={id}
+                      userName={user.username}
+                      userEmail={user.ldapFields?.mail}
+                      canManageLocks={canManageCredentials}
+                    />
+                  ) : (
+                    <p className="credentials-empty">No active credentials for this user.</p>
+                  )}
+                </>
               )}
             </div>
 
@@ -320,6 +354,7 @@ export default function UserDetailPage() {
                 onInitiateRegeneration={initiateRegeneration.mutateAsync}
                 onConfirmRegeneration={confirmRegeneration.mutateAsync}
                 onUnlockCredential={unlockCredential.mutateAsync}
+                onEnableUser={canEnableUsers ? handleEnableUser : undefined}
                 onCancel={() => setShowRegeneration(false)}
                 onSuccess={() => {
                   setShowRegeneration(false);

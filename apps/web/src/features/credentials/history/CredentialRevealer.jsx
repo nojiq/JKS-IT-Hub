@@ -26,7 +26,11 @@ function CredentialRevealer({ versionId, maskedValue = '••••••••
   const handleConfirmReveal = async () => {
     try {
       const result = await revealMutation.mutateAsync({ versionId });
-      setPassword(result.password);
+      const revealedPassword = result?.data?.password?.revealed ?? null;
+      if (typeof revealedPassword !== 'string') {
+        throw new Error('Password reveal response missing value');
+      }
+      setPassword(revealedPassword);
       setRevealed(true);
       setShowConfirmation(false);
     } catch (error) {

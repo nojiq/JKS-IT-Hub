@@ -176,7 +176,7 @@ test("Locked credential prevents regeneration", async () => {
     const vpnComparison = preview.comparisons.find(c => c.system === "vpn");
 
     assert.equal(emailComparison.skipped, true, "Email should be skipped (locked)");
-    assert.equal(emailComparison.skipReason, "Credential is locked");
+    assert.equal(emailComparison.skipReason, "credential_locked");
 
     assert.equal(vpnComparison.skipped, false, "VPN should NOT be skipped");
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import './CredentialPreview.css';
 import SystemCredentials from './SystemCredentials.jsx';
 import ConfirmationForm from './ConfirmationForm.jsx';
@@ -27,7 +27,7 @@ import ConfirmationForm from './ConfirmationForm.jsx';
  * @param {Error} props.error - Error object if confirmation failed
  */
 function CredentialPreview({ previewData, onConfirm, onCancel, isLoading, error }) {
-  const { userId, credentials, templateVersion, previewToken, expiresAt } = previewData;
+  const { userId, credentials, templateVersion, previewToken, expiresAt, metadata } = previewData;
   const [confirmed, setConfirmed] = useState(false);
   
   // Group credentials by system
@@ -51,7 +51,7 @@ function CredentialPreview({ previewData, onConfirm, onCancel, isLoading, error 
   const [timeRemaining, setTimeRemaining] = useState(getTimeRemaining());
 
   // Update time remaining every minute
-  useState(() => {
+  useEffect(() => {
     const interval = setInterval(() => {
       setTimeRemaining(getTimeRemaining());
     }, 60000);
@@ -83,6 +83,13 @@ function CredentialPreview({ previewData, onConfirm, onCancel, isLoading, error 
               Please review all credentials carefully before confirming. 
               Once confirmed, credentials will be saved and activated immediately.
             </p>
+            {metadata?.systemId ? (
+              <p>
+                Scope: <strong>{metadata.systemId}</strong> using username field{" "}
+                <strong>{metadata.usernameFieldUsed ?? "mail"}</strong>
+                {metadata.isFallback ? " (default fallback in use)" : ""}.
+              </p>
+            ) : null}
           </div>
 
           {error && (

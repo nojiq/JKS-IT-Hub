@@ -1,0 +1,52 @@
+.filter-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.filter-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.filter-select {
+    min-height: var(--touch-target-min, 44px);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    font-size: 0.95rem;
+    padding: 0.55rem 0.7rem;
+    font-family: inherit;
+}
+
+.filter-select:focus {
+    outline: 2px solid var(--color-primary-muted);
+    outline-offset: 1px;
+    border-color: var(--color-primary);
+}
+
+.date-range-container {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.date-input {
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    width: 100%;
+}
+
+.date-input:focus {
+    outline: 2px solid var(--color-primary-muted);
+    outline-offset: 1px;
+    border-color: var(--color-primary);
+}

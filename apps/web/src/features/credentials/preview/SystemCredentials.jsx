@@ -14,9 +14,8 @@ import './CredentialPreview.css';
  * @param {string} props.credentials[].password - Password for the credential
  * @param {string} props.credentials[].ldapSources - Object mapping field names to LDAP source fields
  * @param {Object} props.credentials[].generationMetadata - Metadata about how credential was generated (Story 2.7)
- * @param {string} props.credentials[].generationMetadata.usernameField - LDAP field used for username
- * @param {boolean} props.credentials[].generationMetadata.usingDefault - Whether default fallback was used
- * @param {boolean} props.credentials[].generationMetadata.normalized - Whether normalization was applied
+ * @param {string} props.credentials[].generationMetadata.usernameFieldUsed - LDAP field used for username
+ * @param {boolean} props.credentials[].generationMetadata.isFallback - Whether default fallback was used
  */
 function SystemCredentials({ system, credentials }) {
   const [revealedPasswords, setRevealedPasswords] = useState({});
@@ -42,6 +41,9 @@ function SystemCredentials({ system, credentials }) {
 
   // Get generation metadata from first credential (applies to all in system)
   const metadata = credentials[0]?.generationMetadata;
+  const usernameFieldLabel = metadata?.usernameFieldUsed ?? metadata?.usernameField ?? 'mail';
+  const usingFallback = Boolean(metadata?.isFallback ?? metadata?.usingDefault);
+  const hasNormalization = Boolean((metadata?.normalizationRulesApplied || []).length);
 
   return (
     <div className="system-credentials">
@@ -49,19 +51,19 @@ function SystemCredentials({ system, credentials }) {
       
       {/* Story 2.7: Show username field source and fallback warning */}
       {metadata && (
-        <div className={`generation-metadata ${metadata.usingDefault ? 'fallback-warning' : ''}`}>
+        <div className={`generation-metadata ${usingFallback ? 'fallback-warning' : ''}`}>
           <div className="metadata-row">
             <span className="metadata-label">Username Source:</span>
             <span className="metadata-value">
-              {metadata.usernameField || 'mail'}
-              {metadata.usingDefault && (
+              {usernameFieldLabel}
+              {usingFallback && (
                 <span className="fallback-badge" title="No system configuration found, using default">
                   ⚠️ Default
                 </span>
               )}
             </span>
           </div>
-          {metadata.normalized && (
+          {hasNormalization && (
             <div className="metadata-row">
               <span className="metadata-label">Normalization:</span>
               <span className="metadata-value normalized-badge">
@@ -73,7 +75,7 @@ function SystemCredentials({ system, credentials }) {
       )}
 
       {/* Fallback warning banner */}
-      {metadata?.usingDefault && (
+      {usingFallback && (
         <div className="fallback-warning-banner">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
@@ -82,7 +84,7 @@ function SystemCredentials({ system, credentials }) {
           </svg>
           <span>
             No system configuration found for '{system}'. Using default 'mail' field for username.
-            <a href="/system-configs" target="_blank" rel="noopener noreferrer">
+            <a href="/systems" target="_blank" rel="noopener noreferrer">
               Configure system →
             </a>
           </span>

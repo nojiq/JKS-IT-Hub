@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import LdapFieldSelector from './LdapFieldSelector.jsx';
 
 const DEFAULT_FORM_DATA = {
     systemId: '',
@@ -10,6 +11,7 @@ const DEFAULT_FORM_DATA = {
 const SystemConfigForm = ({ initialData = null, onSubmit, onCancel, isSubmitting, availableFields = [] }) => {
     const [formData, setFormData] = useState(DEFAULT_FORM_DATA);
     const isEditing = !!initialData;
+    const isImapSystem = isEditing && formData.systemId.toLowerCase() === "imap";
 
     useEffect(() => {
         if (initialData) {
@@ -62,19 +64,13 @@ const SystemConfigForm = ({ initialData = null, onSubmit, onCancel, isSubmitting
 
                 <div className="form-group">
                     <label htmlFor="usernameLdapField">Username LDAP Field *</label>
-                    <select
-                        id="usernameLdapField"
-                        name="usernameLdapField"
-                        className="form-control"
-                        value={formData.usernameLdapField}
-                        onChange={handleChange}
-                        required
-                    >
-                        <option value="">Select LDAP field...</option>
-                        {availableFields.map(field => (
-                            <option key={field} value={field}>{field}</option>
-                        ))}
-                    </select>
+                    <LdapFieldSelector
+                        availableFields={availableFields}
+                        selectedField={formData.usernameLdapField}
+                        onSelect={(field) => setFormData((prev) => ({ ...prev, usernameLdapField: field }))}
+                        placeholder="Select LDAP field..."
+                        disabled={isSubmitting}
+                    />
                     <p className="form-hint">The LDAP attribute to use as the source for username generation.</p>
                 </div>
 
@@ -98,12 +94,18 @@ const SystemConfigForm = ({ initialData = null, onSubmit, onCancel, isSubmitting
                             name="isItOnly"
                             checked={formData.isItOnly}
                             onChange={handleChange}
+                            disabled={isSubmitting || isImapSystem}
                         />
                         IT-Only Access
                     </label>
                     {formData.isItOnly && (
                         <p className="form-hint warning">
                             ⚠️ This system's credentials will only be visible to IT staff and excluded from common exports.
+                        </p>
+                    )}
+                    {isImapSystem && (
+                        <p className="form-hint">
+                            IMAP access is system-enforced and cannot be changed for the built-in IMAP configuration.
                         </p>
                     )}
                 </div>

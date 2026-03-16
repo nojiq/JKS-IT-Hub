@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+const systemIdSchema = z
+    .string()
+    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "systemId must be kebab-case");
+
 export const templateStructureSchema = z.object({
     systems: z.array(z.string()).min(1, "At least one system is required"),
     fields: z.array(z.object({
@@ -33,12 +37,14 @@ export const updateTemplateSchema = z.object({
     description: z.string().optional(),
     structure: templateStructureSchema.optional(),
     isActive: z.boolean().optional()
-});
+}).refine(
+    (data) => Object.keys(data).length > 0,
+    "At least one field must be provided for update"
+);
 
 // Preview and Confirm Schemas
 export const previewRequestSchema = z.object({
-    // Preview request doesn't require body parameters
-    // UserId comes from URL params
+    systemId: systemIdSchema.optional()
 });
 
 export const confirmCredentialsSchema = z.object({
@@ -51,9 +57,8 @@ export const confirmCredentialsSchema = z.object({
 
 // Regeneration Schemas (Story 2.4)
 export const regenerateRequestSchema = z.object({
-    // Regeneration request doesn't require body parameters
-    // UserId comes from URL params
-    reason: z.string().optional() // Optional reason for regeneration
+    reason: z.string().optional(), // Optional reason for regeneration
+    systemId: systemIdSchema.optional()
 });
 
 export const confirmRegenerationSchema = z.object({
@@ -96,7 +101,13 @@ export const versionIdSchema = z.object({
 export const compareVersionsSchema = z.object({
     versionId1: z.string().uuid("Invalid version ID 1 format"),
     versionId2: z.string().uuid("Invalid version ID 2 format")
-});
+}).refine(
+    (data) => data.versionId1 !== data.versionId2,
+    {
+        message: "versionId1 and versionId2 must be different",
+        path: ["versionId2"]
+    }
+);
 
 // Credential Override Schemas (Story 2.6)
 
@@ -122,5 +133,4 @@ export const lockCredentialSchema = z.object({
 });
 
 export const unlockCredentialSchema = z.object({
-});
 });

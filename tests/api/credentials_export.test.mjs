@@ -13,7 +13,6 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import { prisma } from "../../apps/api/src/features/audit/repo.js";
-import { createUser } from "../../apps/api/src/features/users/repo.js";
 import { signSessionToken } from "../../apps/api/src/shared/auth/jwt.js";
 
 const require = createRequire(new URL("../../apps/api/package.json", import.meta.url));
@@ -204,6 +203,23 @@ test.describe('Credential Export API Integration', () => {
         assert.ok(body.includes('Systems: 0'));
     });
 
+    test('should complete single-user export within 5 seconds under normal load', async () => {
+        const startedAt = Date.now();
+
+        const response = await app.inject({
+            method: 'GET',
+            url: `/api/v1/users/${testItUser.id}/credentials/export`,
+            headers: {
+                cookie: itSessionCookie
+            }
+        });
+
+        const durationMs = Date.now() - startedAt;
+
+        assert.strictEqual(response.statusCode, 200);
+        assert.ok(durationMs < 5000, `Export exceeded 5s SLA: ${durationMs}ms`);
+    });
+
     test('should set proper headers', async () => {
         const response = await app.inject({
             method: 'GET',
@@ -257,6 +273,80 @@ test.describe('Credential Export API Integration', () => {
         assert.ok(body.includes('User:'));
         assert.ok(body.includes('Systems: 0'));
         assert.ok(body.includes('End of export'));
+    });
+
+    test('should exclude IMAP credentials from export output', async () => {
+        const targetUser = await prisma.user.create({
+            data: {
+                username: `test-export-target-${randomUUID()}`,
+                role: 'requester',
+                status: 'active',
+                ldapAttributes: { mail: 'test-export-target@example.com' }
+            }
+        });
+
+        const normalSystemId = `export-normal-${randomUUID().slice(0, 8)}`;
+        const imapSystemId = `imap-${randomUUID().slice(0, 8)}`;
+
+        await prisma.systemConfig.create({
+            data: {
+                systemId: normalSystemId,
+                usernameLdapField: 'mail',
+                isItOnly: false,
+                description: 'Primary System'
+            }
+        });
+
+        await prisma.systemConfig.create({
+            data: {
+                systemId: imapSystemId,
+                usernameLdapField: 'mail',
+                isItOnly: true,
+                description: 'IMAP'
+            }
+        });
+
+        await prisma.userCredential.create({
+            data: {
+                userId: targetUser.id,
+                systemId: normalSystemId,
+                username: 'normal-user',
+                password: 'normal-password',
+                templateVersion: 1,
+                generatedBy: testItUser.id,
+                isActive: true
+            }
+        });
+
+        await prisma.userCredential.create({
+            data: {
+                userId: targetUser.id,
+                systemId: imapSystemId,
+                username: 'imap-user',
+                password: 'imap-password',
+                templateVersion: 1,
+                generatedBy: testItUser.id,
+                isActive: true
+            }
+        });
+
+        const response = await app.inject({
+            method: 'GET',
+            url: `/api/v1/users/${targetUser.id}/credentials/export`,
+            headers: {
+                cookie: itSessionCookie
+            }
+        });
+
+        assert.strictEqual(response.statusCode, 200);
+        const body = response.payload;
+
+        assert.ok(body.includes('Primary System'));
+        assert.ok(body.includes('normal-user'));
+        assert.ok(body.includes('normal-password'));
+        assert.ok(!body.toLowerCase().includes('imap'));
+        assert.ok(!body.includes('imap-user'));
+        assert.ok(!body.includes('imap-password'));
     });
 
     test('should create audit log on export', async () => {

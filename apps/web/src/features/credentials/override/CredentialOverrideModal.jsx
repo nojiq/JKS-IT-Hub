@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import './CredentialOverrideModal.css';
 
 const CredentialOverrideModal = ({ 
@@ -21,15 +21,16 @@ const CredentialOverrideModal = ({
     const [preview, setPreview] = useState(null);
     const [error, setError] = useState(null);
 
-    // Reset state when modal opens with new credential
-    if (isOpen && credential && preview?.currentCredential?.id !== credential.id) {
+    // Reset state when opening the modal or switching target credential.
+    useEffect(() => {
+        if (!isOpen || !credential) return;
         setUsername(credential.username || '');
         setPassword('');
         setReason('');
         setShowPassword(false);
         setPreview(null);
         setError(null);
-    }
+    }, [isOpen, credential?.id, credential?.username]);
 
     if (!isOpen || !credential) return null;
 
