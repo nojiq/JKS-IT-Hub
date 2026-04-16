@@ -90,6 +90,7 @@ describe('ReviewRequestsPage', () => {
 
         expect(container.querySelector('.workspace-filter-bar')).toBeInTheDocument();
         expect(container.querySelector('.workspace-table-container')).toBeInTheDocument();
+        expect(container.querySelector('.workspace-panel.workspace-panel-table')).toBeInTheDocument();
         expect(container.querySelector('.workspace-table thead th')).toBeInTheDocument();
         expect(screen.queryByText('1 selected')).not.toBeInTheDocument();
 

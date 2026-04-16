@@ -6,6 +6,7 @@ import { useSSE } from '../../../shared/hooks/useSSE.js';
 import { SearchInput } from '../../../shared/components/SearchInput/SearchInput';
 import { DataStateBlock } from '../../../shared/workspace/DataStateBlock';
 import { WorkspacePageHeader } from '../../../shared/workspace/WorkspacePageHeader';
+import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel';
 import { DesktopFilterBar } from '../../../shared/workspace/DesktopFilterBar';
 import { BulkActionsBar } from '../../../shared/workspace/BulkActionsBar';
 import { useSharedFilters } from '../../../shared/workspace/useSharedFilters';
@@ -217,6 +218,33 @@ const ReviewRequestsPage = () => {
             </BulkActionsBar>
 
             {requests.length > 0 ? (
+                <WorkspacePanel
+                    variant="table"
+                    title="Request Queue"
+                    meta={meta.total ? `${meta.total} requests ready for review` : 'Request queue'}
+                    className="requests-queue-panel"
+                    footer={meta && meta.totalPages > 1 ? (
+                        <div className="pagination">
+                            <button
+                                className="workspace-inline-button"
+                                disabled={meta.page <= 1}
+                                onClick={() => filterContract.setFilter('page', String(Number(meta.page) - 1))}
+                                type="button"
+                            >
+                                Previous
+                            </button>
+                            <span>Page {meta.page} of {meta.totalPages}</span>
+                            <button
+                                className="workspace-inline-button"
+                                disabled={meta.page >= meta.totalPages}
+                                onClick={() => filterContract.setFilter('page', String(Number(meta.page) + 1))}
+                                type="button"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    ) : null}
+                >
                 <div className="workspace-table-container requests-table-container">
                     <table className="workspace-table requests-table" aria-label="Review requests table">
                         <thead>
@@ -288,33 +316,12 @@ const ReviewRequestsPage = () => {
                         </tbody>
                     </table>
                 </div>
+                </WorkspacePanel>
             ) : filterContract.filters.search || filterContract.hasActiveFilters ? (
                 <SearchEmptyState searchTerm={filterContract.filters.search} onClear={filterContract.reset} />
             ) : (
                 <DataStateBlock variant="empty" title="No requests found" description="No requests match your current review queue." />
             )}
-
-            {meta && meta.totalPages > 1 ? (
-                <div className="pagination">
-                    <button
-                        className="workspace-inline-button"
-                        disabled={meta.page <= 1}
-                        onClick={() => filterContract.setFilter('page', String(Number(meta.page) - 1))}
-                        type="button"
-                    >
-                        Previous
-                    </button>
-                    <span>Page {meta.page} of {meta.totalPages}</span>
-                    <button
-                        className="workspace-inline-button"
-                        disabled={meta.page >= meta.totalPages}
-                        onClick={() => filterContract.setFilter('page', String(Number(meta.page) + 1))}
-                        type="button"
-                    >
-                        Next
-                    </button>
-                </div>
-            ) : null}
 
             {selectedRequestId ? (
                 <RequestReviewModal

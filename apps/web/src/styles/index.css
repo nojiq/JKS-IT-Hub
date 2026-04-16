@@ -527,15 +527,6 @@ body {
   text-decoration: underline;
 }
 
-.users-table-scroll {
-  background: var(--surface-card);
-  border: 1px solid var(--border-color);
-  border-radius: 18px;
-  padding: 1rem;
-  overflow-x: auto;
-  box-shadow: var(--shadow-md);
-}
-
 .users-table {
   width: 100%;
   border-collapse: collapse;
@@ -574,22 +565,6 @@ body {
   font-size: 0.8rem;
   color: var(--text-muted);
   margin-top: 0.25rem;
-}
-
-.users-empty {
-  padding: 2rem;
-  text-align: center;
-  background: var(--surface-card);
-  border-radius: 18px;
-  border: 1px dashed var(--border-color-strong);
-}
-
-.user-detail-card {
-  background: var(--surface-card);
-  border-radius: 20px;
-  border: 1px solid var(--border-color);
-  padding: 1.5rem;
-  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.12);
 }
 
 .user-detail-meta {

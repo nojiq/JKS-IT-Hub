@@ -9,6 +9,7 @@ import { WorkspacePageHeader } from '../../../shared/workspace/WorkspacePageHead
 import { DesktopFilterBar } from '../../../shared/workspace/DesktopFilterBar';
 import { BulkActionsBar } from '../../../shared/workspace/BulkActionsBar';
 import { DataStateBlock } from '../../../shared/workspace/DataStateBlock';
+import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel';
 import '../../../shared/workspace/workspace.css';
 import './AdminApprovalPage.css';
 
@@ -144,6 +145,33 @@ const AdminApprovalPage = () => {
             </BulkActionsBar>
 
             {requests.length > 0 ? (
+                <WorkspacePanel
+                    variant="table"
+                    title="Approval Queue"
+                    meta={meta.total ? `${meta.total} requests ready for approval` : 'Approval queue'}
+                    className="approvals-queue-panel"
+                    footer={meta && meta.totalPages > 1 ? (
+                        <div className="pagination">
+                            <button
+                                className="workspace-inline-button"
+                                disabled={meta.page <= 1}
+                                onClick={() => filterContract.setFilter('page', String(Number(meta.page) - 1))}
+                                type="button"
+                            >
+                                Previous
+                            </button>
+                            <span>Page {meta.page} of {meta.totalPages}</span>
+                            <button
+                                className="workspace-inline-button"
+                                disabled={meta.page >= meta.totalPages}
+                                onClick={() => filterContract.setFilter('page', String(Number(meta.page) + 1))}
+                                type="button"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    ) : null}
+                >
                 <div className="workspace-table-container requests-table-container">
                     <table className="workspace-table requests-table" aria-label="Admin approvals table">
                         <thead>
@@ -213,6 +241,7 @@ const AdminApprovalPage = () => {
                         </tbody>
                     </table>
                 </div>
+                </WorkspacePanel>
             ) : filterContract.filters.search || filterContract.hasActiveFilters ? (
                 <SearchEmptyState searchTerm={filterContract.filters.search} onClear={filterContract.reset} />
             ) : (
@@ -222,28 +251,6 @@ const AdminApprovalPage = () => {
                     description="All reviewed requests are already resolved."
                 />
             )}
-
-            {meta && meta.totalPages > 1 ? (
-                <div className="pagination">
-                    <button
-                        className="workspace-inline-button"
-                        disabled={meta.page <= 1}
-                        onClick={() => filterContract.setFilter('page', String(Number(meta.page) - 1))}
-                        type="button"
-                    >
-                        Previous
-                    </button>
-                    <span>Page {meta.page} of {meta.totalPages}</span>
-                    <button
-                        className="workspace-inline-button"
-                        disabled={meta.page >= meta.totalPages}
-                        onClick={() => filterContract.setFilter('page', String(Number(meta.page) + 1))}
-                        type="button"
-                    >
-                        Next
-                    </button>
-                </div>
-            ) : null}
 
             {selectedRequestId && requests ? (
                 <AdminApprovalModal

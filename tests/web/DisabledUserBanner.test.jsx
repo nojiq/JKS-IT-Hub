@@ -37,6 +37,12 @@ vi.mock('../../apps/web/src/shared/hooks/useToast.js', () => ({
     })
 }));
 
+vi.mock('../../apps/web/src/features/system-configs/hooks/useSystemConfigs.js', () => ({
+    useSystemConfigs: () => ({
+        data: { data: [] }
+    })
+}));
+
 /**
  * Story 2.10: Disabled User Guardrails - Frontend Component Tests
  * 

@@ -70,9 +70,10 @@ describe('AdminApprovalPage', () => {
             refetch: vi.fn()
         });
 
-        renderPage();
+        const { container } = renderPage();
 
         expect(screen.queryByText('1 selected')).not.toBeInTheDocument();
+        expect(container.querySelector('.workspace-panel.workspace-panel-table')).toBeInTheDocument();
         fireEvent.click(screen.getByLabelText('Select request 4K Monitor'));
         expect(screen.getByText('1 selected')).toBeInTheDocument();
     });
