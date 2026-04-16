@@ -6,6 +6,7 @@ import { getNotifications, getUnreadCount } from "../notifications/api/notificat
 import { fetchAllRequests, fetchMyRequests } from "../requests/api/requestsApi.js";
 import { fetchUsers } from "./users-api.js";
 import { WorkspacePageHeader } from "../../shared/workspace/WorkspacePageHeader.jsx";
+import { WorkspacePanel } from "../../shared/workspace/WorkspacePanel.jsx";
 import "../../shared/workspace/workspace.css";
 
 const IT_ROLES = ["it", "admin", "head_it"];
@@ -126,59 +127,55 @@ export default function HomePage() {
       />
 
       <section className="dashboard-stat-grid" aria-label="Dashboard summary">
-        <article className="dashboard-stat-card">
-          <p className="dashboard-stat-label">Unread Notifications</p>
+        <WorkspacePanel variant="metric" className="dashboard-stat-card" eyebrow="Summary" title="Unread Notifications">
           <p className="dashboard-stat-value">{unreadCount}</p>
           <p className="dashboard-stat-meta">
             {unreadCount > 0 ? "Unread updates need attention." : "You're caught up for now."}
           </p>
-        </article>
+        </WorkspacePanel>
 
-        <article className="dashboard-stat-card">
-          <p className="dashboard-stat-label">Users in Directory</p>
+        <WorkspacePanel variant="metric" className="dashboard-stat-card" eyebrow="Directory" title="Users in Directory">
           <p className="dashboard-stat-value">{totalUsers}</p>
           <p className="dashboard-stat-meta">
             {activeUsers} active, {disabledUsers} disabled
           </p>
-        </article>
+        </WorkspacePanel>
 
-        <article className="dashboard-stat-card">
-          <p className="dashboard-stat-label">{requestTitleFor(isItUser)}</p>
+        <WorkspacePanel variant="metric" className="dashboard-stat-card" eyebrow="Queue" title={requestTitleFor(isItUser)}>
           <p className="dashboard-stat-value">{requestTotal}</p>
           <p className="dashboard-stat-meta">{requestDescriptionFor(isItUser)}</p>
-        </article>
+        </WorkspacePanel>
 
         {isItUser ? (
-          <article className="dashboard-stat-card">
-            <p className="dashboard-stat-label">Maintenance Status</p>
+          <WorkspacePanel variant="metric" className="dashboard-stat-card" eyebrow="Schedule" title="Maintenance Status">
             <p className="dashboard-stat-value">{upcomingMaintenance + overdueMaintenance}</p>
             <p className="dashboard-stat-meta">
               {upcomingMaintenance} upcoming, {overdueMaintenance} overdue
             </p>
-          </article>
+          </WorkspacePanel>
         ) : null}
       </section>
 
       <section className="dashboard-main-grid">
-        <article className="dashboard-panel">
-          <div className="dashboard-panel-header">
-            <div>
-              <h2>{requestTitleFor(isItUser)}</h2>
-              <p>
-                {isItUser
-                  ? "Prioritize submitted requests waiting for IT review."
-                  : "Keep track of your latest request activity."}
-              </p>
-            </div>
+        <WorkspacePanel
+          variant="content"
+          className="dashboard-panel"
+          title={requestTitleFor(isItUser)}
+          meta={
+            isItUser
+              ? "Prioritize submitted requests waiting for IT review."
+              : "Keep track of your latest request activity."
+          }
+          actions={
             <Link className="workspace-inline-link" to={requestsPath}>
               Open {requestTitleFor(isItUser)}
             </Link>
-          </div>
-
+          }
+        >
           {requestItems.length ? (
-            <div className="dashboard-list">
+            <div className="dashboard-list workspace-panel-inset-list">
               {requestItems.slice(0, 4).map((request) => (
-                <article className="dashboard-list-item" key={request.id}>
+                <article className="dashboard-list-item workspace-panel-inset-row" key={request.id}>
                   <div>
                     <p className="dashboard-list-title">
                       {request.itemName || request.title || request.id}
@@ -197,16 +194,14 @@ export default function HomePage() {
           ) : (
             <p className="dashboard-empty-copy">No request activity to show.</p>
           )}
-        </article>
+        </WorkspacePanel>
 
-        <article className="dashboard-panel">
-          <div className="dashboard-panel-header">
-            <div>
-              <h2>Quick Actions</h2>
-              <p>Jump into the desktop workflows used most often.</p>
-            </div>
-          </div>
-
+        <WorkspacePanel
+          variant="content"
+          className="dashboard-panel"
+          title="Quick Actions"
+          meta="Jump into the desktop workflows used most often."
+        >
           <div className="dashboard-actions">
             <Link className="workspace-inline-link is-primary" to="/users">
               Open Users Directory
@@ -233,24 +228,24 @@ export default function HomePage() {
               </Link>
             ) : null}
           </div>
-        </article>
+        </WorkspacePanel>
 
         {isAdminUser ? (
-          <article className="dashboard-panel">
-            <div className="dashboard-panel-header">
-              <div>
-                <h2>Recent Audit Activity</h2>
-                <p>Latest administrative events affecting the workspace.</p>
-              </div>
+          <WorkspacePanel
+            variant="content"
+            className="dashboard-panel"
+            title="Recent Audit Activity"
+            meta="Latest administrative events affecting the workspace."
+            actions={
               <Link className="workspace-inline-link" to="/audit-logs">
                 View Audit Logs
               </Link>
-            </div>
-
+            }
+          >
             {auditItems.length ? (
-              <div className="dashboard-list">
+              <div className="dashboard-list workspace-panel-inset-list">
                 {auditItems.map((entry) => (
-                  <article className="dashboard-list-item" key={entry.id ?? `${entry.action}-${entry.createdAt}`}>
+                  <article className="dashboard-list-item workspace-panel-inset-row" key={entry.id ?? `${entry.action}-${entry.createdAt}`}>
                     <div>
                       <p className="dashboard-list-title">{formatStatusLabel(entry.action)}</p>
                       <p className="dashboard-list-meta">{entry.actor?.username || "System event"}</p>
@@ -262,23 +257,23 @@ export default function HomePage() {
             ) : (
               <p className="dashboard-empty-copy">No recent audit entries available.</p>
             )}
-          </article>
+          </WorkspacePanel>
         ) : (
-          <article className="dashboard-panel">
-            <div className="dashboard-panel-header">
-              <div>
-                <h2>Recent Notifications</h2>
-                <p>Latest in-app alerts relevant to your account.</p>
-              </div>
+          <WorkspacePanel
+            variant="content"
+            className="dashboard-panel"
+            title="Recent Notifications"
+            meta="Latest in-app alerts relevant to your account."
+            actions={
               <Link className="workspace-inline-link" to="/notifications">
                 View Notifications
               </Link>
-            </div>
-
+            }
+          >
             {notificationItems.length ? (
-              <div className="dashboard-list">
+              <div className="dashboard-list workspace-panel-inset-list">
                 {notificationItems.map((entry) => (
-                  <article className="dashboard-list-item" key={entry.id}>
+                  <article className="dashboard-list-item workspace-panel-inset-row" key={entry.id}>
                     <div>
                       <p className="dashboard-list-title">{entry.title || entry.type || "Notification"}</p>
                       <p className="dashboard-list-meta">{entry.message || "Open notifications for details."}</p>
@@ -292,7 +287,7 @@ export default function HomePage() {
             ) : (
               <p className="dashboard-empty-copy">No recent notifications available.</p>
             )}
-          </article>
+          </WorkspacePanel>
         )}
       </section>
     </section>

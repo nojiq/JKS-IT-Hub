@@ -88,18 +88,21 @@ describe('HomePage', () => {
             return createQueryResult();
         });
 
-        renderPage({ role: 'admin', username: 'admin.user', status: 'active' });
+        const { container } = renderPage({ role: 'admin', username: 'admin.user', status: 'active' });
 
         expect(screen.getByText('Dashboard')).toBeInTheDocument();
         expect(screen.queryByText('Welcome back')).not.toBeInTheDocument();
         expect(screen.queryByText('Directory Synchronization')).not.toBeInTheDocument();
         expect(screen.getByText('Unread Notifications')).toBeInTheDocument();
         expect(screen.getByText('Users in Directory')).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Review Queue' })).toBeInTheDocument();
+        expect(screen.getAllByRole('heading', { name: 'Review Queue' }).length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText('Maintenance Status')).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Recent Audit Activity' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Open Users Directory' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Manage Systems & Rules' })).toBeInTheDocument();
+        expect(container.querySelectorAll('.workspace-panel.workspace-panel-metric')).toHaveLength(4);
+        expect(container.querySelectorAll('.workspace-panel.workspace-panel-content').length).toBeGreaterThanOrEqual(2);
+        expect(container.querySelectorAll('.workspace-panel-inset-row').length).toBeGreaterThanOrEqual(1);
     });
 
     it('renders requester-focused work and hides admin-only ops panels', () => {
@@ -125,12 +128,14 @@ describe('HomePage', () => {
             return createQueryResult();
         });
 
-        renderPage({ role: 'requester', username: 'req.user', status: 'active' });
+        const { container } = renderPage({ role: 'requester', username: 'req.user', status: 'active' });
 
-        expect(screen.getByRole('heading', { name: 'My Requests' })).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Recent Notifications' })).toBeInTheDocument();
+        expect(screen.getAllByRole('heading', { name: 'My Requests' }).length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByRole('heading', { name: 'Recent Notifications' }).length).toBeGreaterThanOrEqual(1);
         expect(screen.queryByRole('heading', { name: 'Recent Audit Activity' })).not.toBeInTheDocument();
         expect(screen.queryByText('Maintenance Status')).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Manage Systems & Rules' })).not.toBeInTheDocument();
+        expect(container.querySelectorAll('.workspace-panel.workspace-panel-metric')).toHaveLength(3);
+        expect(container.querySelectorAll('.workspace-panel.workspace-panel-content').length).toBeGreaterThanOrEqual(2);
     });
 });
