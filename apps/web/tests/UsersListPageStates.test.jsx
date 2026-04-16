@@ -149,9 +149,11 @@ describe('UsersListPage states', () => {
             refetch: vi.fn()
         });
 
-        renderPage();
+        const { container } = renderPage();
         expect(screen.getByRole('table')).toBeInTheDocument();
         expect(screen.queryByRole('list', { name: 'Users list' })).not.toBeInTheDocument();
+        expect(container.querySelector('.workspace-panel.workspace-panel-table')).not.toBeNull();
+        expect(container.querySelector('.workspace-panel-header-band')).not.toBeNull();
     });
 
     it('renders mobile card layout on mobile viewport', () => {
@@ -176,8 +178,9 @@ describe('UsersListPage states', () => {
             refetch: vi.fn()
         });
 
-        renderPage();
+        const { container } = renderPage();
         expect(screen.getByRole('list', { name: 'Users list' })).toBeInTheDocument();
         expect(screen.queryByRole('table')).not.toBeInTheDocument();
+        expect(container.querySelectorAll('.workspace-panel.workspace-panel-detail').length).toBeGreaterThanOrEqual(1);
     });
 });

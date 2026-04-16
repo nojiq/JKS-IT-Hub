@@ -9,6 +9,7 @@ import { SearchInput } from "../../shared/components/SearchInput/SearchInput";
 import { FilterSelect } from "../../shared/components/FilterPanel/FilterSelect";
 import { SearchEmptyState } from "../../shared/components/EmptyState/SearchEmptyState";
 import { WorkspacePageHeader } from "../../shared/workspace/WorkspacePageHeader";
+import { WorkspacePanel } from "../../shared/workspace/WorkspacePanel";
 import { BulkActionsBar } from "../../shared/workspace/BulkActionsBar";
 import { DataStateBlock } from "../../shared/workspace/DataStateBlock";
 import { useSharedFilters } from "../../shared/workspace/useSharedFilters";
@@ -284,47 +285,6 @@ export default function UsersListPage() {
         <LdapSyncPanel />
       </section>
 
-      <div className="users-table-toolbar">
-        <div className="users-toolbar-search">
-          <SearchInput
-            value={filterContract.filters.search || ""}
-            onChange={(value) => setFilterAndResetPage("search", value)}
-            placeholder="Search by name, username or department..."
-            isLoading={usersQuery.isFetching}
-          />
-        </div>
-
-        <FilterSelect
-          label="Role"
-          value={filterContract.filters.role}
-          onChange={(value) => setFilterAndResetPage("role", value)}
-          options={[
-            { value: "requester", label: "Requester" },
-            { value: "it", label: "IT Support" },
-            { value: "admin", label: "Administrator" },
-            { value: "head_it", label: "Head of IT" }
-          ]}
-        />
-        <FilterSelect
-          label="Status"
-          value={filterContract.filters.status}
-          onChange={(value) => setFilterAndResetPage("status", value)}
-          options={[
-            { value: "active", label: "Active" },
-            { value: "disabled", label: "Disabled" }
-          ]}
-        />
-
-        <button
-          type="button"
-          className="workspace-inline-button users-export-button"
-          disabled
-          title="CSV export will be available soon"
-        >
-          Export CSV
-        </button>
-      </div>
-
       {isItUser ? (
         <BulkActionsBar selectedCount={selectedUsers.size}>
           <BatchCredentialExportButton userIds={Array.from(selectedUsers)} />
@@ -368,63 +328,153 @@ export default function UsersListPage() {
             {users.map((entry) => {
               const userProfile = buildUserProfile(entry);
               return (
-                <article
-                  className={`users-mobile-card${selectedUsers.has(entry.id) ? " is-selected" : ""}`}
+                <div
                   key={entry.id}
                   role="listitem"
                 >
-                  <div className="users-mobile-card-header">
-                    {isItUser ? (
-                      <input
-                        type="checkbox"
-                        checked={selectedUsers.has(entry.id)}
-                        onChange={() => handleSelectUser(entry.id)}
-                        aria-label={`Select ${entry.username}`}
-                      />
-                    ) : null}
+                  <WorkspacePanel
+                    variant="detail"
+                    className={`users-mobile-card${selectedUsers.has(entry.id) ? " is-selected" : ""}`}
+                  >
+                    <div className="users-mobile-card-header">
+                      {isItUser ? (
+                        <input
+                          type="checkbox"
+                          checked={selectedUsers.has(entry.id)}
+                          onChange={() => handleSelectUser(entry.id)}
+                          aria-label={`Select ${entry.username}`}
+                        />
+                      ) : null}
 
-                    <div>
-                      <Link className="users-name" to={`/users/${entry.id}`}>
-                        {userProfile.displayName}
-                      </Link>
-                      <span className="users-meta">{userProfile.mail}</span>
-                    </div>
-                  </div>
-
-                  <dl className="users-mobile-field-grid">
-                    <div className="users-mobile-field-row">
-                      <dt>Role</dt>
-                      <dd>{userProfile.roleLabel}</dd>
-                    </div>
-                    <div className="users-mobile-field-row">
-                      <dt>Status</dt>
-                      <dd>
-                        <span className={`users-status-badge ${userProfile.statusClassName}`}>
-                          {userProfile.statusLabel}
-                        </span>
-                      </dd>
-                    </div>
-                    <div className="users-mobile-field-row">
-                      <dt>Username</dt>
-                      <dd>{userProfile.samAccountName}</dd>
-                    </div>
-                    <div className="users-mobile-field-row">
-                      <dt>Department</dt>
-                      <dd>{userProfile.department}</dd>
-                    </div>
-                    {uniqueFields.map((field) => (
-                      <div className="users-mobile-field-row" key={field}>
-                        <dt>{field}</dt>
-                        <dd>{formatValue(entry.ldapFields?.[field])}</dd>
+                      <div>
+                        <Link className="users-name" to={`/users/${entry.id}`}>
+                          {userProfile.displayName}
+                        </Link>
+                        <span className="users-meta">{userProfile.mail}</span>
                       </div>
-                    ))}
-                  </dl>
-                </article>
+                    </div>
+
+                    <dl className="users-mobile-field-grid">
+                      <div className="users-mobile-field-row">
+                        <dt>Role</dt>
+                        <dd>{userProfile.roleLabel}</dd>
+                      </div>
+                      <div className="users-mobile-field-row">
+                        <dt>Status</dt>
+                        <dd>
+                          <span className={`users-status-badge ${userProfile.statusClassName}`}>
+                            {userProfile.statusLabel}
+                          </span>
+                        </dd>
+                      </div>
+                      <div className="users-mobile-field-row">
+                        <dt>Username</dt>
+                        <dd>{userProfile.samAccountName}</dd>
+                      </div>
+                      <div className="users-mobile-field-row">
+                        <dt>Department</dt>
+                        <dd>{userProfile.department}</dd>
+                      </div>
+                      {uniqueFields.map((field) => (
+                        <div className="users-mobile-field-row" key={field}>
+                          <dt>{field}</dt>
+                          <dd>{formatValue(entry.ldapFields?.[field])}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </WorkspacePanel>
+                </div>
               );
             })}
           </div>
         ) : (
-          <div className="users-management-card">
+          <WorkspacePanel
+            variant="table"
+            className="users-management-card"
+            title="Directory Records"
+            meta="Filter, review, and open synced user profiles."
+            footer={
+              <div className="users-pagination-bar">
+                <p className="users-pagination-summary">
+                  Showing {showingFrom}-{showingTo} of {totalResults} results
+                </p>
+
+                <div className="users-pagination-controls">
+                  <label className="users-rows-per-page">
+                    <span>Rows per page</span>
+                    <select
+                      value={String(rowsPerPage)}
+                      onChange={(event) => handleRowsPerPageChange(event.target.value)}
+                    >
+                      {ROWS_PER_PAGE_OPTIONS.map((value) => (
+                        <option key={value} value={String(value)}>
+                          {value}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <button
+                    disabled={currentPage <= 1}
+                    onClick={() => goToPage(currentPage - 1)}
+                    className="workspace-inline-button"
+                    type="button"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    disabled={currentPage >= totalPages}
+                    onClick={() => goToPage(currentPage + 1)}
+                    className="workspace-inline-button"
+                    type="button"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            }
+          >
+            <div className="users-table-toolbar">
+              <div className="users-toolbar-search">
+                <SearchInput
+                  value={filterContract.filters.search || ""}
+                  onChange={(value) => setFilterAndResetPage("search", value)}
+                  placeholder="Search by name, username or department..."
+                  isLoading={usersQuery.isFetching}
+                />
+              </div>
+
+              <FilterSelect
+                label="Role"
+                value={filterContract.filters.role}
+                onChange={(value) => setFilterAndResetPage("role", value)}
+                options={[
+                  { value: "requester", label: "Requester" },
+                  { value: "it", label: "IT Support" },
+                  { value: "admin", label: "Administrator" },
+                  { value: "head_it", label: "Head of IT" }
+                ]}
+              />
+              <FilterSelect
+                label="Status"
+                value={filterContract.filters.status}
+                onChange={(value) => setFilterAndResetPage("status", value)}
+                options={[
+                  { value: "active", label: "Active" },
+                  { value: "disabled", label: "Disabled" }
+                ]}
+              />
+
+              <button
+                type="button"
+                className="workspace-inline-button users-export-button"
+                disabled
+                title="CSV export will be available soon"
+              >
+                Export CSV
+              </button>
+            </div>
+
             <div className="workspace-table-container users-table-container">
               <table className="workspace-table users-management-table">
                 <thead>
@@ -504,46 +554,7 @@ export default function UsersListPage() {
                 </tbody>
               </table>
             </div>
-
-            <div className="users-pagination-bar">
-              <p className="users-pagination-summary">
-                Showing {showingFrom}-{showingTo} of {totalResults} results
-              </p>
-
-              <div className="users-pagination-controls">
-                <label className="users-rows-per-page">
-                  <span>Rows per page</span>
-                  <select
-                    value={String(rowsPerPage)}
-                    onChange={(event) => handleRowsPerPageChange(event.target.value)}
-                  >
-                    {ROWS_PER_PAGE_OPTIONS.map((value) => (
-                      <option key={value} value={String(value)}>
-                        {value}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <button
-                  disabled={currentPage <= 1}
-                  onClick={() => goToPage(currentPage - 1)}
-                  className="workspace-inline-button"
-                  type="button"
-                >
-                  Previous
-                </button>
-                <button
-                  disabled={currentPage >= totalPages}
-                  onClick={() => goToPage(currentPage + 1)}
-                  className="workspace-inline-button"
-                  type="button"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </div>
+          </WorkspacePanel>
         )
       ) : filterContract.filters.search || filterContract.hasActiveFilters ? (
         <SearchEmptyState
