@@ -3,6 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { fetchSession } from "../users/auth-api.js";
 import { fetchAuditLogs } from "./audit-api.js";
+import { DataStateBlock } from "../../shared/workspace/DataStateBlock.jsx";
+import { WorkspacePageHeader } from "../../shared/workspace/WorkspacePageHeader.jsx";
+import { WorkspacePanel } from "../../shared/workspace/WorkspacePanel.jsx";
+import "../../shared/workspace/workspace.css";
 
 const formatTimestamp = (isoString) => {
     const date = new Date(isoString);
@@ -53,6 +57,7 @@ export default function AuditLogPage() {
         queryFn: () => fetchAuditLogs({ page, limit, ...appliedFilters }),
         enabled: Boolean(sessionQuery.data)
     });
+    const sessionUser = sessionQuery.data?.user ?? sessionQuery.data ?? null;
 
     useEffect(() => {
         if (!sessionQuery.isLoading && sessionQuery.data === null) {
@@ -96,32 +101,54 @@ export default function AuditLogPage() {
     };
 
     if (sessionQuery.isLoading) {
-        return <p className="status-text">Checking session…</p>;
+        return (
+            <section className="workspace-page">
+                <DataStateBlock
+                    variant="loading"
+                    title="Loading audit workspace"
+                    description="Checking session and preparing audit data."
+                />
+            </section>
+        );
     }
 
     if (sessionQuery.error) {
         return (
-            <div className="status-block">
-                <p className="status-text">Session check failed.</p>
-                <p className="status-hint">Try refreshing or signing in again.</p>
-            </div>
+            <section className="workspace-page">
+                <DataStateBlock
+                    variant="error"
+                    title="Unable to load audit workspace"
+                    description="Try refreshing or signing in again."
+                />
+            </section>
         );
     }
 
-    if (!sessionQuery.data) {
+    if (!sessionUser) {
         return null;
     }
 
     if (auditLogsQuery.isLoading) {
-        return <p className="status-text">Loading audit logs…</p>;
+        return (
+            <section className="workspace-page">
+                <DataStateBlock
+                    variant="loading"
+                    title="Loading audit logs"
+                    description="Fetching recent system activity."
+                />
+            </section>
+        );
     }
 
     if (auditLogsQuery.error) {
         return (
-            <div className="status-block">
-                <p className="status-text">Unable to load audit logs.</p>
-                <p className="status-hint">{auditLogsQuery.error.message}</p>
-            </div>
+            <section className="workspace-page">
+                <DataStateBlock
+                    variant="error"
+                    title="Unable to load audit logs"
+                    description={auditLogsQuery.error.message}
+                />
+            </section>
         );
     }
 
@@ -130,24 +157,25 @@ export default function AuditLogPage() {
     const totalPages = Math.ceil(meta.total / meta.limit);
 
     return (
-        <section className="users-page audit-log-page">
-            <header className="users-header">
-                <div>
-                    <p className="users-eyebrow">Transparency</p>
-                    <h2>Audit Logs</h2>
-                    <p className="users-subtitle">
-                        Track all sensitive actions across the system.
-                    </p>
-                </div>
-                <div className="users-header-actions">
-                    <Link className="users-link" to="/">
+        <section className="workspace-page audit-log-page">
+            <WorkspacePageHeader
+                eyebrow="Transparency"
+                title="Audit Logs"
+                description="Track all sensitive actions across the system."
+                actions={(
+                    <Link className="workspace-inline-link" to="/">
                         Back to dashboard
                     </Link>
-                </div>
-            </header>
+                )}
+            />
 
-            {/* Filter Bar */}
-            <div className="audit-filters">
+            <WorkspacePanel
+                variant="content"
+                title="Filters"
+                meta="Narrow the log stream by action, actor, and time range."
+                className="audit-filters-panel"
+            >
+                <div className="audit-filters">
                 <div className="audit-filter-grid">
                     <div className="audit-filter-field">
                         <label className="audit-filter-label">Action</label>
@@ -193,19 +221,51 @@ export default function AuditLogPage() {
                 </div>
 
                 <div className="audit-filter-actions">
-                    <button className="btn-primary" onClick={handleApplyFilters}>
+                    <button className="workspace-inline-button is-primary" onClick={handleApplyFilters} type="button">
                         Apply Filters
                     </button>
-                    <button className="btn-secondary" onClick={handleClearFilters}>
+                    <button className="workspace-inline-button" onClick={handleClearFilters} type="button">
                         Clear
                     </button>
                 </div>
-            </div>
+                </div>
+            </WorkspacePanel>
 
-            {/* Audit Logs Table */}
             {logs.length > 0 ? (
-                <>
-                    <div className="users-table-scroll">
+                <WorkspacePanel
+                    variant="table"
+                    title="Audit Activity"
+                    meta={`${meta.total} entries`}
+                    footer={(
+                        <div className="audit-pagination">
+                            <div className="audit-pagination-info">
+                                Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, meta.total)} of {meta.total} entries
+                            </div>
+                            <div className="audit-pagination-controls">
+                                <button
+                                    className="workspace-inline-button"
+                                    onClick={handlePreviousPage}
+                                    disabled={page === 1}
+                                    type="button"
+                                >
+                                    Previous
+                                </button>
+                                <span className="audit-pagination-page">
+                                    Page {page} of {totalPages || 1}
+                                </span>
+                                <button
+                                    className="workspace-inline-button"
+                                    onClick={handleNextPage}
+                                    disabled={page >= totalPages}
+                                    type="button"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                >
+                    <div className="workspace-table-container">
                         <table className="users-table audit-table">
                             <thead>
                                 <tr>
@@ -242,42 +302,17 @@ export default function AuditLogPage() {
                             </tbody>
                         </table>
                     </div>
-
-                    {/* Pagination Controls */}
-                    <div className="audit-pagination">
-                        <div className="audit-pagination-info">
-                            Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, meta.total)} of {meta.total} entries
-                        </div>
-                        <div className="audit-pagination-controls">
-                            <button
-                                className="btn-secondary"
-                                onClick={handlePreviousPage}
-                                disabled={page === 1}
-                            >
-                                Previous
-                            </button>
-                            <span className="audit-pagination-page">
-                                Page {page} of {totalPages || 1}
-                            </span>
-                            <button
-                                className="btn-secondary"
-                                onClick={handleNextPage}
-                                disabled={page >= totalPages}
-                            >
-                                Next
-                            </button>
-                        </div>
-                    </div>
-                </>
+                </WorkspacePanel>
             ) : (
-                <div className="users-empty">
-                    <p className="status-text">No audit logs found.</p>
-                    <p className="status-hint">
-                        {Object.keys(appliedFilters).length > 0
+                <DataStateBlock
+                    variant="empty"
+                    title="No audit logs found"
+                    description={
+                        Object.keys(appliedFilters).length > 0
                             ? 'Try adjusting your filters.'
-                            : 'Audit logs will appear here as actions are performed.'}
-                    </p>
-                </div>
+                            : 'Audit logs will appear here as actions are performed.'
+                    }
+                />
             )}
         </section>
     );
