@@ -5,6 +5,8 @@ import { fetchSession, logout } from "../../features/users/auth-api";
 import { NotificationBell } from "../../features/notifications/components/NotificationBell";
 import { ThemeToggle } from "../ui/ThemeToggle/ThemeToggle";
 import { DataStateBlock } from "./DataStateBlock";
+import { useIsDesktop } from "../hooks/useMediaQuery";
+import { SidebarCollapseIcon, SidebarMenuIcon } from "./WorkspaceIcons";
 import "./workspace.css";
 
 const IT_ROLES = ["it", "admin", "head_it"];
@@ -14,6 +16,7 @@ const ONBOARDING_CHILDREN = [
   { label: "Defaults", to: "/onboarding/defaults", matchPrefix: "/onboarding/defaults" },
   { label: "New Joiner", to: "/onboarding/new-joiner", matchPrefix: "/onboarding/new-joiner" }
 ];
+const SIDEBAR_STORAGE_KEY = "workspace-sidebar-collapsed";
 
 const hasRole = (role, allowedRoles) => {
   if (!allowedRoles) {
@@ -45,8 +48,16 @@ export function WorkspaceLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
+  const isDesktop = useIsDesktop();
   const [searchValue, setSearchValue] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true";
+  });
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const menuRef = useRef(null);
 
   const sessionQuery = useQuery({
@@ -83,7 +94,33 @@ export function WorkspaceLayout() {
 
   useEffect(() => {
     setMenuOpen(false);
+    setIsDrawerOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
+
+  useEffect(() => {
+    if (isDesktop) {
+      setIsDrawerOpen(false);
+    }
+  }, [isDesktop]);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setIsDrawerOpen(false);
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   if (sessionQuery.isLoading) {
     return (
@@ -143,13 +180,34 @@ export function WorkspaceLayout() {
     navigate(`/users?search=${encodeURIComponent(query)}`);
   };
 
+  const handleSidebarToggle = () => {
+    if (isDesktop) {
+      setIsSidebarCollapsed((current) => !current);
+      return;
+    }
+
+    setIsDrawerOpen((current) => !current);
+  };
+
   return (
-    <div className="workspace-shell">
-      <aside className="workspace-sidebar" aria-label="Workspace sections">
+    <div className={`workspace-shell${isDesktop ? "" : " is-mobile-shell"}`}>
+      {!isDesktop && isDrawerOpen ? (
+        <button
+          type="button"
+          className="workspace-sidebar-backdrop"
+          aria-label="Close sidebar"
+          onClick={() => setIsDrawerOpen(false)}
+        />
+      ) : null}
+
+      <aside
+        className={`workspace-sidebar${isSidebarCollapsed ? " is-collapsed" : ""}${isDrawerOpen ? " is-drawer-open" : ""}`}
+        aria-label="Workspace sections"
+      >
         <div className="workspace-brand">
           <span className="workspace-brand-mark">IT</span>
-          <strong className="workspace-brand-name">Hub Workspace</strong>
-          <p className="workspace-brand-subtitle">Desktop operations shell</p>
+          <strong className="workspace-brand-name">{isSidebarCollapsed ? "Hub" : "Hub Workspace"}</strong>
+          {isSidebarCollapsed ? null : <p className="workspace-brand-subtitle">Desktop operations shell</p>}
         </div>
 
         <nav className="workspace-nav">
@@ -166,10 +224,10 @@ export function WorkspaceLayout() {
                       `workspace-nav-link${isActive ? " is-active" : ""}`
                     }
                   >
-                    <span>{item.label}</span>
+                    <span className="workspace-nav-link-label">{item.label}</span>
                   </NavLink>
 
-                  {showChildren ? (
+                  {showChildren && !isSidebarCollapsed ? (
                     <div className="workspace-nav-children" aria-label="Onboarding sections">
                       {ONBOARDING_CHILDREN.map((child) => {
                         const isChildActive =
@@ -195,6 +253,20 @@ export function WorkspaceLayout() {
 
       <div className="workspace-main">
         <header className="workspace-topbar">
+          <button
+            type="button"
+            className="workspace-sidebar-toggle"
+            aria-label="Toggle sidebar"
+            aria-expanded={isDesktop ? !isSidebarCollapsed : isDrawerOpen}
+            onClick={handleSidebarToggle}
+          >
+            {isDesktop ? (
+              <SidebarCollapseIcon className="workspace-sidebar-toggle-icon" collapsed={isSidebarCollapsed} />
+            ) : (
+              <SidebarMenuIcon className="workspace-sidebar-toggle-icon" />
+            )}
+          </button>
+
           <form className="workspace-topbar-search" onSubmit={handleSearchSubmit}>
             <input
               className="workspace-topbar-search-input"

@@ -13,6 +13,12 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  transition: width 160ms ease, transform 160ms ease;
+  z-index: 50;
+}
+
+.workspace-sidebar.is-collapsed {
+  width: 84px;
 }
 
 .workspace-brand {
@@ -69,6 +75,20 @@
   font-size: 0.92rem;
   font-weight: 520;
   transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.workspace-nav-link-label {
+  white-space: nowrap;
+}
+
+.workspace-sidebar.is-collapsed .workspace-nav-link {
+  justify-content: center;
+  padding-inline: 0.55rem;
+}
+
+.workspace-sidebar.is-collapsed .workspace-nav-link-label,
+.workspace-sidebar.is-collapsed .workspace-brand-subtitle {
+  display: none;
 }
 
 .workspace-nav-link:hover {
@@ -146,6 +166,38 @@
   min-width: 200px;
   max-width: 420px;
   width: 100%;
+}
+
+.workspace-sidebar-toggle {
+  border: 1px solid var(--ui-border-subtle);
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text-secondary);
+  min-width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.workspace-sidebar-toggle:hover {
+  background: var(--ui-surface-hover);
+  color: var(--ui-text-primary);
+}
+
+.workspace-sidebar-toggle-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.workspace-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  border: 0;
+  background: rgba(15, 23, 42, 0.28);
+  z-index: 45;
 }
 
 .workspace-topbar-search-input {
@@ -1085,35 +1137,50 @@
   }
 
   .workspace-sidebar {
-    width: 100%;
-    border-right: none;
-    border-bottom: 1px solid var(--ui-border-subtle);
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: min(320px, 86vw);
+    border-right: 1px solid var(--ui-border-subtle);
+    border-bottom: none;
     padding-bottom: 0.8rem;
+    transform: translateX(-100%);
+    box-shadow: var(--shadow-md);
+  }
+
+  .workspace-sidebar.is-collapsed {
+    width: min(320px, 86vw);
+  }
+
+  .workspace-sidebar.is-drawer-open {
+    transform: translateX(0);
   }
 
   .workspace-nav {
-    display: flex;
-    gap: 0.4rem;
-    overflow-x: auto;
+    display: grid;
+    gap: 0.35rem;
+    overflow: visible;
     padding-bottom: 0.2rem;
   }
 
   .workspace-nav-item {
-    display: flex;
-    gap: 0.4rem;
+    display: grid;
+    gap: 0.35rem;
     align-items: stretch;
   }
 
   .workspace-nav-link {
     white-space: nowrap;
+    justify-content: space-between;
   }
 
   .workspace-nav-children {
-    display: flex;
-    gap: 0.35rem;
-    margin-left: 0;
-    padding-left: 0;
-    border-left: none;
+    display: grid;
+    gap: 0.3rem;
+    margin-left: 0.75rem;
+    padding-left: 0.7rem;
+    border-left: 1px solid var(--ui-border-subtle);
   }
 
   .workspace-subnav-link {
