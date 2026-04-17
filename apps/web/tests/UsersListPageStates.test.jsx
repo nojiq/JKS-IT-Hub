@@ -33,9 +33,14 @@ const renderPage = () => {
     return render(<RouterProvider router={router} />);
 };
 
-const createMatchMedia = (isMobile = false) =>
+const createMatchMedia = ({ isMobile = false, isTablet = false, isDesktop = true, isCompactDesktop = false } = {}) =>
     vi.fn().mockImplementation((query) => ({
-        matches: query === '(max-width: 767px)' ? isMobile : false,
+        matches:
+            query === '(max-width: 767px)' ? isMobile
+                : query === '(min-width: 768px) and (max-width: 1023px)' ? isTablet
+                    : query === '(min-width: 1024px)' ? isDesktop
+                        : query === '(min-width: 1024px) and (max-width: 1279px)' ? isCompactDesktop
+                            : false,
         media: query,
         onchange: null,
         addEventListener: vi.fn(),
@@ -49,7 +54,7 @@ describe('UsersListPage states', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         useQuery.mockReset();
-        window.matchMedia = createMatchMedia(false);
+        window.matchMedia = createMatchMedia();
     });
 
     it('renders shared loading state', () => {
@@ -154,10 +159,42 @@ describe('UsersListPage states', () => {
         expect(screen.queryByRole('list', { name: 'Users list' })).not.toBeInTheDocument();
         expect(container.querySelector('.workspace-panel.workspace-panel-table')).not.toBeNull();
         expect(container.querySelector('.workspace-panel-header-band')).not.toBeNull();
+        expect(screen.getByText('Username')).toBeInTheDocument();
+        expect(screen.getByText('Department')).toBeInTheDocument();
+    });
+
+    it('keeps table layout at tablet width while hiding lower-priority columns', () => {
+        window.matchMedia = createMatchMedia({ isMobile: false, isTablet: true, isDesktop: false });
+        useQuery.mockReturnValue({
+            data: {
+                users: [
+                    {
+                        id: '1',
+                        username: 'alice',
+                        role: 'requester',
+                        status: 'active',
+                        ldapFields: { mail: 'alice@example.com', department: 'IT' }
+                    }
+                ],
+                fields: ['mail', 'department'],
+                meta: {}
+            },
+            isLoading: false,
+            error: null,
+            isFetching: false,
+            refetch: vi.fn()
+        });
+
+        renderPage();
+        expect(screen.getByRole('table')).toBeInTheDocument();
+        expect(screen.queryByRole('list', { name: 'Users list' })).not.toBeInTheDocument();
+        expect(screen.getAllByText('Role').length).toBeGreaterThanOrEqual(1);
+        expect(screen.queryByText('Username')).not.toBeInTheDocument();
+        expect(screen.queryByText('Department')).not.toBeInTheDocument();
     });
 
     it('renders mobile card layout on mobile viewport', () => {
-        window.matchMedia = createMatchMedia(true);
+        window.matchMedia = createMatchMedia({ isMobile: true, isTablet: false, isDesktop: false });
         useQuery.mockReturnValue({
             data: {
                 users: [

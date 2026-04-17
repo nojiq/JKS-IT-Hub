@@ -13,7 +13,7 @@ import { WorkspacePanel } from "../../shared/workspace/WorkspacePanel";
 import { BulkActionsBar } from "../../shared/workspace/BulkActionsBar";
 import { DataStateBlock } from "../../shared/workspace/DataStateBlock";
 import { useSharedFilters } from "../../shared/workspace/useSharedFilters";
-import { useIsMobile } from "../../shared/hooks/useMediaQuery";
+import { useIsMobile, useMediaQuery } from "../../shared/hooks/useMediaQuery";
 import "../../shared/workspace/workspace.css";
 
 const IT_ROLES = ["it", "admin", "head_it"];
@@ -159,6 +159,8 @@ const buildUserProfile = (entry) => {
 export default function UsersListPage() {
   const { user } = useOutletContext() ?? {};
   const isMobile = useIsMobile();
+  const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
+  const isCompactDesktop = useMediaQuery('(min-width: 1024px) and (max-width: 1279px)');
   const [selectedUsers, setSelectedUsers] = useState(new Set());
   const filterContract = useSharedFilters({ page: "1", perPage: "20" });
 
@@ -181,6 +183,9 @@ export default function UsersListPage() {
   const totalPages = Math.max(1, Math.ceil(totalResults / rowsPerPage));
   const showingFrom = totalResults > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0;
   const showingTo = totalResults > 0 ? Math.min(totalResults, currentPage * rowsPerPage) : 0;
+  const showRoleColumn = !isMobile;
+  const showUsernameColumn = !isTablet && !isCompactDesktop;
+  const showDepartmentColumn = !isTablet && !isCompactDesktop;
 
   useEffect(() => {
     setSelectedUsers((previous) => {
@@ -490,10 +495,10 @@ export default function UsersListPage() {
                       </th>
                     ) : null}
                     <th data-column="user">User</th>
-                    <th data-column="role">Role</th>
+                    {showRoleColumn ? <th data-column="role">Role</th> : null}
                     <th data-column="status">Status</th>
-                    <th data-column="username">Username</th>
-                    <th data-column="department">Department</th>
+                    {showUsernameColumn ? <th data-column="username">Username</th> : null}
+                    {showDepartmentColumn ? <th data-column="department">Department</th> : null}
                     <th data-column="actions">Actions</th>
                   </tr>
                 </thead>
@@ -530,19 +535,23 @@ export default function UsersListPage() {
                               <Link className="users-name" to={`/users/${entry.id}`}>
                                 {userProfile.displayName}
                               </Link>
-                              <span className="users-meta">{userProfile.mail}</span>
+                              <span className="users-meta">
+                                {userProfile.mail}
+                                {!showUsernameColumn ? ` • ${userProfile.samAccountName}` : ""}
+                                {!showDepartmentColumn && userProfile.department !== "-" ? ` • ${userProfile.department}` : ""}
+                              </span>
                             </div>
                           </div>
                         </td>
 
-                        <td data-column="role">{userProfile.roleLabel}</td>
+                        {showRoleColumn ? <td data-column="role">{userProfile.roleLabel}</td> : null}
                         <td data-column="status">
                           <span className={`users-status-badge ${userProfile.statusClassName}`}>
                             {userProfile.statusLabel}
                           </span>
                         </td>
-                        <td data-column="username">{userProfile.samAccountName}</td>
-                        <td data-column="department">{userProfile.department}</td>
+                        {showUsernameColumn ? <td data-column="username">{userProfile.samAccountName}</td> : null}
+                        {showDepartmentColumn ? <td data-column="department">{userProfile.department}</td> : null}
                         <td data-column="actions">
                           <Link className="workspace-inline-button users-row-action" to={`/users/${entry.id}`}>
                             View
