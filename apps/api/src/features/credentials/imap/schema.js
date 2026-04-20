@@ -30,9 +30,14 @@ export const previewImapGeneratorSchema = z.object({
 });
 
 export const saveImapGeneratorSchema = previewImapGeneratorSchema.extend({
+    createUser: z.object({
+        username: z.string().trim().min(1).optional(),
+        role: z.string().trim().min(1).optional(),
+        status: z.string().trim().min(1).optional()
+    }).optional(),
     setActive: z.boolean().optional().default(false)
 });
 
 export const reviewImapConflictsSchema = z.object({
-    fields: z.record(z.enum(["keep_system", "use_ldap"])).default({})
+    fields: z.record(z.string(), z.enum(["keep_system", "use_ldap"])).default({})
 });

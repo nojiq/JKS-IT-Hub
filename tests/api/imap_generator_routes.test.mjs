@@ -1,0 +1,287 @@
+/* eslint-disable */
+import test from "node:test";
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+
+import credentialRoutes from "../../apps/api/src/features/credentials/routes.js";
+import * as usersRepo from "../../apps/api/src/features/users/repo.js";
+import { signSessionToken } from "../../apps/api/src/shared/auth/jwt.js";
+
+const require = createRequire(new URL("../../apps/api/package.json", import.meta.url));
+const Fastify = require("fastify");
+const cookie = require("@fastify/cookie");
+
+const config = {
+    jwt: {
+        secret: "test-secret-test-secret",
+        issuer: "it-hub",
+        audience: "it-hub-web",
+        expiresIn: "1h"
+    },
+    cookie: {
+        name: "it-hub-session",
+        secure: true,
+        sameSite: "lax"
+    }
+};
+
+const buildActor = (role = "it") => ({
+    id: `actor-${role}`,
+    username: `${role}.user`,
+    role,
+    status: "active"
+});
+
+const buildApp = async ({ role = "it" } = {}) => {
+    const actor = buildActor(role);
+    const app = Fastify({ logger: false });
+    await app.register(cookie);
+
+    const userRepo = {
+        findUserByUsername: async (username) => (username === actor.username ? actor : null),
+        isUserDisabled: (user) => user?.status === "disabled"
+    };
+
+    const credentialService = {
+        loadImapWorkbench: async (userId) => ({
+            user: { id: userId, username: "abdullah.fauzi", status: "active" },
+            subjectKey: "user-1",
+            fields: {
+                fullName: {
+                    value: "Abu",
+                    source: "system",
+                    ldapValue: "Abdullah Fauzi"
+                }
+            },
+            activeCredential: null,
+            previousPasswordsCount: 1,
+            conflicts: []
+        }),
+        previewImapPassword: async () => ({
+            subjectKey: "manual:abu|abu@example.com",
+            proposedCredential: {
+                username: "abu@example.com",
+                password: "StablePass123456"
+            },
+            metadata: {
+                subjectKey: "manual:abu|abu@example.com",
+                selectedFields: ["dob", "phone"],
+                sources: { dob: "manual", phone: "manual" }
+            }
+        }),
+        saveImapPassword: async () => ({
+            user: { id: "user-1", username: "abdullah.fauzi", status: "active" },
+            subjectKey: "manual:abu|abu@example.com",
+            record: {
+                id: "cred-1",
+                isActive: true,
+                metadata: {
+                    saveMode: "active"
+                }
+            }
+        }),
+        listPreviousImapPasswords: async () => ([
+            { id: "cred-1", isActive: true, metadata: { saveMode: "active" } },
+            { id: "cred-2", isActive: false, metadata: { saveMode: "history_only" } }
+        ]),
+        applyImapConflictResolution: async () => ({
+            user: { id: "user-1", username: "abdullah.fauzi", status: "active" },
+            subjectKey: "user-1",
+            fields: {
+                fullName: { value: "Abdullah Fauzi", source: "ldap" }
+            },
+            conflicts: []
+        })
+    };
+
+    await app.register(credentialRoutes, {
+        prefix: "/api/v1/credentials",
+        config,
+        userRepo,
+        credentialService,
+        auditRepo: null
+    });
+
+    const token = await signSessionToken(
+        {
+            subject: actor.id,
+            payload: {
+                username: actor.username,
+                role: actor.role,
+                status: actor.status
+            }
+        },
+        config.jwt
+    );
+
+    return {
+        app,
+        authHeader: { cookie: `${config.cookie.name}=${token}` }
+    };
+};
+
+test("IMAP Generator API allows IT roles to load workbench state", async () => {
+    const { app, authHeader } = await buildApp({ role: "it" });
+
+    const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/credentials/imap/users/user-1/workbench",
+        headers: authHeader
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = response.json();
+    assert.equal(body.data.subjectKey, "user-1");
+    assert.equal(body.data.fields.fullName.source, "system");
+    await app.close();
+});
+
+test("IMAP Generator API rejects non-IT roles", async () => {
+    const { app, authHeader } = await buildApp({ role: "requester" });
+
+    const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/credentials/imap/users/user-1/workbench",
+        headers: authHeader
+    });
+
+    assert.equal(response.statusCode, 403);
+    await app.close();
+});
+
+test("IMAP Generator API previews deterministic passwords", async () => {
+    const { app, authHeader } = await buildApp({ role: "head_it" });
+
+    const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/credentials/imap/preview",
+        headers: authHeader,
+        payload: {
+            manualIdentity: {
+                fullName: "Abu",
+                email: "abu@example.com"
+            },
+            username: "abu@example.com",
+            inputs: {
+                dob: "2021-01-21",
+                phone: "123"
+            },
+            selectedFields: {
+                dob: true,
+                phone: true
+            }
+        }
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = response.json();
+    assert.equal(body.data.subjectKey, "manual:abu|abu@example.com");
+    assert.equal(body.data.proposedCredential.username, "abu@example.com");
+    await app.close();
+});
+
+test("IMAP Generator API saves passwords with active mode", async () => {
+    const { app, authHeader } = await buildApp({ role: "admin" });
+
+    const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/credentials/imap/save",
+        headers: authHeader,
+        payload: {
+            manualIdentity: {
+                fullName: "Abu",
+                email: "abu@example.com"
+            },
+            createUser: {
+                username: "abu"
+            },
+            username: "abu@example.com",
+            inputs: {
+                dob: "2021-01-21",
+                phone: "123"
+            },
+            selectedFields: {
+                dob: true,
+                phone: true
+            },
+            setActive: true
+        }
+    });
+
+    assert.equal(response.statusCode, 201);
+    const body = response.json();
+    assert.equal(body.data.record.metadata.saveMode, "active");
+    await app.close();
+});
+
+test("IMAP Generator API lists previous passwords", async () => {
+    const { app, authHeader } = await buildApp();
+
+    const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/credentials/imap/users/user-1/passwords",
+        headers: authHeader
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = response.json();
+    assert.equal(body.data.length, 2);
+    assert.equal(body.data[1].metadata.saveMode, "history_only");
+    await app.close();
+});
+
+test("IMAP Generator API applies conflict review decisions", async () => {
+    const { app, authHeader } = await buildApp();
+
+    const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/credentials/imap/users/user-1/conflicts/review",
+        headers: authHeader,
+        payload: {
+            fields: {
+                fullName: "use_ldap"
+            }
+        }
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = response.json();
+    assert.equal(body.data.fields.fullName.source, "ldap");
+    await app.close();
+});
+
+test("listUsersFiltered searches LDAP names and IMAP profile fullName", async () => {
+    const originalCount = usersRepo.prisma.user.count;
+    const originalFindMany = usersRepo.prisma.user.findMany;
+    const originalTransaction = usersRepo.prisma.$transaction;
+
+    let countArgs = null;
+    let findManyArgs = null;
+
+    usersRepo.prisma.user.count = async (args) => {
+        countArgs = args;
+        return 0;
+    };
+    usersRepo.prisma.user.findMany = async (args) => {
+        findManyArgs = args;
+        return [];
+    };
+    usersRepo.prisma.$transaction = async (operations) => Promise.all(operations);
+
+    try {
+        await usersRepo.listUsersFiltered({ search: "abu" }, { page: 1, perPage: 20 });
+
+        const where = findManyArgs.where;
+        assert.equal(countArgs.where, where);
+        assert.ok(where.OR.some((entry) => entry.ldapAttributes?.path === "$.displayName"));
+        assert.ok(where.OR.some((entry) => entry.ldapAttributes?.path === "$.cn"));
+        assert.ok(where.OR.some((entry) => entry.ldapAttributes?.path === "$.givenName"));
+        assert.ok(where.OR.some((entry) => entry.ldapAttributes?.path === "$.sn"));
+        assert.ok(where.OR.some((entry) => entry.imapProfile?.is?.fullName?.contains === "abu"));
+        assert.ok(where.OR.some((entry) => entry.username?.contains === "abu"));
+    } finally {
+        usersRepo.prisma.user.count = originalCount;
+        usersRepo.prisma.user.findMany = originalFindMany;
+        usersRepo.prisma.$transaction = originalTransaction;
+    }
+});
