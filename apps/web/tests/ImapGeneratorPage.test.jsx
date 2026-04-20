@@ -34,7 +34,8 @@ import {
     getImapWorkbench,
     previewImapPassword,
     saveImapPassword,
-    getPreviousImapPasswords
+    getPreviousImapPasswords,
+    reviewImapConflicts
 } from '../src/features/credentials/api/credentials.js';
 
 const renderApp = (initialEntry = '/users/imap-generator') => {
@@ -142,6 +143,19 @@ describe('ImapGeneratorPage', () => {
                 metadata: { saveMode: 'history_only' }
             }
         ]);
+
+        reviewImapConflicts.mockResolvedValue({
+            subjectKey: 'user-42',
+            fields: {
+                email: { value: 'abdullah.fauzi@jkseng.com', source: 'ldap' },
+                firstName: { value: 'Abdullah', source: 'ldap' },
+                lastName: { value: 'Fauzi', source: 'ldap' },
+                fullName: { value: 'Abdullah Fauzi', source: 'ldap' },
+                dob: { value: '2021-01-21', source: 'empty' },
+                phone: { value: '123', source: 'system' }
+            },
+            conflicts: []
+        });
 
         fetchUsers.mockResolvedValue({
             users: [
@@ -316,5 +330,78 @@ describe('ImapGeneratorPage', () => {
         });
 
         expect(await screen.findByRole('button', { name: 'Use Abu Bakar' })).toBeInTheDocument();
+    });
+
+    it('attaches a selected fuzzy-search suggestion into the page state', async () => {
+        getImapWorkbench
+            .mockResolvedValueOnce({
+                subjectKey: 'user-42',
+                fields: {
+                    email: { value: 'abdullah.fauzi@jkseng.com', source: 'ldap' },
+                    firstName: { value: 'Abdullah', source: 'ldap' },
+                    lastName: { value: 'Fauzi', source: 'ldap' },
+                    fullName: { value: 'Abu', source: 'system' },
+                    dob: { value: '2021-01-21', source: 'empty' },
+                    phone: { value: '123', source: 'system' }
+                },
+                conflicts: []
+            })
+            .mockResolvedValueOnce({
+                subjectKey: 'user-99',
+                fields: {
+                    email: { value: 'abu@example.com', source: 'ldap' },
+                    firstName: { value: 'Abu', source: 'ldap' },
+                    lastName: { value: 'Bakar', source: 'ldap' },
+                    fullName: { value: 'Abu Bakar', source: 'ldap' },
+                    dob: { value: '', source: 'empty' },
+                    phone: { value: '', source: 'empty' }
+                },
+                conflicts: []
+            });
+
+        renderApp('/users/imap-generator?userId=user-42');
+
+        expect(await screen.findByRole('heading', { name: 'IMAP Generator' })).toBeInTheDocument();
+        fireEvent.change(screen.getByRole('searchbox', { name: 'Search by full name' }), {
+            target: { value: 'abu' }
+        });
+        fireEvent.click(await screen.findByRole('button', { name: 'Use Abu Bakar' }));
+
+        expect(await screen.findByText('Attached user: user-99')).toBeInTheDocument();
+        expect(await screen.findByDisplayValue('abu@example.com')).toBeInTheDocument();
+    });
+
+    it('submits an explicit use_ldap decision from the conflict panel', async () => {
+        getImapWorkbench.mockResolvedValueOnce({
+            subjectKey: 'user-42',
+            fields: {
+                email: { value: 'abdullah.fauzi@jkseng.com', source: 'ldap' },
+                firstName: { value: 'Abdullah', source: 'ldap' },
+                lastName: { value: 'Fauzi', source: 'ldap' },
+                fullName: { value: 'Abu', source: 'system' },
+                dob: { value: '2021-01-21', source: 'empty' },
+                phone: { value: '123', source: 'system' }
+            },
+            conflicts: [
+                {
+                    field: 'fullName',
+                    systemValue: 'Abu',
+                    ldapValue: 'Abdullah Fauzi'
+                }
+            ]
+        });
+
+        renderApp('/users/imap-generator?userId=user-42');
+
+        expect(await screen.findByRole('heading', { name: 'Sync Conflict Review' })).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Use LDAP for fullName' }));
+
+        await waitFor(() => {
+            expect(reviewImapConflicts).toHaveBeenCalledWith('user-42', {
+                fields: {
+                    fullName: 'use_ldap'
+                }
+            });
+        });
     });
 });

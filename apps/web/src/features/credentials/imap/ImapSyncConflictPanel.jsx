@@ -1,4 +1,4 @@
-const ImapSyncConflictPanel = ({ conflicts = [] }) => {
+const ImapSyncConflictPanel = ({ conflicts = [], onUseLdap }) => {
     if (!conflicts.length) {
         return null;
     }
@@ -12,6 +12,9 @@ const ImapSyncConflictPanel = ({ conflicts = [] }) => {
                         <strong>{conflict.field}</strong>
                         <span>{conflict.systemValue}</span>
                         <span>{conflict.ldapValue}</span>
+                        <button onClick={() => onUseLdap(conflict.field)} type="button">
+                            Use LDAP for {conflict.field}
+                        </button>
                     </div>
                 ))}
             </div>

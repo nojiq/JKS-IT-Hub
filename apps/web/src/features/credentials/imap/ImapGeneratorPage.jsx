@@ -6,7 +6,7 @@ import ImapPreviewInspector from "./ImapPreviewInspector.jsx";
 import PreviousImapPasswordsModal from "./PreviousImapPasswordsModal.jsx";
 import ImapSyncConflictPanel from "./ImapSyncConflictPanel.jsx";
 import ImapUserResolver from "./ImapUserResolver.jsx";
-import { useImapPreview, useImapSave, useImapWorkbench, usePreviousImapPasswords } from "../hooks/useImapGenerator.js";
+import { useImapConflictReview, useImapPreview, useImapSave, useImapWorkbench, usePreviousImapPasswords } from "../hooks/useImapGenerator.js";
 import "./ImapGeneratorPage.css";
 
 const createEmptyFields = () => ({
@@ -19,9 +19,10 @@ const createEmptyFields = () => ({
 });
 
 const ImapGeneratorPage = () => {
-    const [searchParams] = useSearchParams();
-    const attachedUserId = searchParams.get("userId") || "";
-    const [mode, setMode] = useState(attachedUserId ? "attached" : "attached");
+    const [searchParams, setSearchParams] = useSearchParams();
+    const initialUserId = searchParams.get("userId") || "";
+    const [selectedUserId, setSelectedUserId] = useState(initialUserId);
+    const [mode, setMode] = useState(initialUserId ? "attached" : "attached");
     const [manualIdentity, setManualIdentity] = useState({
         fullName: "",
         email: ""
@@ -38,12 +39,17 @@ const ImapGeneratorPage = () => {
         dob: false,
         phone: false
     });
-    const workbenchQuery = useImapWorkbench(attachedUserId);
+    const workbenchQuery = useImapWorkbench(selectedUserId);
     const previewMutation = useImapPreview();
     const saveMutation = useImapSave();
+    const conflictReviewMutation = useImapConflictReview();
     const previousPasswordsQuery = usePreviousImapPasswords(
-        isPreviousPasswordsOpen && attachedUserId ? attachedUserId : null
+        isPreviousPasswordsOpen && selectedUserId ? selectedUserId : null
     );
+
+    useEffect(() => {
+        setSelectedUserId(initialUserId);
+    }, [initialUserId]);
 
     const handleManualIdentityChange = (field, value) => {
         setManualIdentity((current) => ({
@@ -122,24 +128,24 @@ const ImapGeneratorPage = () => {
     }, [manualIdentity.email, manualIdentity.fullName, mode]);
 
     const previewPayload = useMemo(() => ({
-        userId: mode === "attached" && attachedUserId ? attachedUserId : undefined,
+        userId: mode === "attached" && selectedUserId ? selectedUserId : undefined,
         manualIdentity: mode === "manual" ? manualIdentity : undefined,
         username: fields.email?.value || manualIdentity.email || undefined,
         inputs: Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, value.value])),
         selectedFields
-    }), [attachedUserId, fields, manualIdentity, mode, selectedFields]);
+    }), [fields, manualIdentity, mode, selectedUserId, selectedFields]);
 
     useEffect(() => {
         const hasSelectedFields = Object.values(selectedFields).some(Boolean);
         const hasValidManualIdentity = mode !== "manual" || (manualIdentity.fullName.trim() && manualIdentity.email.trim());
-        const hasAttachedUser = mode !== "attached" || Boolean(attachedUserId);
+        const hasAttachedUser = mode !== "attached" || Boolean(selectedUserId);
 
         if (!hasSelectedFields || !hasValidManualIdentity || !hasAttachedUser) {
             return;
         }
 
         previewMutation.mutate(previewPayload);
-    }, [attachedUserId, manualIdentity.email, manualIdentity.fullName, mode, previewMutation, previewPayload, selectedFields]);
+    }, [manualIdentity.email, manualIdentity.fullName, mode, previewMutation, previewPayload, selectedUserId, selectedFields]);
 
     const handleSave = () => {
         saveMutation.mutate(previewPayload);
@@ -147,11 +153,27 @@ const ImapGeneratorPage = () => {
 
     const handleSelectSuggestion = (suggestion) => {
         setMode("attached");
+        setSelectedUserId(suggestion.id);
         setResolverQuery("");
         setResolverSuggestions([]);
         const params = new URLSearchParams(searchParams);
         params.set("userId", suggestion.id);
-        window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
+        setSearchParams(params);
+    };
+
+    const handleUseLdap = (field) => {
+        if (!selectedUserId) {
+            return;
+        }
+
+        conflictReviewMutation.mutate({
+            userId: selectedUserId,
+            payload: {
+                fields: {
+                    [field]: "use_ldap"
+                }
+            }
+        });
     };
 
     return (
@@ -164,7 +186,7 @@ const ImapGeneratorPage = () => {
             <div className="imap-generator-shell">
                 <div className="imap-generator-workbench">
                     <ImapUserResolver
-                        attachedUserId={attachedUserId}
+                        attachedUserId={selectedUserId}
                         manualIdentity={manualIdentity}
                         mode={mode}
                         onManualIdentityChange={handleManualIdentityChange}
@@ -174,7 +196,10 @@ const ImapGeneratorPage = () => {
                         resolverQuery={resolverQuery}
                         suggestions={resolverSuggestions}
                     />
-                    <ImapSyncConflictPanel conflicts={workbenchQuery.data?.conflicts || []} />
+                    <ImapSyncConflictPanel
+                        conflicts={workbenchQuery.data?.conflicts || []}
+                        onUseLdap={handleUseLdap}
+                    />
                     <ImapFieldWorkbench
                         fields={fields}
                         onFieldChange={handleFieldChange}
