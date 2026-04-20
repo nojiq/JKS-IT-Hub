@@ -6,6 +6,9 @@ import CycleConfigList from "../components/CycleConfigList.jsx";
 import CycleConfigForm from "../components/CycleConfigForm.jsx";
 import ScheduleGenerationModal from "../components/ScheduleGenerationModal.jsx";
 import { useToast } from '../../../shared/hooks/useToast.js';
+import { DataStateBlock } from '../../../shared/workspace/DataStateBlock.jsx';
+import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel.jsx';
+import './MaintenanceHomePage.css';
 import "./MaintenanceConfigPage.css";
 
 const MaintenanceConfigPage = () => {
@@ -46,47 +49,61 @@ const MaintenanceConfigPage = () => {
     };
 
     if (viewState === maintenanceConfigViewStates.loading) {
-        return <div className="maintenance-config-state" data-testid="maintenance-config-loading">Loading maintenance cycles...</div>;
+        return (
+            <section className="maintenance-module-page">
+                <div data-testid="maintenance-config-loading">
+                    <DataStateBlock
+                        variant="loading"
+                        title="Loading maintenance configuration"
+                        description="Preparing cycle definitions and schedule controls."
+                    />
+                </div>
+            </section>
+        );
     }
 
     if (viewState === maintenanceConfigViewStates.error) {
         return (
-            <div className="maintenance-config-state maintenance-config-state--error" role="alert" data-testid="maintenance-config-error">
-                Error loading cycles: {error?.message ?? 'Unable to load maintenance configuration.'}
-            </div>
+            <section className="maintenance-module-page">
+                <div className="maintenance-config-state maintenance-config-state--error" role="alert" data-testid="maintenance-config-error">
+                    Error loading cycles: {error?.message ?? 'Unable to load maintenance configuration.'}
+                </div>
+            </section>
         );
     }
 
     return (
-        <div className="maintenance-config-page">
-            <h1>Maintenance Cycles Configuration</h1>
-
-            {isEditing ? (
-                <CycleConfigForm
-                    cycle={selectedCycle}
-                    onClose={handleClose}
-                />
-            ) : (
-                <>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                        <button onClick={handleCreate} className="btn-primary">Add New Cycle</button>
-                        <Link to="/maintenance/checklists" className="btn-secondary" style={{ textDecoration: 'none' }}>
+        <div className="maintenance-module-page maintenance-config-page">
+            <WorkspacePanel
+                variant="content"
+                title="Maintenance Cycles Configuration"
+                meta="Define reusable cycles, generate upcoming windows, and keep related checklist templates close at hand."
+                actions={!isEditing ? (
+                    <div className="maintenance-config-actions">
+                        <button onClick={handleCreate} className="workspace-inline-button is-primary" type="button">Add New Cycle</button>
+                        <Link to="/maintenance/checklists" className="workspace-inline-link">
                             Manage Checklists
                         </Link>
                     </div>
-                    {viewState === maintenanceConfigViewStates.empty ? (
-                        <div className="maintenance-config-state maintenance-config-state--empty" data-testid="maintenance-config-empty">
-                            No maintenance configuration available from backend data.
-                        </div>
-                    ) : (
-                        <CycleConfigList
-                            cycles={cycles}
-                            onEdit={handleEdit}
-                            onGenerateSchedule={setCycleToGenerate}
-                        />
-                    )}
-                </>
-            )}
+                ) : null}
+            >
+                {isEditing ? (
+                    <CycleConfigForm
+                        cycle={selectedCycle}
+                        onClose={handleClose}
+                    />
+                ) : viewState === maintenanceConfigViewStates.empty ? (
+                    <div className="maintenance-config-state maintenance-config-state--empty" data-testid="maintenance-config-empty">
+                        No maintenance configuration available from backend data.
+                    </div>
+                ) : (
+                    <CycleConfigList
+                        cycles={cycles}
+                        onEdit={handleEdit}
+                        onGenerateSchedule={setCycleToGenerate}
+                    />
+                )}
+            </WorkspacePanel>
 
             <ScheduleGenerationModal
                 isOpen={Boolean(cycleToGenerate)}

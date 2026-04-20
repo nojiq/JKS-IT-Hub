@@ -1,17 +1,19 @@
-const SystemConfigList = ({ configs = [], onEdit, onDelete, onCreate }) => {
+const SystemConfigList = ({ configs = [], onEdit, onDelete, onCreate, showHeader = true }) => {
     return (
         <div className="system-config-list">
-            <div className="section-header">
-                <div>
-                    <h3>Systems</h3>
-                    <p className="section-subtitle">Manage per-system username field mappings and access restrictions.</p>
+            {showHeader ? (
+                <div className="section-header">
+                    <div>
+                        <h3>Systems</h3>
+                        <p className="section-subtitle">Manage per-system username field mappings and access restrictions.</p>
+                    </div>
+                    {onCreate && (
+                        <button className="btn btn-primary" onClick={onCreate}>
+                            Add System
+                        </button>
+                    )}
                 </div>
-                {onCreate && (
-                    <button className="btn btn-primary" onClick={onCreate}>
-                        Add System
-                    </button>
-                )}
-            </div>
+            ) : null}
 
             {configs.length === 0 ? (
                 <div className="empty-state">

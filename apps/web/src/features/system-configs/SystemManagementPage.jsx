@@ -21,6 +21,10 @@ import {
     NormalizationPreviewer
 } from '../normalization-rules';
 import { useToast } from '../../shared/hooks/useToast.js';
+import { DataStateBlock } from '../../shared/workspace/DataStateBlock.jsx';
+import { WorkspacePageHeader } from '../../shared/workspace/WorkspacePageHeader.jsx';
+import { WorkspacePanel } from '../../shared/workspace/WorkspacePanel.jsx';
+import '../../shared/workspace/workspace.css';
 
 export default function SystemManagementPage() {
     const [activeSystemId, setActiveSystemId] = useState(null); // null means global rules
@@ -99,7 +103,15 @@ export default function SystemManagementPage() {
     };
 
     if (systemsLoading || rulesLoading) {
-        return <div className="loading-container">Loading system configurations...</div>;
+        return (
+            <section className="workspace-page system-management-page">
+                <DataStateBlock
+                    variant="loading"
+                    title="Loading systems workspace"
+                    description="Preparing system mappings and normalization rules."
+                />
+            </section>
+        );
     }
 
     const currentRules = activeSystemId
@@ -107,69 +119,94 @@ export default function SystemManagementPage() {
         : allRules.global;
 
     return (
-        <div className="system-management-page">
-            <header className="page-header">
-                <h2>System Management</h2>
-                <p className="subtitle">Configure per-system identifiers and normalization rules.</p>
-            </header>
+        <section className="workspace-page system-management-page">
+            <WorkspacePageHeader
+                eyebrow="Administration"
+                title="Systems"
+                description="Manage system mappings, username sources, and normalization rules."
+                meta="Use global rules for shared cleanup, then layer in system-specific overrides when a connector needs its own username logic."
+            />
 
             <div className="management-layout">
                 <aside className="management-sidebar">
-                    <div className="sidebar-section">
-                        <h4>Scope</h4>
-                        <button
-                            className={`scope-selector ${activeSystemId === null ? 'active' : ''}`}
-                            onClick={() => setActiveSystemId(null)}
-                        >
-                            Global Rules
-                        </button>
-                        <div className="system-list-mini">
-                            {systems.map(sys => (
-                                <button
-                                    key={sys.id}
-                                    className={`scope-selector ${activeSystemId === sys.systemId ? 'active' : ''}`}
-                                    onClick={() => setActiveSystemId(sys.systemId)}
-                                >
-                                    {sys.systemId}
-                                </button>
-                            ))}
+                    <WorkspacePanel
+                        variant="detail"
+                        title="Scope"
+                        meta="Choose whether you are editing shared rules or a specific system."
+                    >
+                        <div className="sidebar-section">
+                            <button
+                                className={`scope-selector ${activeSystemId === null ? 'active' : ''}`}
+                                onClick={() => setActiveSystemId(null)}
+                                type="button"
+                            >
+                                Global Rules
+                            </button>
+                            <div className="system-list-mini">
+                                {systems.map(sys => (
+                                    <button
+                                        key={sys.id}
+                                        className={`scope-selector ${activeSystemId === sys.systemId ? 'active' : ''}`}
+                                        onClick={() => setActiveSystemId(sys.systemId)}
+                                        type="button"
+                                    >
+                                        {sys.systemId}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    </WorkspacePanel>
 
-                    <NormalizationPreviewer systemId={activeSystemId} />
+                    <WorkspacePanel
+                        variant="detail"
+                        title="Preview Username Rules"
+                        meta="Test how the current normalization stack changes raw usernames before you save."
+                    >
+                        <NormalizationPreviewer systemId={activeSystemId} />
+                    </WorkspacePanel>
                 </aside>
 
                 <main className="management-main">
-                    {/* System Config section only shown for global or specific systems */}
-                    <section className="management-section">
+                    <WorkspacePanel
+                        variant="table"
+                        title="System Catalog"
+                        meta="Map each system to the right LDAP source and access visibility rules."
+                        actions={(
+                            <button
+                                className="workspace-inline-button is-primary"
+                                onClick={() => { setEditingSystem(null); setShowSystemForm(true); }}
+                                type="button"
+                            >
+                                Add System
+                            </button>
+                        )}
+                    >
                         <SystemConfigList
                             configs={systems}
-                            onCreate={() => { setEditingSystem(null); setShowSystemForm(true); }}
                             onEdit={(sys) => { setEditingSystem(sys); setShowSystemForm(true); }}
                             onDelete={handleSystemDelete}
+                            showHeader={false}
                         />
-                    </section>
+                    </WorkspacePanel>
 
-                    <hr className="section-divider" />
-
-                    <section className="management-section">
-                        <div className="section-header">
-                            <div>
-                                <h3>Normalization Rules</h3>
-                                <p className="section-subtitle">
-                                    {activeSystemId
-                                        ? `Rules specific to ${activeSystemId}. These apply AFTER global rules.`
-                                        : 'Rules applied to ALL usernames across all systems.'}
-                                </p>
-                            </div>
+                    <WorkspacePanel
+                        variant="content"
+                        title="Normalization Rules"
+                        meta={
+                            activeSystemId
+                                ? `Rules specific to ${activeSystemId}. These apply after the shared rule stack.`
+                                : 'Rules applied to all usernames before any system-specific overrides.'
+                        }
+                        actions={(
                             <button
-                                className="btn btn-secondary"
+                                className="workspace-inline-button"
                                 onClick={() => { setEditingRule(null); setShowRuleForm(true); }}
+                                type="button"
                             >
                                 Add Rule
                             </button>
-                        </div>
-
+                        )}
+                    >
                         <NormalizationRuleList
                             rules={currentRules}
                             systemId={activeSystemId}
@@ -177,7 +214,7 @@ export default function SystemManagementPage() {
                             onDelete={(id) => { if (confirm('Are you sure?')) deleteRule.mutate(id); }}
                             onReorder={(ids) => reorderRules.mutate(ids)}
                         />
-                    </section>
+                    </WorkspacePanel>
                 </main>
             </div>
 
@@ -212,6 +249,6 @@ export default function SystemManagementPage() {
                     </div>
                 </div>
             )}
-        </div>
+        </section>
     );
 }

@@ -16,7 +16,10 @@ import { FilterPanel } from '../../../shared/components/FilterPanel/FilterPanel'
 import { FilterSelect } from '../../../shared/components/FilterPanel/FilterSelect';
 import { useFilterParams } from '../../../shared/hooks/useFilterParams';
 import { SearchEmptyState } from '../../../shared/components/EmptyState/SearchEmptyState';
+import { DataStateBlock } from '../../../shared/workspace/DataStateBlock.jsx';
+import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel.jsx';
 import { filterCyclesForGeneration } from '../utils/scheduleGeneration.js';
+import './MaintenanceHomePage.css';
 
 const MaintenanceSchedulePage = () => {
     const { filters, setFilter, clearFilters } = useFilterParams({ page: '1', perPage: '20' });
@@ -97,33 +100,56 @@ const MaintenanceSchedulePage = () => {
     }, [cycles, filters.cycleId, filters.search]);
     const { data: windows, meta } = result || { data: [], meta: {} };
 
-    if (isLoading && !result) return <div>Loading schedule...</div>;
-    if (error) return <div>Error loading schedule: {error.message}</div>;
+    if (isLoading && !result) {
+        return (
+            <section className="maintenance-module-page">
+                <DataStateBlock
+                    variant="loading"
+                    title="Loading maintenance schedule"
+                    description="Preparing upcoming windows, filters, and generation actions."
+                />
+            </section>
+        );
+    }
+
+    if (error) {
+        return (
+            <section className="maintenance-module-page">
+                <DataStateBlock
+                    variant="error"
+                    title="Unable to load maintenance schedule"
+                    description={error.message}
+                />
+            </section>
+        );
+    }
 
     return (
-        <div className="maintenance-schedule-page">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h1>Maintenance Schedule</h1>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="btn-primary" onClick={() => setIsCreatingWindow(true)}>
-                        Add Ad-hoc Window
-                    </button>
-                    <Link to="/maintenance/history" className="btn-secondary" style={{ textDecoration: 'none' }}>
-                        My History
-                    </Link>
-                </div>
-            </div>
+        <div className="maintenance-module-page maintenance-schedule-page">
+            <WorkspacePanel
+                variant="content"
+                title="Schedule Workspace"
+                meta="Review upcoming maintenance windows, filter the queue, and open overdue work before it slips further."
+                actions={(
+                    <div className="maintenance-module-toolbar-actions">
+                        <button className="workspace-inline-button is-primary" onClick={() => setIsCreatingWindow(true)} type="button">
+                            Add Ad-hoc Window
+                        </button>
+                        <Link to="/maintenance/history" className="workspace-inline-link">
+                            Open History
+                        </Link>
+                    </div>
+                )}
+            >
+                <div className="maintenance-module-filter">
+                    <SearchInput
+                        value={filters.search || ''}
+                        onChange={(val) => setFilter('search', val)}
+                        onClear={() => setFilter('search', '')}
+                        placeholder="Search by window or cycle name..."
+                        isLoading={isFetching}
+                    />
 
-            <div style={{ marginBottom: '1.5rem' }}>
-                <SearchInput
-                    value={filters.search || ''}
-                    onChange={(val) => setFilter('search', val)}
-                    onClear={() => setFilter('search', '')}
-                    placeholder="Search by window or cycle name..."
-                    isLoading={isFetching}
-                />
-
-                <div style={{ marginTop: '1rem' }}>
                     <FilterPanel
                         activeCount={activeFiltersCount}
                         onClearAll={clearFilters}
@@ -159,48 +185,59 @@ const MaintenanceSchedulePage = () => {
                         />
                     </FilterPanel>
                 </div>
-            </div>
+            </WorkspacePanel>
 
-            <section className="schedule-generate-section">
-                <h2>Generate Future Schedule</h2>
-                <div className="schedule-generate-actions">
-                    {cycles.length === 0 && <span>No active cycles found.</span>}
-                    {cycles.length > 0 && cyclesForGeneration.length === 0 && (
-                        <span className="schedule-generate-empty">No cycles match your current search/filter.</span>
-                    )}
-                    {cyclesForGeneration.map((cycle) => (
-                        <button
-                            key={cycle.id}
-                            type="button"
-                            className="btn-secondary"
-                            disabled={generateSchedule.isPending}
-                            onClick={() => setCycleToGenerate(cycle)}
-                        >
-                            Generate: {cycle.name}
-                        </button>
-                    ))}
-                </div>
-            </section>
+            <WorkspacePanel
+                variant="detail"
+                title="Generate Future Schedule"
+                meta="Use active cycle templates to create the next set of maintenance windows."
+            >
+                <section className="schedule-generate-section">
+                    <div className="schedule-generate-actions">
+                        {cycles.length === 0 && <span>No active cycles found.</span>}
+                        {cycles.length > 0 && cyclesForGeneration.length === 0 && (
+                            <span className="schedule-generate-empty">No cycles match your current search or filter.</span>
+                        )}
+                        {cyclesForGeneration.map((cycle) => (
+                            <button
+                                key={cycle.id}
+                                type="button"
+                                className="workspace-inline-button"
+                                disabled={generateSchedule.isPending}
+                                onClick={() => setCycleToGenerate(cycle)}
+                            >
+                                Generate {cycle.name}
+                            </button>
+                        ))}
+                    </div>
+                </section>
+            </WorkspacePanel>
 
             {windows && windows.length > 0 ? (
-                <MaintenanceWindowList
-                    windows={windows}
-                    meta={meta}
-                    onPageChange={(page) => setFilter('page', String(page))}
-                    onView={(window) => setDetailWindow(window)}
-                    onEdit={handleEdit}
-                    onCancel={handleCancel}
-                    onSignOff={(window) => setSignOffWindow(window)}
-                    onAssign={(window) => setAssigningWindow(window)}
-                />
+                <WorkspacePanel
+                    variant="table"
+                    title="Scheduled Windows"
+                    meta={`${meta?.total ?? windows.length} maintenance window${(meta?.total ?? windows.length) === 1 ? '' : 's'} in view`}
+                >
+                    <MaintenanceWindowList
+                        windows={windows}
+                        meta={meta}
+                        onPageChange={(page) => setFilter('page', String(page))}
+                        onView={(window) => setDetailWindow(window)}
+                        onEdit={handleEdit}
+                        onCancel={handleCancel}
+                        onSignOff={(window) => setSignOffWindow(window)}
+                        onAssign={(window) => setAssigningWindow(window)}
+                    />
+                </WorkspacePanel>
             ) : (
-                <div style={{ marginTop: '2rem' }}>
+                <WorkspacePanel variant="detail" title="Scheduled Windows" meta="No windows match the current schedule view.">
                     {filters.search || activeFiltersCount > 0 ? (
                         <SearchEmptyState searchTerm={filters.search} onClear={clearFilters} />
                     ) : (
-                        <div className="text-gray-500 text-center p-8">No scheduled maintenance found.</div>
+                        <p className="maintenance-empty-note">No scheduled maintenance found.</p>
                     )}
-                </div>
+                </WorkspacePanel>
             )}
 
             {detailWindow && (

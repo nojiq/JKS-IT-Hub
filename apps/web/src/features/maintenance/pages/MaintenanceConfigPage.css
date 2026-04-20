@@ -1,17 +1,6 @@
 .maintenance-config-page {
-    padding: 2rem;
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-.maintenance-config-page h1 {
-    font-size: 2rem;
-    margin-bottom: 2rem;
-    color: #202124;
-}
-
-.maintenance-config-page .btn-primary {
-    margin-bottom: 1rem;
+    display: grid;
+    gap: 1rem;
 }
 
 .maintenance-config-state {
@@ -29,4 +18,10 @@
     border: 1px solid #f1b2b2;
     background: #fff5f5;
     color: #842029;
+}
+
+.maintenance-config-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
 }

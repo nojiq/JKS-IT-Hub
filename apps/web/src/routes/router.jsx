@@ -20,6 +20,8 @@ import MaintenanceHistoryPage from "../features/maintenance/pages/MaintenanceHis
 import AssignmentRulesPage from "../features/maintenance/pages/AssignmentRulesPage.jsx";
 import MyMaintenanceTasksPage from "../features/maintenance/pages/MyMaintenanceTasksPage.jsx";
 import ChecklistManagementPage from "../features/maintenance/pages/ChecklistManagementPage.jsx";
+import { MaintenanceLayout } from "../features/maintenance/pages/MaintenanceLayout.jsx";
+import MaintenanceHomePage from "../features/maintenance/pages/MaintenanceHomePage.jsx";
 import SubmitRequestPage from "../features/requests/pages/SubmitRequestPage.jsx";
 import MyRequestsPage from "../features/requests/pages/MyRequestsPage.jsx";
 import ReviewRequestsPage from "../features/requests/pages/ReviewRequestsPage.jsx";
@@ -63,13 +65,20 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: "audit-logs", element: <AuditLogPage /> },
       { path: "systems", element: <SystemManagementPage /> },
-      { path: "maintenance/config", element: <MaintenanceConfigPage /> },
-      { path: "maintenance/checklists", element: <ChecklistManagementPage /> },
-      { path: "maintenance/schedule", element: <MaintenanceSchedulePage /> },
-      { path: "maintenance/schedule/:id", element: <MaintenanceWindowDetailPage /> },
-      { path: "maintenance/history", element: <MaintenanceHistoryPage /> },
-      { path: "maintenance/assignment-rules", element: <AssignmentRulesPage /> },
-      { path: "maintenance/my-tasks", element: <MyMaintenanceTasksPage /> },
+      {
+        path: "maintenance",
+        element: <MaintenanceLayout />,
+        children: [
+          { index: true, element: <MaintenanceHomePage /> },
+          { path: "config", element: <MaintenanceConfigPage /> },
+          { path: "checklists", element: <ChecklistManagementPage /> },
+          { path: "schedule", element: <MaintenanceSchedulePage /> },
+          { path: "schedule/:id", element: <MaintenanceWindowDetailPage /> },
+          { path: "history", element: <MaintenanceHistoryPage /> },
+          { path: "assignment-rules", element: <AssignmentRulesPage /> },
+          { path: "my-tasks", element: <MyMaintenanceTasksPage /> }
+        ]
+      },
       {
         path: "requests",
         element: <RequestsLayout />,

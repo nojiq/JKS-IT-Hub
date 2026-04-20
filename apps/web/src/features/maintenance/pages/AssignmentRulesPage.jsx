@@ -3,6 +3,9 @@ import { useAssignmentRules, useDeactivateAssignmentRule, useResetRotation } fro
 import AssignmentRuleList from '../components/AssignmentRuleList.jsx';
 import AssignmentRuleForm from '../components/AssignmentRuleForm.jsx';
 import { useToast } from '../../../shared/hooks/useToast.js';
+import { DataStateBlock } from '../../../shared/workspace/DataStateBlock.jsx';
+import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel.jsx';
+import './MaintenanceHomePage.css';
 import './AssignmentRulesPage.css';
 
 const AssignmentRulesPage = () => {
@@ -55,35 +58,53 @@ const AssignmentRulesPage = () => {
         }
     };
 
-    if (isLoading) return <div className="loading">Loading assignment rules...</div>;
-    if (error) return <div className="error-message">Error loading rules: {error.message}</div>;
+    if (isLoading) {
+        return (
+            <section className="maintenance-module-page">
+                <DataStateBlock
+                    variant="loading"
+                    title="Loading assignment rules"
+                    description="Preparing department coverage and technician rotation rules."
+                />
+            </section>
+        );
+    }
+
+    if (error) {
+        return (
+            <section className="maintenance-module-page">
+                <DataStateBlock
+                    variant="error"
+                    title="Unable to load assignment rules"
+                    description={error.message}
+                />
+            </section>
+        );
+    }
 
     return (
-        <div className="assignment-rules-page">
-            <div className="page-header">
-                <h1>Department Assignment Rules</h1>
-                <p className="page-description">
-                    Configure auto-assignment rules for maintenance windows by department.
-                </p>
-            </div>
-
-            {isEditing ? (
-                <AssignmentRuleForm rule={selectedRule} onClose={handleClose} />
-            ) : (
-                <>
-                    <div className="page-actions">
-                        <button onClick={handleCreate} className="btn-primary">
-                            Create New Rule
-                        </button>
-                    </div>
+        <div className="maintenance-module-page assignment-rules-page">
+            <WorkspacePanel
+                variant="content"
+                title="Department Assignment Rules"
+                meta="Control which technicians receive maintenance windows for each department and strategy."
+                actions={!isEditing ? (
+                    <button onClick={handleCreate} className="workspace-inline-button is-primary" type="button">
+                        Create New Rule
+                    </button>
+                ) : null}
+            >
+                {isEditing ? (
+                    <AssignmentRuleForm rule={selectedRule} onClose={handleClose} />
+                ) : (
                     <AssignmentRuleList
                         rules={rules}
                         onEdit={handleEdit}
                         onDeactivate={handleDeactivate}
                         onResetRotation={handleResetRotation}
                     />
-                </>
-            )}
+                )}
+            </WorkspacePanel>
         </div>
     );
 };

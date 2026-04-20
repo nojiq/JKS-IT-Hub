@@ -6,7 +6,7 @@ export function BulkActionsBar({ selectedCount, children }) {
   }
 
   return (
-    <div className="workspace-bulk-actions" role="region" aria-label="Bulk actions">
+    <div className="workspace-bulk-actions" role="region" aria-label="Bulk actions" aria-live="polite">
       <span className="workspace-bulk-actions-label">{selectedCount} selected</span>
       <div className="workspace-bulk-actions-actions">{children}</div>
     </div>

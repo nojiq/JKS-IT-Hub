@@ -840,23 +840,23 @@ h6,
 
 .audit-filter-input {
   padding: 0.6rem 0.8rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ui-border-subtle);
   border-radius: 12px;
   font-size: 0.95rem;
-  background-color: white;
-  color: #0f172a;
+  background-color: var(--ui-surface-elevated);
+  color: var(--ui-text-primary);
   transition: border-color 120ms ease;
   font-family: inherit;
 }
 
-.audit-filter-input:focus {
-  outline: 2px solid #94a3b8;
+.audit-filter-input:focus-visible {
+  outline: 2px solid var(--ui-accent-primary);
   outline-offset: 1px;
-  border-color: #94a3b8;
+  border-color: var(--ui-accent-primary);
 }
 
 .audit-filter-input::placeholder {
-  color: #94a3b8;
+  color: var(--ui-text-muted);
 }
 
 .audit-filter-actions {
@@ -1213,6 +1213,7 @@ h6,
   display: flex;
   gap: 2rem;
   margin-top: 2rem;
+  align-items: flex-start;
 }
 
 .management-sidebar {
@@ -1274,6 +1275,16 @@ h6,
   flex-direction: column;
   gap: 0.75rem;
   margin-top: 1rem;
+}
+
+@media (max-width: 1023px) {
+  .management-layout {
+    flex-direction: column;
+  }
+
+  .management-sidebar {
+    width: 100%;
+  }
 }
 
 .preview-results {

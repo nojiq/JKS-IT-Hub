@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { useMyMaintenanceWindows } from '../hooks/useMaintenance.js';
+import { DataStateBlock } from '../../../shared/workspace/DataStateBlock.jsx';
+import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel.jsx';
+import './MaintenanceHomePage.css';
 import './MyMaintenanceTasksPage.css';
 
 const PAGE_SIZE = 20;
@@ -28,8 +31,29 @@ const MyMaintenanceTasksPage = () => {
         limit: PAGE_SIZE
     });
 
-    if (isLoading && !result) return <div className="loading">Loading your maintenance tasks...</div>;
-    if (error) return <div className="error-message">Error loading tasks: {error.message}</div>;
+    if (isLoading && !result) {
+        return (
+            <section className="maintenance-module-page">
+                <DataStateBlock
+                    variant="loading"
+                    title="Loading maintenance tasks"
+                    description="Preparing assigned windows and technician workload details."
+                />
+            </section>
+        );
+    }
+
+    if (error) {
+        return (
+            <section className="maintenance-module-page">
+                <DataStateBlock
+                    variant="error"
+                    title="Unable to load maintenance tasks"
+                    description={error.message}
+                />
+            </section>
+        );
+    }
 
     const windows = result?.data || [];
     const meta = result?.meta || { page, totalPages: 1, total: windows.length };
@@ -39,56 +63,59 @@ const MyMaintenanceTasksPage = () => {
     const overdueCount = windows.filter((window) => window.status === 'OVERDUE').length;
 
     return (
-        <div className="my-tasks-page">
-            <div className="page-header">
-                <h1>My Maintenance Tasks</h1>
-                <p className="page-description">
-                    View and manage maintenance windows assigned to you
-                </p>
-            </div>
-
-            <div className="stats-summary">
-                <div className="stat-card upcoming">
+        <div className="maintenance-module-page my-tasks-page">
+            <div className="maintenance-panel-grid stats-summary">
+                <WorkspacePanel variant="detail" title="Upcoming" meta="Assigned work that is arriving soon.">
                     <div className="stat-value">{upcomingCount}</div>
-                    <div className="stat-label">Upcoming</div>
-                </div>
-                <div className="stat-card scheduled">
+                </WorkspacePanel>
+                <WorkspacePanel variant="detail" title="Scheduled" meta="Windows currently planned for execution.">
                     <div className="stat-value">{scheduledCount}</div>
-                    <div className="stat-label">Scheduled</div>
-                </div>
-                <div className="stat-card overdue">
+                </WorkspacePanel>
+                <WorkspacePanel variant="detail" title="Overdue" meta="Assigned work that needs immediate follow-up.">
                     <div className="stat-value">{overdueCount}</div>
-                    <div className="stat-label">Overdue</div>
-                </div>
+                </WorkspacePanel>
             </div>
 
-            <div className="filter-section">
-                <label htmlFor="status-filter">Filter by Status:</label>
-                <select
-                    id="status-filter"
-                    value={statusFilter}
-                    onChange={(event) => {
-                        setStatusFilter(event.target.value);
-                        setPage(1);
-                    }}
-                    disabled={isFetching}
-                >
-                    <option value="all">All Tasks</option>
-                    <option value="upcoming">Upcoming</option>
-                    <option value="scheduled">Scheduled</option>
-                    <option value="overdue">Overdue</option>
-                    <option value="completed">Completed</option>
-                </select>
-            </div>
+            <WorkspacePanel
+                variant="content"
+                title="Assigned Windows"
+                meta="Filter your queue by status, then open window details to complete or verify work."
+            >
+                <div className="maintenance-select-group filter-section">
+                    <label htmlFor="status-filter">Status</label>
+                    <select
+                        id="status-filter"
+                        value={statusFilter}
+                        onChange={(event) => {
+                            setStatusFilter(event.target.value);
+                            setPage(1);
+                        }}
+                        disabled={isFetching}
+                    >
+                        <option value="all">All Tasks</option>
+                        <option value="upcoming">Upcoming</option>
+                        <option value="scheduled">Scheduled</option>
+                        <option value="overdue">Overdue</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                </div>
+            </WorkspacePanel>
 
             {windows.length === 0 ? (
-                <div className="empty-state">
-                    {statusFilter === 'all'
-                        ? 'No maintenance tasks assigned to you.'
-                        : `No ${statusFilter} tasks found.`}
-                </div>
+                <WorkspacePanel variant="detail" title="Assigned Windows" meta="No items match the current technician view.">
+                    <div className="empty-state">
+                        {statusFilter === 'all'
+                            ? 'No maintenance tasks assigned to you.'
+                            : `No ${statusFilter} tasks found.`}
+                    </div>
+                </WorkspacePanel>
             ) : (
-                <div className="tasks-grid">
+                <WorkspacePanel
+                    variant="table"
+                    title="Assigned Windows"
+                    meta={`${meta.total ?? windows.length} task${(meta.total ?? windows.length) === 1 ? '' : 's'} in the current queue`}
+                >
+                    <div className="tasks-grid">
                     {windows.map((window) => {
                         const deviceTypes = normalizeDeviceTypes(window.deviceTypes);
                         return (
@@ -194,14 +221,15 @@ const MyMaintenanceTasksPage = () => {
                             </div>
                         );
                     })}
-                </div>
+                    </div>
+                </WorkspacePanel>
             )}
 
             {meta.totalPages > 1 && (
-                <div className="pagination-controls">
+                <div className="maintenance-module-pagination pagination-controls">
                     <button
                         type="button"
-                        className="btn-secondary"
+                        className="workspace-inline-button"
                         disabled={meta.page <= 1 || isFetching}
                         onClick={() => setPage(meta.page - 1)}
                     >
@@ -212,7 +240,7 @@ const MyMaintenanceTasksPage = () => {
                     </span>
                     <button
                         type="button"
-                        className="btn-secondary"
+                        className="workspace-inline-button"
                         disabled={meta.page >= meta.totalPages || isFetching}
                         onClick={() => setPage(meta.page + 1)}
                     >

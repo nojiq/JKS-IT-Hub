@@ -1,9 +1,6 @@
 const IT_ROLES = ["it", "admin", "head_it"];
 const ADMIN_ROLES = ["admin", "head_it"];
 
-const maintenancePathForRole = (role) =>
-  IT_ROLES.includes(role) ? "/maintenance/schedule" : "/maintenance/my-tasks";
-
 export const workspaceGroups = [
   {
     id: "core",
@@ -43,7 +40,7 @@ export const workspaceGroups = [
         id: "maintenance",
         label: "Maintenance",
         icon: "maintenance",
-        to: ({ role }) => maintenancePathForRole(role),
+        to: "/maintenance",
         roles: IT_ROLES,
         launcherPriority: 4,
         launcherDescription: "Schedule preventive work, assign tasks, and close overdue actions.",

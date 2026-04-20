@@ -159,9 +159,9 @@ export default function AuditLogPage() {
     return (
         <section className="workspace-page audit-log-page">
             <WorkspacePageHeader
-                eyebrow="Transparency"
-                title="Audit Logs"
-                description="Track all sensitive actions across the system."
+                eyebrow="Administration"
+                title="Audit"
+                description="Review system activity, investigate changes, and trace sensitive actions."
                 actions={(
                     <Link className="workspace-inline-link" to="/">
                         Back to dashboard

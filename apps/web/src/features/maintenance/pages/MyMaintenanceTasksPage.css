@@ -1,51 +1,9 @@
 .my-tasks-page {
-    padding: 2rem;
-    max-width: 1400px;
-    margin: 0 auto;
-}
-
-.page-header {
-    margin-bottom: 2rem;
-}
-
-.page-header h1 {
-    margin: 0 0 0.5rem 0;
-    color: var(--text-primary);
-}
-
-.page-description {
-    margin: 0;
-    color: var(--text-secondary);
-    font-size: 1rem;
+    gap: 1rem;
 }
 
 .stats-summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-}
-
-.stat-card {
-    padding: 1.5rem;
-    border-radius: 8px;
-    text-align: center;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.stat-card.upcoming {
-    background: linear-gradient(135deg, #fef7e0 0%, #fef3c7 100%);
-    border-left: 4px solid #f9ab00;
-}
-
-.stat-card.scheduled {
-    background: linear-gradient(135deg, #e8f0fe 0%, #dbeafe 100%);
-    border-left: 4px solid #1a73e8;
-}
-
-.stat-card.overdue {
-    background: linear-gradient(135deg, #fce8e6 0%, #fee2e2 100%);
-    border-left: 4px solid #d93025;
+    margin: 0;
 }
 
 .stat-value {
@@ -64,10 +22,7 @@
 }
 
 .filter-section {
-    margin-bottom: 2rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+    margin: 0;
 }
 
 .filter-section label {

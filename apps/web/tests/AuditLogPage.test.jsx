@@ -82,10 +82,12 @@ describe('AuditLogPage', () => {
 
         const { container } = renderPage();
 
-        expect(screen.getByText('Audit Logs')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Audit' })).toBeInTheDocument();
+        expect(screen.getByText('Review system activity, investigate changes, and trace sensitive actions.')).toBeInTheDocument();
         expect(screen.getByRole('table')).toBeInTheDocument();
         expect(container.querySelector('.workspace-page-header')).not.toBeNull();
         expect(container.querySelectorAll('.workspace-panel.workspace-panel-table').length).toBeGreaterThanOrEqual(1);
         expect(container.querySelector('.users-header')).toBeNull();
+        expect(screen.queryByText('Audit Logs')).not.toBeInTheDocument();
     });
 });

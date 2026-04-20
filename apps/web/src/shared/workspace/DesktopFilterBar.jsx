@@ -3,7 +3,7 @@ import "./workspace.css";
 
 export function DesktopFilterBar({ contract, children }) {
   return (
-    <div className="workspace-filter-bar">
+    <div className="workspace-filter-bar" role="region" aria-label="Filters">
       <FilterPanel
         filters={contract.filters}
         onFilterChange={contract.apply}
