@@ -1,4 +1,4 @@
-const PreviousImapPasswordsModal = ({ isOpen, entries = [], onClose }) => {
+const PreviousImapPasswordsModal = ({ isOpen, entries = [], onClose, onRestore }) => {
     if (!isOpen) {
         return null;
     }
@@ -20,6 +20,14 @@ const PreviousImapPasswordsModal = ({ isOpen, entries = [], onClose }) => {
                         <div className="imap-generator-modal-row" key={entry.id}>
                             <strong>{entry.username}</strong>
                             <span>{entry.metadata?.saveMode || "unknown"}</span>
+                            <div className="imap-generator-modal-actions">
+                                <button onClick={() => onRestore(entry.id, true)} type="button">
+                                    Restore {entry.id} as active
+                                </button>
+                                <button onClick={() => onRestore(entry.id, false)} type="button">
+                                    Restore {entry.id} as history only
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>

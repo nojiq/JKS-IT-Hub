@@ -19,7 +19,7 @@ const createEmptyFields = () => ({
 });
 
 const ImapGeneratorPage = () => {
-    const [searchParams, setSearchParams] = useSearchParams();
+    const [searchParams] = useSearchParams();
     const initialUserId = searchParams.get("userId") || "";
     const [selectedUserId, setSelectedUserId] = useState(initialUserId);
     const [mode, setMode] = useState(initialUserId ? "attached" : "attached");
@@ -68,6 +68,17 @@ const ImapGeneratorPage = () => {
             ...workbenchQuery.data.fields
         }));
     }, [mode, workbenchQuery.data]);
+
+    useEffect(() => {
+        if (!conflictReviewMutation.data?.fields) {
+            return;
+        }
+
+        setFields((current) => ({
+            ...current,
+            ...conflictReviewMutation.data.fields
+        }));
+    }, [conflictReviewMutation.data]);
 
     useEffect(() => {
         let cancelled = false;
@@ -148,7 +159,17 @@ const ImapGeneratorPage = () => {
     }, [manualIdentity.email, manualIdentity.fullName, mode, previewMutation, previewPayload, selectedUserId, selectedFields]);
 
     const handleSave = () => {
-        saveMutation.mutate(previewPayload);
+        const payload = {
+            ...previewPayload
+        };
+
+        if (mode === "manual" && !selectedUserId && manualIdentity.email.trim()) {
+            payload.createUser = {
+                username: manualIdentity.email.trim()
+            };
+        }
+
+        saveMutation.mutate(payload);
     };
 
     const handleSelectSuggestion = (suggestion) => {
@@ -156,9 +177,6 @@ const ImapGeneratorPage = () => {
         setSelectedUserId(suggestion.id);
         setResolverQuery("");
         setResolverSuggestions([]);
-        const params = new URLSearchParams(searchParams);
-        params.set("userId", suggestion.id);
-        setSearchParams(params);
     };
 
     const handleUseLdap = (field) => {
@@ -173,6 +191,14 @@ const ImapGeneratorPage = () => {
                     [field]: "use_ldap"
                 }
             }
+        });
+    };
+
+    const handleRestorePassword = (credentialId, setActive) => {
+        saveMutation.mutate({
+            userId: selectedUserId,
+            restoreCredentialId: credentialId,
+            setActive
         });
     };
 
@@ -219,6 +245,7 @@ const ImapGeneratorPage = () => {
                 entries={previousPasswordsQuery.data || []}
                 isOpen={isPreviousPasswordsOpen}
                 onClose={() => setIsPreviousPasswordsOpen(false)}
+                onRestore={handleRestorePassword}
             />
         </section>
     );

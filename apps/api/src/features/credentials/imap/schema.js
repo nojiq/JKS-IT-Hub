@@ -35,6 +35,7 @@ export const saveImapGeneratorSchema = previewImapGeneratorSchema.extend({
         role: z.string().trim().min(1).optional(),
         status: z.string().trim().min(1).optional()
     }).optional(),
+    restoreCredentialId: z.string().min(1).optional(),
     setActive: z.boolean().optional().default(false)
 });
 

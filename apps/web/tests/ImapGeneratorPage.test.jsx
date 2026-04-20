@@ -280,6 +280,37 @@ describe('ImapGeneratorPage', () => {
         });
     });
 
+    it('sends createUser payload when manual mode saves without an attached user', async () => {
+        renderApp();
+
+        expect(await screen.findByRole('heading', { name: 'IMAP Generator' })).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Manual Entry' }));
+        fireEvent.change(screen.getByRole('textbox', { name: 'Manual Full Name' }), {
+            target: { value: 'Abu Bakar' }
+        });
+        fireEvent.change(screen.getByRole('textbox', { name: 'Manual Email' }), {
+            target: { value: 'abu@example.com' }
+        });
+        fireEvent.click(screen.getAllByRole('checkbox', { name: 'Use' })[4]);
+        fireEvent.change(screen.getByRole('textbox', { name: 'DOB' }), {
+            target: { value: '2021-01-21' }
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Save IMAP Password' }));
+
+        await waitFor(() => {
+            expect(saveImapPassword).toHaveBeenCalledWith(expect.objectContaining({
+                manualIdentity: {
+                    fullName: 'Abu Bakar',
+                    email: 'abu@example.com'
+                },
+                createUser: expect.objectContaining({
+                    username: 'abu@example.com'
+                }),
+                userId: undefined
+            }));
+        });
+    });
+
     it('opens the previous passwords modal from the inspector', async () => {
         renderApp('/users/imap-generator?userId=user-42');
 
@@ -288,6 +319,38 @@ describe('ImapGeneratorPage', () => {
 
         expect(await screen.findByRole('dialog', { name: 'Previous IMAP Passwords' })).toBeInTheDocument();
         expect(await screen.findByText('history_only')).toBeInTheDocument();
+    });
+
+    it('restores a previous password as active from the modal', async () => {
+        renderApp('/users/imap-generator?userId=user-42');
+
+        expect(await screen.findByDisplayValue('123')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Previous IMAP Passwords' }));
+        fireEvent.click(await screen.findByRole('button', { name: 'Restore cred-2 as active' }));
+
+        await waitFor(() => {
+            expect(saveImapPassword).toHaveBeenCalledWith(expect.objectContaining({
+                restoreCredentialId: 'cred-2',
+                setActive: true,
+                userId: 'user-42'
+            }));
+        });
+    });
+
+    it('restores a previous password as history only from the modal', async () => {
+        renderApp('/users/imap-generator?userId=user-42');
+
+        expect(await screen.findByDisplayValue('123')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Previous IMAP Passwords' }));
+        fireEvent.click(await screen.findByRole('button', { name: 'Restore cred-2 as history only' }));
+
+        await waitFor(() => {
+            expect(saveImapPassword).toHaveBeenCalledWith(expect.objectContaining({
+                restoreCredentialId: 'cred-2',
+                setActive: false,
+                userId: 'user-42'
+            }));
+        });
     });
 
     it('shows sync conflict review only when workbench data includes conflicts', async () => {
@@ -403,5 +466,34 @@ describe('ImapGeneratorPage', () => {
                 }
             });
         });
+    });
+
+    it('refreshes visible field values from the conflict-review response', async () => {
+        getImapWorkbench.mockResolvedValueOnce({
+            subjectKey: 'user-42',
+            fields: {
+                email: { value: 'abdullah.fauzi@jkseng.com', source: 'ldap' },
+                firstName: { value: 'Abdullah', source: 'ldap' },
+                lastName: { value: 'Fauzi', source: 'ldap' },
+                fullName: { value: 'Abu', source: 'system' },
+                dob: { value: '2021-01-21', source: 'empty' },
+                phone: { value: '123', source: 'system' }
+            },
+            conflicts: [
+                {
+                    field: 'fullName',
+                    systemValue: 'Abu',
+                    ldapValue: 'Abdullah Fauzi'
+                }
+            ]
+        });
+
+        renderApp('/users/imap-generator?userId=user-42');
+
+        expect(await screen.findByRole('heading', { name: 'Sync Conflict Review' })).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Use LDAP for fullName' }));
+
+        expect(await screen.findByDisplayValue('Abdullah Fauzi')).toBeInTheDocument();
+        expect(screen.getAllByText('LDAP').length).toBeGreaterThanOrEqual(1);
     });
 });

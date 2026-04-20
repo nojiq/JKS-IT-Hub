@@ -214,6 +214,24 @@ test("IMAP Generator API saves passwords with active mode", async () => {
     await app.close();
 });
 
+test("IMAP Generator API accepts restoreCredentialId on save", async () => {
+    const { app, authHeader } = await buildApp({ role: "admin" });
+
+    const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/credentials/imap/save",
+        headers: authHeader,
+        payload: {
+            userId: "user-1",
+            restoreCredentialId: "cred-archive",
+            setActive: false
+        }
+    });
+
+    assert.equal(response.statusCode, 201);
+    await app.close();
+});
+
 test("IMAP Generator API lists previous passwords", async () => {
     const { app, authHeader } = await buildApp();
 

@@ -149,6 +149,23 @@ const buildProfileUpdateData = ({ userId, subjectKey, fields, ldapAttributes = {
     return data;
 };
 
+const buildFieldsFromSnapshot = (snapshotFields = {}, sources = {}) => {
+    return IMAP_FIELDS.reduce((state, { key }) => {
+        const value = String(snapshotFields?.[key] ?? "").trim();
+        const source = value
+            ? (sources?.[key] === "ldap" ? "ldap" : "system")
+            : "empty";
+
+        state[key] = {
+            value,
+            source,
+            systemValue: source === "system" ? value : null,
+            ldapValue: source === "ldap" ? value : null
+        };
+        return state;
+    }, {});
+};
+
 const buildUsername = ({ input, activeCredential, fields, manualIdentity }) => {
     return String(
         input.username ||
@@ -302,20 +319,54 @@ export const saveImapPassword = async (input, actorUserId, deps = {}) => {
         throw error;
     }
 
-    const preview = await previewImapPassword(
-        {
-            ...input,
-            userId: user.id
-        },
-        {
-            ...deps,
-            repo: {
-                ...repoApi,
-                getUserImapProfile: async () => profile ?? (await repoApi.getUserImapProfile(user.id)),
-                getUserById: async () => user
-            }
+    let preview;
+    if (input.restoreCredentialId) {
+        const restoredCredential = await repoApi.getUserCredentialById(input.restoreCredentialId);
+        if (!restoredCredential) {
+            const error = new Error("Credential not found");
+            error.code = "CREDENTIAL_NOT_FOUND";
+            throw error;
         }
-    );
+
+        const snapshotFields = restoredCredential.metadata?.imapSnapshot?.fields || {};
+        const sources = restoredCredential.metadata?.sources || {};
+        const fields = buildFieldsFromSnapshot(snapshotFields, sources);
+
+        preview = {
+            user: {
+                id: user.id,
+                username: user.username,
+                status: user.status
+            },
+            subjectKey: restoredCredential.metadata?.subjectKey || profile?.deterministicSubjectKey || user.id,
+            fields,
+            proposedCredential: {
+                system: "imap",
+                username: restoredCredential.username,
+                password: restoredCredential.password
+            },
+            metadata: {
+                subjectKey: restoredCredential.metadata?.subjectKey || profile?.deterministicSubjectKey || user.id,
+                selectedFields: restoredCredential.metadata?.selectedFields || [],
+                sources
+            }
+        };
+    } else {
+        preview = await previewImapPassword(
+            {
+                ...input,
+                userId: user.id
+            },
+            {
+                ...deps,
+                repo: {
+                    ...repoApi,
+                    getUserImapProfile: async () => profile ?? (await repoApi.getUserImapProfile(user.id)),
+                    getUserById: async () => user
+                }
+            }
+        );
+    }
 
     await repoApi.upsertUserImapProfile(
         buildProfileUpdateData({

@@ -371,3 +371,173 @@ test("saveImapPassword can set a newly generated IMAP password active", async ()
     assert.equal(calls.record.metadata.saveMode, "active");
     assert.equal(result.record.id, "cred-new-active");
 });
+
+test("saveImapPassword can restore an archived IMAP password as active", async () => {
+    const calls = {
+        record: null,
+        deactivated: [],
+        restoredLookup: null
+    };
+
+    const repo = {
+        getUserById: async () => ({
+            id: "user-1",
+            username: "abdullah.fauzi",
+            status: "active",
+            ldapAttributes: {
+                mail: "abdullah.fauzi@jkseng.com",
+                cn: "Abdullah Fauzi"
+            }
+        }),
+        getUserImapProfile: async () => ({
+            userId: "user-1",
+            deterministicSubjectKey: "user-1"
+        }),
+        getUserCredentialBySystem: async () => ({
+            id: "cred-active",
+            systemId: "imap",
+            username: "abdullah.fauzi@jkseng.com",
+            password: "active-password",
+            templateVersion: 4,
+            isActive: true
+        }),
+        getUserCredentialById: async (id) => {
+            calls.restoredLookup = id;
+            return {
+                id,
+                userId: "user-1",
+                systemId: "imap",
+                username: "abdullah.fauzi@jkseng.com",
+                password: "restored-password",
+                templateVersion: 3,
+                metadata: {
+                    subjectKey: "user-1",
+                    selectedFields: ["dob", "phone"],
+                    sources: { dob: "manual", phone: "manual" },
+                    imapSnapshot: {
+                        fields: {
+                            email: "abdullah.fauzi@jkseng.com",
+                            fullName: "Abu",
+                            dob: "2021-01-21",
+                            phone: "123"
+                        }
+                    }
+                }
+            };
+        },
+        upsertUserImapProfile: async (data) => data,
+        createImapCredentialRecord: async (data) => {
+            calls.record = data;
+            return {
+                id: "cred-restored-active",
+                ...data
+            };
+        },
+        deactivateUserCredential: async (id) => {
+            calls.deactivated.push(id);
+            return true;
+        }
+    };
+
+    const result = await saveImapPassword(
+        {
+            userId: "user-1",
+            restoreCredentialId: "cred-archive",
+            setActive: true
+        },
+        "actor-1",
+        { repo }
+    );
+
+    assert.equal(calls.restoredLookup, "cred-archive");
+    assert.deepEqual(calls.deactivated, ["cred-active"]);
+    assert.equal(calls.record.password, "restored-password");
+    assert.equal(calls.record.isActive, true);
+    assert.equal(calls.record.metadata.saveMode, "active");
+    assert.equal(result.record.id, "cred-restored-active");
+});
+
+test("saveImapPassword can restore an archived IMAP password as history only", async () => {
+    const calls = {
+        record: null,
+        deactivated: [],
+        restoredLookup: null
+    };
+
+    const repo = {
+        getUserById: async () => ({
+            id: "user-1",
+            username: "abdullah.fauzi",
+            status: "active",
+            ldapAttributes: {
+                mail: "abdullah.fauzi@jkseng.com",
+                cn: "Abdullah Fauzi"
+            }
+        }),
+        getUserImapProfile: async () => ({
+            userId: "user-1",
+            deterministicSubjectKey: "user-1"
+        }),
+        getUserCredentialBySystem: async () => ({
+            id: "cred-active",
+            systemId: "imap",
+            username: "abdullah.fauzi@jkseng.com",
+            password: "active-password",
+            templateVersion: 4,
+            isActive: true
+        }),
+        getUserCredentialById: async (id) => {
+            calls.restoredLookup = id;
+            return {
+                id,
+                userId: "user-1",
+                systemId: "imap",
+                username: "abdullah.fauzi@jkseng.com",
+                password: "restored-password",
+                templateVersion: 3,
+                metadata: {
+                    subjectKey: "user-1",
+                    selectedFields: ["dob", "phone"],
+                    sources: { dob: "manual", phone: "manual" },
+                    imapSnapshot: {
+                        fields: {
+                            email: "abdullah.fauzi@jkseng.com",
+                            fullName: "Abu",
+                            dob: "2021-01-21",
+                            phone: "123"
+                        }
+                    }
+                }
+            };
+        },
+        upsertUserImapProfile: async (data) => data,
+        createImapCredentialRecord: async (data) => {
+            calls.record = data;
+            return {
+                id: "cred-restored-history",
+                ...data
+            };
+        },
+        deactivateUserCredential: async (id) => {
+            calls.deactivated.push(id);
+            return true;
+        }
+    };
+
+    const result = await saveImapPassword(
+        {
+            userId: "user-1",
+            restoreCredentialId: "cred-archive",
+            setActive: false
+        },
+        "actor-1",
+        { repo }
+    );
+
+    assert.equal(calls.restoredLookup, "cred-archive");
+    assert.deepEqual(calls.deactivated, []);
+    assert.equal(calls.record.password, "restored-password");
+    assert.equal(calls.record.isActive, false);
+    assert.equal(calls.record.metadata.saveMode, "history_only");
+    assert.equal(result.record.id, "cred-restored-history");
+});
