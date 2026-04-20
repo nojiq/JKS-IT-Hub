@@ -259,6 +259,11 @@ export default function UserDetailPage() {
                 </Link>
               ) : null}
               {canManageCredentials ? (
+                <Link className="workspace-inline-link" to={`/users/imap-generator?userId=${id}`}>
+                  Open IMAP Generator
+                </Link>
+              ) : null}
+              {canManageCredentials ? (
                 <CredentialExportButton
                   userId={id}
                   username={user.username}

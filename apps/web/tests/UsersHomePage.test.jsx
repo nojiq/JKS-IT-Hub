@@ -6,6 +6,7 @@ import { ThemeProvider } from '../src/shared/context/ThemeProvider';
 import { WorkspaceLayout } from '../src/shared/workspace/WorkspaceLayout';
 import { UsersLayout } from '../src/features/users/UsersLayout.jsx';
 import UsersHomePage from '../src/features/users/UsersHomePage.jsx';
+import { default as ImapGeneratorPage } from '../src/features/credentials/imap/ImapGeneratorPage.jsx';
 
 vi.mock('../src/features/users/auth-api', () => ({
     fetchSession: vi.fn(),
@@ -67,6 +68,7 @@ const renderApp = (initialEntry = '/users') => {
                     children: [
                         { index: true, element: <UsersHomePage /> },
                         { path: 'directory', element: <div>Directory Content</div> },
+                        { path: 'imap-generator', element: <ImapGeneratorPage /> },
                         { path: 'locked', element: <div>Locked Credentials Content</div> },
                         { path: 'history', element: <div>History Content</div> }
                     ]
@@ -128,6 +130,7 @@ describe('Users module overview route', () => {
         expect(await screen.findByRole('heading', { name: 'Users & Credentials' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Overview' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Directory' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'IMAP Generator' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Locked Credentials' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'History' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'User Directory' })).toBeInTheDocument();
