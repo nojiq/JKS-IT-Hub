@@ -94,6 +94,16 @@ const createInMemorySyncRepo = (runs = []) => {
         return null;
       }
       return [...state].sort((a, b) => b.startedAt - a.startedAt)[0];
+    },
+    getActiveSyncRun: async () => {
+      return [...state]
+        .filter((run) => run.status === "started")
+        .sort((a, b) => b.startedAt - a.startedAt)[0] ?? null;
+    },
+    listStartedSyncRuns: async () => {
+      return [...state]
+        .filter((run) => run.status === "started")
+        .sort((a, b) => b.startedAt - a.startedAt);
     }
   };
 };
@@ -329,6 +339,56 @@ test("GET /ldap/sync/latest returns latest sync run", async () => {
   await app.close();
 });
 
+test("GET /ldap/sync/latest recovers all stale started runs", async () => {
+  const user = {
+    id: "user-4b",
+    username: "head-it",
+    role: "head_it",
+    status: "active"
+  };
+  const syncRepo = createInMemorySyncRepo([
+    {
+      id: "stale-older",
+      status: "started",
+      startedAt: new Date("2026-01-01T08:00:00Z"),
+      completedAt: null,
+      errorMessage: null,
+      triggeredByUserId: null
+    },
+    {
+      id: "stale-newer",
+      status: "started",
+      startedAt: new Date("2026-01-01T09:00:00Z"),
+      completedAt: null,
+      errorMessage: null,
+      triggeredByUserId: null
+    }
+  ]);
+  const app = await createTestApp({
+    syncRunner: { startManualSync: async () => ({}) },
+    userRepo: createInMemoryUserRepo([user]),
+    syncRepo
+  });
+
+  const response = await app.inject({
+    method: "GET",
+    url: "/ldap/sync/latest",
+    headers: {
+      cookie: await createSessionCookie(user)
+    }
+  });
+
+  assert.equal(response.statusCode, 200);
+  const body = response.json();
+  assert.equal(body.data.run.id, "stale-newer");
+  assert.equal(body.data.run.status, "failed");
+
+  const startedRuns = await syncRepo.listStartedSyncRuns();
+  assert.equal(startedRuns.length, 0);
+
+  await app.close();
+});
+
 test("manual sync records failure error message", async () => {
   const syncRepo = createInMemorySyncRepo();
   const userRepo = {
@@ -359,6 +419,164 @@ test("manual sync records failure error message", async () => {
   const latest = await syncRepo.getLatestSyncRun();
   assert.equal(latest.status, "failed");
   assert.ok(latest.errorMessage.includes("LDAP bind timeout"));
+});
+
+test("manual sync marks run failed when setup fails after row creation", async () => {
+  const syncRepo = createInMemorySyncRepo();
+  const userRepo = {
+    ...createInMemoryUserRepo(),
+    upsertUserFromLdap: async () => ({})
+  };
+  const runner = createLdapSyncRunner({
+    config: baseConfig,
+    ldapService: {
+      searchEntries: async () => []
+    },
+    syncRepo,
+    userRepo,
+    auditRepo: {
+      createAuditLog: async () => {
+        throw new Error("Audit insert failed");
+      }
+    },
+    eventChannel: null
+  });
+
+  await assert.rejects(
+    () => runner.startManualSync({ actor: { id: "user-7" } }),
+    /Audit insert failed/
+  );
+
+  const latest = await syncRepo.getLatestSyncRun();
+  assert.equal(latest.status, "failed");
+  assert.match(latest.errorMessage, /Audit insert failed/);
+});
+
+test("scheduled sync recovers all stale started runs before new run", async () => {
+  const config = {
+    ...baseConfig,
+    ldapSync: {
+      ...baseConfig.ldapSync,
+      staleAfterMs: 60 * 1000
+    }
+  };
+  const syncRepo = createInMemorySyncRepo([
+    {
+      id: "stale-1",
+      status: "started",
+      startedAt: new Date(Date.now() - 10 * 60 * 1000),
+      completedAt: null,
+      errorMessage: null,
+      triggeredByUserId: null
+    },
+    {
+      id: "stale-2",
+      status: "started",
+      startedAt: new Date(Date.now() - 5 * 60 * 1000),
+      completedAt: null,
+      errorMessage: null,
+      triggeredByUserId: null
+    }
+  ]);
+  const userRepo = {
+    ...createInMemoryUserRepo(),
+    upsertUserFromLdap: async () => ({})
+  };
+  const runner = createLdapSyncRunner({
+    config,
+    ldapService: {
+      searchEntries: async () => []
+    },
+    syncRepo,
+    userRepo,
+    auditRepo: { createAuditLog: async () => ({}) },
+    eventChannel: null
+  });
+
+  const latestRun = await runner.startScheduledSync();
+
+  assert.equal(latestRun.status, "completed");
+  const startedRuns = await syncRepo.listStartedSyncRuns();
+  assert.equal(startedRuns.length, 0);
+
+  const latest = await syncRepo.getLatestSyncRun();
+  assert.notEqual(latest.id, "stale-1");
+  assert.notEqual(latest.id, "stale-2");
+});
+
+test("manual sync serializes concurrent starts with sync start lock", async () => {
+  const state = [];
+  let nextId = 1;
+  let lockTail = Promise.resolve();
+  const syncRepo = {
+    withSyncStartLock: async (fn) => {
+      const previous = lockTail;
+      let release;
+      lockTail = new Promise((resolve) => {
+        release = resolve;
+      });
+      await previous;
+      try {
+        return await fn(syncRepo);
+      } finally {
+        release();
+      }
+    },
+    getActiveSyncRun: async () => {
+      return [...state].find((run) => run.status === "started") ?? null;
+    },
+    getLatestSyncRun: async () => {
+      return state.at(-1) ?? null;
+    },
+    createSyncRun: async (data) => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      const run = {
+        id: data.id ?? `run-${nextId++}`,
+        status: data.status ?? "started",
+        startedAt: data.startedAt ?? new Date(),
+        completedAt: data.completedAt ?? null,
+        processedCount: 0,
+        createdCount: 0,
+        updatedCount: 0,
+        skippedCount: 0,
+        errorMessage: null,
+        triggeredByUserId: data.triggeredByUserId
+      };
+      state.push(run);
+      return run;
+    },
+    updateSyncRun: async (id, updates) => {
+      const index = state.findIndex((run) => run.id === id);
+      state[index] = { ...state[index], ...updates };
+      return state[index];
+    },
+    listStartedSyncRuns: async () => {
+      return state.filter((run) => run.status === "started");
+    }
+  };
+  const runner = createLdapSyncRunner({
+    config: baseConfig,
+    ldapService: {
+      searchEntries: async () => new Promise(() => {})
+    },
+    syncRepo,
+    userRepo: {
+      ...createInMemoryUserRepo(),
+      upsertUserFromLdap: async () => ({})
+    },
+    auditRepo: { createAuditLog: async () => ({}) },
+    eventChannel: null
+  });
+
+  const [first, second] = await Promise.allSettled([
+    runner.startManualSync({ actor: { id: "user-8" } }),
+    runner.startManualSync({ actor: { id: "user-9" } })
+  ]);
+
+  assert.equal(first.status, "fulfilled");
+  assert.equal(second.status, "rejected");
+  assert.equal(second.reason?.name, "LdapSyncInProgressError");
+  assert.equal(state.length, 1);
 });
 
 test("LDAP sync event channel publishes events", async () => {

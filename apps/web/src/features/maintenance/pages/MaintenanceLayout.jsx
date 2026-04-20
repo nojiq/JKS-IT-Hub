@@ -1,4 +1,5 @@
-import { NavLink, Navigate, Outlet, useOutletContext } from "react-router-dom";
+import { Navigate, Outlet, useOutletContext } from "react-router-dom";
+import { WorkspaceModuleTabs } from "../../../shared/workspace/WorkspaceModuleTabs.jsx";
 import { WorkspacePageHeader } from "../../../shared/workspace/WorkspacePageHeader.jsx";
 import "./MaintenanceHomePage.css";
 
@@ -29,20 +30,9 @@ export function MaintenanceLayout() {
         meta="Schedule, task execution, history, and configuration stay inside one maintenance workspace."
       />
 
-      <div className="maintenance-shell">
-        <nav className="maintenance-subnav" aria-label="Maintenance sections">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === "/maintenance"}
-              className={({ isActive }) => `maintenance-subnav-link${isActive ? " is-active" : ""}`}
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
+      <WorkspaceModuleTabs items={navItems} ariaLabel="Maintenance sections" />
 
+      <div className="maintenance-shell">
         <div className="maintenance-module-panel">
           <Outlet context={{ user }} />
         </div>

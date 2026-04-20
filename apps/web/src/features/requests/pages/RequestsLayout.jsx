@@ -1,4 +1,5 @@
-import { NavLink, Outlet, useOutletContext } from "react-router-dom";
+import { Outlet, useOutletContext } from "react-router-dom";
+import { WorkspaceModuleTabs } from "../../../shared/workspace/WorkspaceModuleTabs";
 import { WorkspacePageHeader } from "../../../shared/workspace/WorkspacePageHeader";
 import "./RequestsHomePage.css";
 
@@ -26,20 +27,9 @@ export function RequestsLayout() {
         meta="Module search and filters stay inside each request workflow."
       />
 
-      <div className="requests-shell">
-        <nav className="requests-subnav" aria-label="Requests sections">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === "/requests"}
-              className={({ isActive }) => `requests-subnav-link${isActive ? " is-active" : ""}`}
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
+      <WorkspaceModuleTabs items={navItems} ariaLabel="Requests sections" />
 
+      <div className="requests-shell">
         <div className="requests-panel">
           <Outlet context={{ user }} />
         </div>

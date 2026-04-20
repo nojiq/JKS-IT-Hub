@@ -1,0 +1,157 @@
+<h2>IMAP Generator: Admin Tool Layouts</h2>
+<p class="subtitle">Resetting away from card-style layout. These two directions are denser, more operational, and closer to an internal admin tool.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Workbench + Inspector</h3>
+      <p>Main work happens on the left. Live deterministic preview and save controls stay pinned on the right like an inspector.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Resolver + Field Matrix</h3>
+      <p>User matching and manual entry stay at the top, then all IMAP fields sit in one compact matrix with a full-width preview strip below.</p>
+    </div>
+  </div>
+</div>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">A. Workbench + Inspector</div>
+    <div class="mockup-body">
+      <div class="mock-nav">Users & Credentials / IMAP Generator</div>
+      <div style="display:grid; grid-template-columns: 1.45fr 0.85fr; gap:14px; margin-top:12px;">
+        <div style="display:grid; gap:12px;">
+          <div class="placeholder" style="min-height:78px;">
+            Match user by full name
+            <br>
+            Fuzzy suggestions
+            <br>
+            Quick create user inline if no good match
+          </div>
+          <div class="placeholder" style="min-height:78px;">
+            Mode switch
+            <br>
+            Attached user / Manual entry
+          </div>
+          <div class="placeholder" style="min-height:248px;">
+            IMAP field workbench
+            <br><br>
+            Row format:
+            <br>
+            [Use] [Field] [Value Input] [Source badge]
+            <br><br>
+            Email
+            <br>
+            First Name
+            <br>
+            Last Name
+            <br>
+            Full Name
+            <br>
+            DOB
+            <br>
+            Phone
+          </div>
+          <div class="placeholder" style="min-height:82px;">
+            Hidden by default:
+            <br>
+            Manual sync conflict panel only appears when LDAP diff exists
+          </div>
+        </div>
+        <div style="display:grid; gap:12px;">
+          <div class="placeholder" style="min-height:182px;">
+            Sticky preview inspector
+            <br><br>
+            Username
+            <br>
+            Generated IMAP password
+            <br>
+            Deterministic status
+            <br>
+            Selected fields chips
+          </div>
+          <div class="placeholder" style="min-height:112px;">
+            Save controls
+            <br><br>
+            Save
+            <br>
+            Set as active toggle
+            <br>
+            Attach to matched user
+          </div>
+          <div class="placeholder" style="min-height:86px;">
+            Previous IMAP Passwords
+            <br>
+            Secondary action button
+            <br>
+            Opens modal
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">B. Resolver + Field Matrix</div>
+    <div class="mockup-body">
+      <div class="mock-nav">Users & Credentials / IMAP Generator</div>
+      <div style="display:grid; gap:12px; margin-top:12px;">
+        <div class="placeholder" style="min-height:94px;">
+          Top resolver bar
+          <br><br>
+          Full-name search + fuzzy suggestions + mode switch + create user action
+        </div>
+        <div class="placeholder" style="min-height:266px;">
+          Compact field matrix
+          <br><br>
+          Columns:
+          <br>
+          Use | Field | Input | Source | Override status
+          <br><br>
+          All six fields visible at once
+        </div>
+        <div class="placeholder" style="min-height:126px;">
+          Full-width preview strip
+          <br><br>
+          Generated password | selected drivers | save as active | save button
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="placeholder" style="min-height:84px;">
+            Previous IMAP Passwords button
+            <br>
+            Opens modal
+          </div>
+          <div class="placeholder" style="min-height:84px;">
+            Sync conflict strip
+            <br>
+            Hidden unless conflict exists
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>Recommendation</h4>
+      <ul>
+        <li>Use A if you want the page to feel like a serious admin workstation.</li>
+        <li>Use B if you want everything flatter and faster, with less visual hierarchy.</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>What Changed</h4>
+      <ul>
+        <li>No card-based content blocks as the main organizing pattern.</li>
+        <li>More rows, panels, and inspector-style layout.</li>
+        <li>History stays in a modal and sync conflict stays hidden until needed.</li>
+      </ul>
+    </div>
+  </div>
+</div>

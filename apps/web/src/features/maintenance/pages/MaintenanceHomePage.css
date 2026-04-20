@@ -5,44 +5,7 @@
 
 .maintenance-shell {
   display: grid;
-  grid-template-columns: minmax(190px, 240px) minmax(0, 1fr);
   gap: 1rem;
-  align-items: start;
-}
-
-.maintenance-subnav {
-  border: 1px solid var(--ui-border-subtle);
-  border-radius: 18px;
-  background: var(--ui-surface-elevated);
-  padding: 0.75rem;
-  display: grid;
-  gap: 0.4rem;
-  position: sticky;
-  top: calc(var(--workspace-topbar-height, 68px) + 1rem);
-}
-
-.maintenance-subnav-link {
-  display: flex;
-  align-items: center;
-  min-height: 2.75rem;
-  padding: 0.7rem 0.85rem;
-  border-radius: 12px;
-  border: 1px solid transparent;
-  text-decoration: none;
-  color: var(--ui-text-secondary);
-  font-weight: 600;
-}
-
-.maintenance-subnav-link:hover {
-  background: var(--ui-surface-hover);
-  color: var(--ui-text-primary);
-  border-color: var(--ui-border-subtle);
-}
-
-.maintenance-subnav-link.is-active {
-  background: var(--ui-accent-muted);
-  color: var(--ui-text-primary);
-  border-color: var(--ui-accent-primary);
 }
 
 .maintenance-module-panel,
@@ -156,16 +119,6 @@
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
-}
-
-@media (max-width: 1023px) {
-  .maintenance-shell {
-    grid-template-columns: 1fr;
-  }
-
-  .maintenance-subnav {
-    position: static;
-  }
 }
 
 @media (max-width: 767px) {

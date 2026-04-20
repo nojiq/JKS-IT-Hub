@@ -1,4 +1,5 @@
-import { NavLink, Navigate, Outlet, useOutletContext } from "react-router-dom";
+import { Navigate, Outlet, useOutletContext } from "react-router-dom";
+import { WorkspaceModuleTabs } from "../../shared/workspace/WorkspaceModuleTabs";
 import { WorkspacePageHeader } from "../../shared/workspace/WorkspacePageHeader";
 import "./onboarding.css";
 
@@ -26,20 +27,9 @@ export function OnboardingLayout() {
         meta="Department bundles preselect the right apps, while the module keeps overview, setup, defaults, and catalog work together."
       />
 
-      <div className="onboarding-shell">
-        <nav className="onboarding-subnav" aria-label="Onboarding sections">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === "/onboarding"}
-              className={({ isActive }) => `onboarding-subnav-link${isActive ? " is-active" : ""}`}
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
+      <WorkspaceModuleTabs items={navItems} ariaLabel="Onboarding sections" />
 
+      <div className="onboarding-shell">
         <div className="onboarding-panel">
           <Outlet context={{ user }} />
         </div>

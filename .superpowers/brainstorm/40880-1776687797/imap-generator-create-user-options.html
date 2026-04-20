@@ -1,0 +1,131 @@
+<h2>IMAP Generator Page: Create User Flow</h2>
+<p class="subtitle">Base direction is now the calmer module page. Sync conflict stays hidden until a manual sync finds differences, and previous IMAP passwords open from a modal instead of living on the page.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Inline Create User Panel</h3>
+      <p>If fuzzy search finds no good match, a create-user form expands inside the page below the resolver. It keeps the current IMAP inputs visible while creating the user.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Create User Modal</h3>
+      <p>If no match is found, open a focused modal to create the user, then return to the page and continue saving the generated IMAP credential.</p>
+    </div>
+  </div>
+</div>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">A. Inline Panel</div>
+    <div class="mockup-body">
+      <div class="label">Users & Credentials / IMAP Generator</div>
+      <div style="display:grid; gap:12px;">
+        <div style="display:grid; grid-template-columns: 1.2fr 0.8fr; gap:12px;">
+          <div style="display:grid; gap:10px;">
+            <div class="placeholder" style="min-height:84px;">
+              Search by full name
+              <br>
+              Fuzzy suggestions
+              <br>
+              No exact match found
+            </div>
+            <div class="placeholder" style="min-height:150px;">
+              Create New User panel opens here
+              <br><br>
+              Username / Full Name / Email / Role
+              <br>
+              Keep generated IMAP inputs on screen
+            </div>
+            <div class="placeholder" style="min-height:160px;">
+              Editable IMAP field cards
+              <br>
+              Toggle + Source + Value
+            </div>
+            <div class="placeholder" style="min-height:72px;">
+              Previous IMAP Passwords button
+              <br>
+              Opens modal
+            </div>
+          </div>
+          <div class="placeholder" style="min-height:380px;">
+            Sticky live preview
+            <br><br>
+            Generated password
+            <br>
+            Selected fields
+            <br>
+            Save as active toggle
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">B. Modal</div>
+    <div class="mockup-body">
+      <div class="label">Users & Credentials / IMAP Generator</div>
+      <div style="display:grid; gap:12px;">
+        <div style="display:grid; grid-template-columns: 1.2fr 0.8fr; gap:12px;">
+          <div style="display:grid; gap:10px;">
+            <div class="placeholder" style="min-height:84px;">
+              Search by full name
+              <br>
+              Fuzzy suggestions
+              <br>
+              No exact match found
+            </div>
+            <div class="placeholder" style="min-height:236px;">
+              Editable IMAP field cards remain here
+              <br><br>
+              Page pauses while modal is open
+            </div>
+            <div class="placeholder" style="min-height:72px;">
+              Previous IMAP Passwords button
+              <br>
+              Opens modal
+            </div>
+          </div>
+          <div class="placeholder" style="min-height:380px;">
+            Sticky live preview
+            <br><br>
+            Generated password
+            <br>
+            Selected fields
+            <br>
+            Save as active toggle
+          </div>
+        </div>
+        <div class="placeholder" style="min-height:150px;">
+          Create User modal
+          <br><br>
+          Focused, cleaner
+          <br>
+          But separates user creation from the working inputs
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>Recommendation</h4>
+      <ul>
+        <li>Use A: Inline Create User Panel.</li>
+        <li>It fits your workflow better because manual input and user creation stay in one place.</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>Tradeoff</h4>
+      <ul>
+        <li>B is visually cleaner, but it interrupts the generator flow more.</li>
+      </ul>
+    </div>
+  </div>
+</div>

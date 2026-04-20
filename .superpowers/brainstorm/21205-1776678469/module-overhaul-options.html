@@ -1,0 +1,156 @@
+<h2>Users & Credentials Module Overhaul</h2>
+<p class="subtitle">Pick the module structure that best fits fast IT operations. I recommend A.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">A. Directory-Led Workbench</div>
+        <div class="mockup-body">
+          <div class="mock-nav">Users & Credentials | Directory | Locked | History</div>
+          <div style="display:grid;grid-template-columns:1.1fr 1.6fr;gap:10px;margin-top:10px;">
+            <div class="mock-sidebar">
+              Search
+              <div class="mock-input" style="margin-top:8px;">Find username / dept</div>
+              <div style="margin-top:10px;font-size:12px;opacity:.8;">Quick filters</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+                <span style="padding:4px 8px;border-radius:999px;background:#eef2ff;">Active</span>
+                <span style="padding:4px 8px;border-radius:999px;background:#ecfeff;">Needs creds</span>
+                <span style="padding:4px 8px;border-radius:999px;background:#fef3c7;">Locked</span>
+              </div>
+              <div style="margin-top:10px;border:1px solid #dbe4f0;border-radius:10px;padding:8px;background:#fff;">abdullah.fauzi</div>
+              <div style="margin-top:8px;border:1px solid #e5e7eb;border-radius:10px;padding:8px;background:#fff;">nur.syafiqah</div>
+              <div style="margin-top:8px;border:1px solid #e5e7eb;border-radius:10px;padding:8px;background:#fff;">amir.shahril</div>
+            </div>
+            <div class="mock-content">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <strong>abdullah.fauzi</strong>
+                <div style="display:flex;gap:6px;">
+                  <button class="mock-button">Generate</button>
+                  <button class="mock-button" style="background:#e0f2fe;color:#0c4a6e;">Export</button>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;">
+                <div class="placeholder">Status</div>
+                <div class="placeholder">LDAP Sync</div>
+                <div class="placeholder">Credentials</div>
+                <div class="placeholder">Locked</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:8px;">
+                <div class="placeholder" style="min-height:120px;">Credential table + inline empty / loading / success states</div>
+                <div class="placeholder" style="min-height:120px;">Recent actions + quick history</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Directory-Led Workbench</h3>
+      <p>Search-and-act flow. Directory stays primary, and the selected user becomes a fast operations workspace.</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>Matches current IT habit: start in directory</li>
+            <li>Fast single-user operations with less page hopping</li>
+            <li>Supports moderate upgrades like inline preview and drawers</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>History and locked views stay secondary</li>
+            <li>Needs disciplined hierarchy to avoid crowding detail pane</li>
+          </ul>
+        </div>
+      </div>
+      <p><strong>Recommendation:</strong> Best fit for your chosen goals.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">B. Operations Console</div>
+        <div class="mockup-body">
+          <div class="mock-nav">Users & Credentials | Today | Exceptions | Directory</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;">
+            <div class="placeholder">Needs generation</div>
+            <div class="placeholder">Locked credentials</div>
+            <div class="placeholder">Recent exports</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1.3fr;gap:10px;margin-top:10px;">
+            <div class="mock-sidebar">
+              Priority queue
+              <div style="margin-top:8px;border:1px solid #dbe4f0;border-radius:10px;padding:8px;background:#fff;">3 locked credentials</div>
+              <div style="margin-top:8px;border:1px solid #dbe4f0;border-radius:10px;padding:8px;background:#fff;">2 disabled users blocking generation</div>
+              <div style="margin-top:8px;border:1px solid #dbe4f0;border-radius:10px;padding:8px;background:#fff;">1 export pending</div>
+            </div>
+            <div class="placeholder" style="min-height:170px;">Selected task workspace</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Operations Console</h3>
+      <p>Queue-first module that surfaces the day’s work before user lookup.</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>Strong for exception handling and team visibility</li>
+            <li>Makes locked and failed states much more visible</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>Misaligned with your current directory-first workflow</li>
+            <li>Adds module complexity before solving the main pain</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">C. Deep Casefile Tabs</div>
+        <div class="mockup-body">
+          <div class="mock-nav">Profile | Access | Credentials | Audit | Exports</div>
+          <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px;">
+            <div class="placeholder">Large user summary header</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+              <div class="placeholder">Access details</div>
+              <div class="placeholder">Policies</div>
+              <div class="placeholder">Risk state</div>
+            </div>
+            <div class="placeholder" style="min-height:130px;">Full-width credential timeline and tab content</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Deep Casefile Tabs</h3>
+      <p>Rich detail-first page with more sub-navigation and complete audit context.</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>Best for complex governance and deep review</li>
+            <li>Clear separation between profile, access, and audit</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>Slower for daily generate/export work</li>
+            <li>Too much navigation depth for an ops-first module</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

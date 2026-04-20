@@ -1,0 +1,131 @@
+<h2>IMAP Generator Layout Direction</h2>
+<p class="subtitle">Pick the page structure that best fits your workflow. Both support manual mode, fuzzy user search, create-user inline, real-time deterministic preview, and save-as-active toggle.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">A. Module Page</div>
+        <div class="mockup-body">
+          <div class="label">Users & Credentials / IMAP Generator</div>
+          <div style="display:grid; gap:12px;">
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <div class="mock-button">Search User</div>
+              <div class="mock-button">Manual Entry</div>
+              <div class="mock-button">Create User</div>
+            </div>
+            <div style="display:grid; grid-template-columns: 1.2fr 0.8fr; gap:12px;">
+              <div class="placeholder" style="min-height:220px;">
+                User resolver + editable field cards
+                <br><br>
+                Full Name / Email / DOB / Phone / First / Last
+                <br>
+                Each field has a source badge and toggle
+              </div>
+              <div class="placeholder" style="min-height:220px;">
+                Sticky preview panel
+                <br><br>
+                Username
+                <br>
+                Generated password
+                <br>
+                Selected fields
+                <br>
+                Save as active toggle
+              </div>
+            </div>
+            <div class="placeholder" style="min-height:110px;">
+              Sync conflict review
+              <br>
+              Manual value vs LDAP value before applying manual sync
+            </div>
+            <div class="placeholder" style="min-height:90px;">
+              Previous IMAP passwords / history log
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Module Page</h3>
+      <p>Broader, calmer layout that feels native to the existing admin shell. Best when this becomes a daily page for search, review, save, and audit.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">B. Split Generator Console</div>
+        <div class="mockup-body">
+          <div class="label">IMAP Generator Console</div>
+          <div style="display:grid; grid-template-columns: 1.4fr 0.9fr; gap:12px;">
+            <div style="display:grid; gap:10px;">
+              <div class="placeholder" style="min-height:72px;">
+                Fuzzy search by full name + quick create-user action
+              </div>
+              <div class="placeholder" style="min-height:260px;">
+                Dense field matrix
+                <br><br>
+                Toggle | Label | Value | Source
+                <br>
+                Email / First / Last / Full / DOB / Phone
+                <br>
+                Inline manual edit and source changes
+              </div>
+              <div class="placeholder" style="min-height:110px;">
+                Previous passwords table
+                <br>
+                Save as history only or active
+              </div>
+            </div>
+            <div style="display:grid; gap:10px;">
+              <div class="placeholder" style="min-height:180px;">
+                Live deterministic password
+                <br><br>
+                Updates as you type
+                <br>
+                Shows selected drivers
+              </div>
+              <div class="placeholder" style="min-height:160px;">
+                Save controls
+                <br><br>
+                Attach to matched user
+                <br>
+                Create new user if none
+                <br>
+                Set as active toggle
+              </div>
+              <div class="placeholder" style="min-height:120px;">
+                Manual sync conflict box
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Split Generator Console</h3>
+      <p>More operational and data-dense. Better if IT staff will use this like a toolbench and frequently key in manual values or record old passwords.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>Recommendation</h4>
+      <ul>
+        <li>Use B as the base layout.</li>
+        <li>Keep A's calmer page framing so it still matches the existing workspace.</li>
+        <li>This hybrid fits your need for manual entry, conflict review, and history recording better than the current modal.</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>Key Decision</h4>
+      <ul>
+        <li>A is cleaner but less efficient for repeated admin work.</li>
+        <li>B is stronger for daily operators but needs careful spacing to avoid looking crowded.</li>
+      </ul>
+    </div>
+  </div>
+</div>

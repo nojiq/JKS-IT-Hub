@@ -1,5 +1,8 @@
 import { buildLdapSyncEvent } from "./syncEvents.js";
 
+export const STALE_RUN_ERROR_MESSAGE = "Recovered stale run (app restart or crash)";
+const DEFAULT_STALE_AFTER_MS = 60 * 60 * 1000;
+
 const normalizeValue = (value) => {
   if (Array.isArray(value)) {
     return value.map(normalizeValue);
@@ -46,6 +49,10 @@ export class LdapSyncInProgressError extends Error {
     this.name = "LdapSyncInProgressError";
   }
 }
+
+export const getLdapSyncStaleAfterMs = (config) => {
+  return config?.ldapSync?.staleAfterMs ?? DEFAULT_STALE_AFTER_MS;
+};
 
 const toUsername = (value) => {
   if (!value) {
@@ -152,6 +159,50 @@ export const serializeSyncRun = (run) => {
   };
 };
 
+export const isStaleLdapSyncRun = (run, staleAfterMs = DEFAULT_STALE_AFTER_MS) => {
+  if (!run || run.status !== "started" || !run.startedAt) {
+    return false;
+  }
+  const startedAt = new Date(run.startedAt);
+  if (Number.isNaN(startedAt.getTime())) {
+    return false;
+  }
+  return Date.now() - startedAt.getTime() > staleAfterMs;
+};
+
+export const recoverStaleSyncRuns = async ({
+  syncRepo,
+  staleAfterMs = DEFAULT_STALE_AFTER_MS,
+  completedAt = new Date(),
+  errorMessage = STALE_RUN_ERROR_MESSAGE
+}) => {
+  if (!syncRepo?.updateSyncRun) {
+    return [];
+  }
+
+  const candidates = syncRepo?.listStartedSyncRuns
+    ? await syncRepo.listStartedSyncRuns()
+    : [await syncRepo.getActiveSyncRun?.()].filter(Boolean);
+
+  const recovered = [];
+  const seen = new Set();
+
+  for (const run of candidates || []) {
+    if (!run?.id || seen.has(run.id) || !isStaleLdapSyncRun(run, staleAfterMs)) {
+      continue;
+    }
+
+    seen.add(run.id);
+    recovered.push(await syncRepo.updateSyncRun(run.id, {
+      status: "failed",
+      completedAt,
+      errorMessage
+    }));
+  }
+
+  return recovered;
+};
+
 export const createLdapSyncRunner = ({
   config,
   ldapService,
@@ -160,18 +211,6 @@ export const createLdapSyncRunner = ({
   auditRepo,
   eventChannel
 }) => {
-  const isStaleRun = (run) => {
-    const staleAfterMs = config?.ldapSync?.staleAfterMs ?? 60 * 60 * 1000;
-    if (!run || run.status !== "started" || !run.startedAt) {
-      return false;
-    }
-    const startedAt = new Date(run.startedAt);
-    if (Number.isNaN(startedAt.getTime())) {
-      return false;
-    }
-    return Date.now() - startedAt.getTime() > staleAfterMs;
-  };
-
   const publish = (type, run) => {
     if (!eventChannel) {
       return;
@@ -277,40 +316,62 @@ export const createLdapSyncRunner = ({
   };
 
   const startSync = async ({ actor, triggerType, waitForCompletion = false }) => {
-    const activeRun =
-      (await syncRepo.getActiveSyncRun?.()) ??
-      (await syncRepo.getLatestSyncRun?.());
+    const startWithinLock = syncRepo?.withSyncStartLock
+      ? syncRepo.withSyncStartLock.bind(syncRepo)
+      : async (callback) => callback(syncRepo);
 
-    if (activeRun?.status === "started" && isStaleRun(activeRun) && syncRepo?.updateSyncRun) {
-      const recovered = await syncRepo.updateSyncRun(activeRun.id, {
-        status: "failed",
-        completedAt: new Date(),
-        errorMessage: "Recovered stale run (app restart or crash)"
+    const { run, recoveredRuns } = await startWithinLock(async (lockedSyncRepo) => {
+      const recovered = await recoverStaleSyncRuns({
+        syncRepo: lockedSyncRepo,
+        staleAfterMs: getLdapSyncStaleAfterMs(config)
       });
-      publish("failed", recovered);
-    } else if (activeRun?.status === "started") {
-      throw new LdapSyncInProgressError();
-    }
+      const activeRun =
+        (await lockedSyncRepo.getActiveSyncRun?.()) ??
+        (await lockedSyncRepo.getLatestSyncRun?.());
 
-    const run = await syncRepo.createSyncRun({
-      status: "started",
-      triggeredByUserId: actor?.id ?? null // null for system
+      if (activeRun?.status === "started") {
+        throw new LdapSyncInProgressError();
+      }
+
+      const createdRun = await lockedSyncRepo.createSyncRun({
+        status: "started",
+        triggeredByUserId: actor?.id ?? null // null for system
+      });
+
+      return {
+        run: createdRun,
+        recoveredRuns: recovered
+      };
     });
 
-    if (auditRepo?.createAuditLog) {
-      await auditRepo.createAuditLog({
-        action: `ldap.sync.${triggerType}`,
-        actorUserId: actor?.id ?? null,
-        entityType: "ldap_sync_run",
-        entityId: run.id,
-        metadata: {
-          filter: config.ldapSync.filter,
-          triggeredBy: triggerType
-        }
-      });
+    for (const recoveredRun of recoveredRuns) {
+      publish("failed", recoveredRun);
     }
 
-    publish("started", run);
+    try {
+      if (auditRepo?.createAuditLog) {
+        await auditRepo.createAuditLog({
+          action: `ldap.sync.${triggerType}`,
+          actorUserId: actor?.id ?? null,
+          entityType: "ldap_sync_run",
+          entityId: run.id,
+          metadata: {
+            filter: config.ldapSync.filter,
+            triggeredBy: triggerType
+          }
+        });
+      }
+
+      publish("started", run);
+    } catch (error) {
+      const failedRun = await syncRepo.updateSyncRun(run.id, {
+        status: "failed",
+        completedAt: new Date(),
+        errorMessage: error?.message ?? "LDAP sync setup failed"
+      });
+      publish("failed", failedRun);
+      throw error;
+    }
 
     const executionPromise = runSync(run)
       .then((completedRun) => {

@@ -36,12 +36,12 @@ const SystemConfigList = ({ configs = [], onEdit, onDelete, onCreate, showHeader
                                 <tr key={config.id}>
                                     <td>
                                         <div className="system-id-cell">
-                                            <strong>{config.systemId}</strong>
+                                            <strong className="system-id-value">{config.systemId}</strong>
                                             {config.description && <p className="description-text">{config.description}</p>}
                                         </div>
                                     </td>
                                     <td>
-                                        <code>{config.usernameLdapField}</code>
+                                        <code className="system-field-code">{config.usernameLdapField}</code>
                                     </td>
                                     <td>
                                         {config.isItOnly ? (
@@ -54,12 +54,14 @@ const SystemConfigList = ({ configs = [], onEdit, onDelete, onCreate, showHeader
                                         <div className="row-actions">
                                             <button
                                                 className="btn-link"
+                                                type="button"
                                                 onClick={() => onEdit(config)}
                                             >
                                                 Edit
                                             </button>
                                             <button
                                                 className="btn-link text-danger"
+                                                type="button"
                                                 onClick={() => onDelete(config.systemId)}
                                             >
                                                 Delete

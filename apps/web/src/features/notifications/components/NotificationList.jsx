@@ -60,9 +60,7 @@ export const NotificationList = ({ compact = false, onCloseDropdown }) => {
 
             {!compact && totalPages > 1 && (
                 <div className="pagination">
-                    {/* Implement full pagination here, maybe pass page prop to NotificationList instead of hardcoding 1 */}
-                    {/* For MVP just a message or simpler pagination */}
-                    <div style={{ textAlign: 'center', padding: '10px', color: '#888', fontSize: '0.8rem' }}>
+                    <div className="pagination-summary">
                         Showing recent {notifications.length} of {total} notifications
                     </div>
                 </div>

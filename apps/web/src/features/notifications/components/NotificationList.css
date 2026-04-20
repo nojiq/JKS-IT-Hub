@@ -1,17 +1,15 @@
 .notification-list {
-    background: #fff;
+    background: var(--color-surface);
     border-radius: 4px;
-    /* Matches typical UI */
     overflow: hidden;
-    /* If full page, might want to expand */
     width: 100%;
+    color: var(--color-text-primary);
 }
 
 .notification-list.compact {
     max-height: 400px;
     overflow-y: auto;
     width: 320px;
-    /* Dropdown width */
 }
 
 .notification-loading,
@@ -19,21 +17,21 @@
 .notification-error {
     padding: 20px;
     text-align: center;
-    color: #666;
+    color: var(--text-muted);
     font-size: 0.9rem;
 }
 
 .notification-actions {
     padding: 8px 12px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--color-border);
     text-align: right;
-    background: #fdfdfd;
+    background: var(--color-surface);
 }
 
 .mark-all-btn {
     background: none;
     border: none;
-    color: #007bff;
+    color: var(--color-primary);
     font-size: 0.8rem;
     cursor: pointer;
     padding: 4px 8px;
@@ -41,18 +39,18 @@
 }
 
 .mark-all-btn:hover {
-    background-color: #eef4ff;
+    background-color: var(--color-primary-muted);
 }
 
 .view-all {
     padding: 10px;
     text-align: center;
-    border-top: 1px solid #eee;
-    background: #fdfdfd;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
 }
 
 .view-all-link {
-    color: #007bff;
+    color: var(--color-primary);
     text-decoration: none;
     font-size: 0.85rem;
     font-weight: 500;
@@ -60,4 +58,11 @@
 
 .view-all-link:hover {
     text-decoration: underline;
+}
+
+.pagination-summary {
+    padding: 10px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
 }

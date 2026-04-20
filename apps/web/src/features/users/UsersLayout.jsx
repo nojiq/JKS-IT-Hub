@@ -1,4 +1,5 @@
-import { NavLink, Navigate, Outlet, useOutletContext } from "react-router-dom";
+import { Navigate, Outlet, useOutletContext } from "react-router-dom";
+import { WorkspaceModuleTabs } from "../../shared/workspace/WorkspaceModuleTabs.jsx";
 import { WorkspacePageHeader } from "../../shared/workspace/WorkspacePageHeader.jsx";
 import "../../shared/workspace/workspace.css";
 
@@ -26,20 +27,9 @@ export function UsersLayout() {
         meta="Directory review, password generation, locked credentials, and history stay inside the same operational shell."
       />
 
-      <div className="users-shell">
-        <nav className="users-subnav" aria-label="Users and credentials sections">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === "/users"}
-              className={({ isActive }) => `users-subnav-link${isActive ? " is-active" : ""}`}
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
+      <WorkspaceModuleTabs items={navItems} ariaLabel="Users and credentials sections" />
 
+      <div className="users-shell">
         <div className="users-module-panel">
           <Outlet context={{ user }} />
         </div>

@@ -1,20 +1,12 @@
 import { requireItUser } from "../../shared/auth/requireItUser.js";
 import { createProblemDetails, sendProblem } from "../../shared/errors/problemDetails.js";
-import { LdapSyncInProgressError } from "./syncService.js";
+import {
+    getLdapSyncStaleAfterMs,
+    LdapSyncInProgressError,
+    recoverStaleSyncRuns
+} from "./syncService.js";
 
 export default async function (app, { config, userRepo, syncRunner, syncRepo, eventChannel }) {
-    const isStaleRun = (run) => {
-        const staleAfterMs = config?.ldapSync?.staleAfterMs ?? 60 * 60 * 1000;
-        if (!run || run.status !== "started" || !run.startedAt) {
-            return false;
-        }
-        const startedAt = new Date(run.startedAt);
-        if (Number.isNaN(startedAt.getTime())) {
-            return false;
-        }
-        return Date.now() - startedAt.getTime() > staleAfterMs;
-    };
-
     app.post("/ldap/sync", async (request, reply) => {
         const actor = await requireItUser(request, reply, { config, userRepo });
         if (!actor) return;
@@ -44,17 +36,12 @@ export default async function (app, { config, userRepo, syncRunner, syncRepo, ev
         const actor = await requireItUser(request, reply, { config, userRepo });
         if (!actor) return;
 
-        let run = await syncRepo.getLatestSyncRun();
+        await recoverStaleSyncRuns({
+            syncRepo,
+            staleAfterMs: getLdapSyncStaleAfterMs(config)
+        });
 
-        // If the API crashed/restarted mid-run, the DB can retain a "started" status forever.
-        // Recover by marking very old runs as failed so the UI can start a new sync.
-        if (isStaleRun(run) && syncRepo?.updateSyncRun) {
-            run = await syncRepo.updateSyncRun(run.id, {
-                status: "failed",
-                completedAt: new Date(),
-                errorMessage: "Recovered stale run (app restart or crash)"
-            });
-        }
+        const run = await syncRepo.getLatestSyncRun();
 
         reply.send({ data: { run } });
     });
