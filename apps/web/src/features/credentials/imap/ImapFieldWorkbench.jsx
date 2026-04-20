@@ -1,31 +1,42 @@
 const FIELD_ROWS = [
-    "Email",
-    "First Name",
-    "Last Name",
-    "Full Name",
-    "DOB",
-    "Phone"
+    { key: "email", label: "Email" },
+    { key: "firstName", label: "First Name" },
+    { key: "lastName", label: "Last Name" },
+    { key: "fullName", label: "Full Name" },
+    { key: "dob", label: "DOB" },
+    { key: "phone", label: "Phone" }
 ];
 
-const ImapFieldWorkbench = () => {
+const formatBadge = (source) => {
+    if (!source) return "EMPTY";
+    return String(source).toUpperCase();
+};
+
+const ImapFieldWorkbench = ({ fields, onFieldChange, selectedFields, onToggleField }) => {
     return (
         <section className="imap-generator-panel">
             <h2>Field Workbench</h2>
             <div className="imap-generator-field-grid" role="table" aria-label="IMAP field workbench">
                 {FIELD_ROWS.map((field) => (
-                    <div className="imap-generator-field-row" key={field} role="row">
+                    <div className="imap-generator-field-row" key={field.key} role="row">
                         <label className="imap-generator-toggle">
-                            <input type="checkbox" />
+                            <input
+                                checked={Boolean(selectedFields[field.key])}
+                                onChange={(event) => onToggleField(field.key, event.target.checked)}
+                                type="checkbox"
+                            />
                             <span>Use</span>
                         </label>
-                        <span className="imap-generator-field-name">{field}</span>
+                        <span className="imap-generator-field-name">{field.label}</span>
                         <input
                             className="imap-generator-input"
                             type="text"
-                            aria-label={field}
-                            placeholder={`Enter ${field}`}
+                            aria-label={field.label}
+                            placeholder={`Enter ${field.label}`}
+                            value={fields[field.key]?.value || ""}
+                            onChange={(event) => onFieldChange(field.key, event.target.value)}
                         />
-                        <span className="imap-generator-badge">EMPTY</span>
+                        <span className="imap-generator-badge">{formatBadge(fields[field.key]?.source)}</span>
                     </div>
                 ))}
             </div>

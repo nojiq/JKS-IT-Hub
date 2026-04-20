@@ -1,4 +1,4 @@
-const ImapPreviewInspector = () => {
+const ImapPreviewInspector = ({ passwordPreview = "••••••••••••••••", saveDisabled = false, onSave }) => {
     return (
         <aside className="imap-generator-panel imap-generator-inspector">
             <h2>Live Preview</h2>
@@ -8,7 +8,7 @@ const ImapPreviewInspector = () => {
             </div>
             <div className="imap-generator-preview-row">
                 <span className="imap-generator-preview-label">Password</span>
-                <code className="imap-generator-password">••••••••••••••••</code>
+                <code className="imap-generator-password">{passwordPreview}</code>
             </div>
             <div className="imap-generator-preview-row">
                 <span className="imap-generator-preview-label">Selected Fields</span>
@@ -19,7 +19,7 @@ const ImapPreviewInspector = () => {
                 <span>Set as active</span>
             </label>
             <div className="imap-generator-action-stack">
-                <button className="workspace-inline-button" type="button">Save IMAP Password</button>
+                <button className="workspace-inline-button" disabled={saveDisabled} onClick={onSave} type="button">Save IMAP Password</button>
                 <button className="workspace-inline-link" type="button">Previous IMAP Passwords</button>
             </div>
         </aside>
