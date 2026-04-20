@@ -16,6 +16,10 @@ vi.mock('../src/features/notifications/components/NotificationBell', () => ({
     NotificationBell: () => <div data-testid="notification-bell" />
 }));
 
+vi.mock('../src/features/users/users-api.js', () => ({
+    fetchUsers: vi.fn()
+}));
+
 vi.mock('../src/features/credentials/api/credentials.js', () => ({
     getImapWorkbench: vi.fn(),
     previewImapPassword: vi.fn(),
@@ -25,10 +29,12 @@ vi.mock('../src/features/credentials/api/credentials.js', () => ({
 }));
 
 import { fetchSession } from '../src/features/users/auth-api';
+import { fetchUsers } from '../src/features/users/users-api.js';
 import {
     getImapWorkbench,
     previewImapPassword,
-    saveImapPassword
+    saveImapPassword,
+    getPreviousImapPasswords
 } from '../src/features/credentials/api/credentials.js';
 
 const renderApp = (initialEntry = '/users/imap-generator') => {
@@ -92,7 +98,8 @@ describe('ImapGeneratorPage', () => {
                 fullName: { value: 'Abu', source: 'system' },
                 dob: { value: '2021-01-21', source: 'empty' },
                 phone: { value: '123', source: 'system' }
-            }
+            },
+            conflicts: []
         });
 
         previewImapPassword.mockResolvedValue({
@@ -119,6 +126,33 @@ describe('ImapGeneratorPage', () => {
                 id: 'cred-1',
                 isActive: false
             }
+        });
+
+        getPreviousImapPasswords.mockResolvedValue([
+            {
+                id: 'cred-1',
+                username: 'abdullah.fauzi@jkseng.com',
+                isActive: true,
+                metadata: { saveMode: 'active' }
+            },
+            {
+                id: 'cred-2',
+                username: 'abdullah.fauzi@jkseng.com',
+                isActive: false,
+                metadata: { saveMode: 'history_only' }
+            }
+        ]);
+
+        fetchUsers.mockResolvedValue({
+            users: [
+                {
+                    id: 'user-99',
+                    username: 'abu',
+                    ldapFields: { cn: 'Abu Bakar', mail: 'abu@example.com' }
+                }
+            ],
+            fields: [],
+            meta: { total: 1 }
         });
     });
 
@@ -230,5 +264,57 @@ describe('ImapGeneratorPage', () => {
                 })
             }));
         });
+    });
+
+    it('opens the previous passwords modal from the inspector', async () => {
+        renderApp('/users/imap-generator?userId=user-42');
+
+        expect(await screen.findByDisplayValue('123')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Previous IMAP Passwords' }));
+
+        expect(await screen.findByRole('dialog', { name: 'Previous IMAP Passwords' })).toBeInTheDocument();
+        expect(await screen.findByText('history_only')).toBeInTheDocument();
+    });
+
+    it('shows sync conflict review only when workbench data includes conflicts', async () => {
+        getImapWorkbench.mockResolvedValueOnce({
+            subjectKey: 'user-42',
+            fields: {
+                email: { value: 'abdullah.fauzi@jkseng.com', source: 'ldap' },
+                firstName: { value: 'Abdullah', source: 'ldap' },
+                lastName: { value: 'Fauzi', source: 'ldap' },
+                fullName: { value: 'Abu', source: 'system' },
+                dob: { value: '2021-01-21', source: 'empty' },
+                phone: { value: '123', source: 'system' }
+            },
+            conflicts: [
+                {
+                    field: 'fullName',
+                    systemValue: 'Abu',
+                    ldapValue: 'Abdullah Fauzi'
+                }
+            ]
+        });
+
+        renderApp('/users/imap-generator?userId=user-42');
+
+        expect(await screen.findByRole('heading', { name: 'Sync Conflict Review' })).toBeInTheDocument();
+        expect(screen.getByText('Abu')).toBeInTheDocument();
+        expect(screen.getByText('Abdullah Fauzi')).toBeInTheDocument();
+    });
+
+    it('fetches fuzzy user suggestions from the resolver search', async () => {
+        renderApp();
+
+        expect(await screen.findByRole('heading', { name: 'IMAP Generator' })).toBeInTheDocument();
+        fireEvent.change(screen.getByRole('searchbox', { name: 'Search by full name' }), {
+            target: { value: 'abu' }
+        });
+
+        await waitFor(() => {
+            expect(fetchUsers).toHaveBeenCalledWith({ search: 'abu' });
+        });
+
+        expect(await screen.findByRole('button', { name: 'Use Abu Bakar' })).toBeInTheDocument();
     });
 });

@@ -3,7 +3,11 @@ const ImapUserResolver = ({
     mode,
     onModeChange,
     manualIdentity,
-    onManualIdentityChange
+    onManualIdentityChange,
+    onResolverChange,
+    onSelectSuggestion,
+    resolverQuery,
+    suggestions = []
 }) => {
     return (
         <section className="imap-generator-panel">
@@ -16,6 +20,8 @@ const ImapUserResolver = ({
                 className="imap-generator-input"
                 type="search"
                 placeholder="Find a user or start manual entry"
+                value={resolverQuery}
+                onChange={(event) => onResolverChange(event.target.value)}
             />
             <div className="imap-generator-mode-row">
                 <button
@@ -66,6 +72,20 @@ const ImapUserResolver = ({
                         <h2>Create User</h2>
                         <p>Use these manual details to create and attach a new user if no directory match fits.</p>
                     </div>
+                </div>
+            ) : null}
+            {suggestions.length > 0 ? (
+                <div className="imap-generator-suggestions">
+                    {suggestions.map((suggestion) => (
+                        <button
+                            className="imap-generator-suggestion"
+                            key={suggestion.id}
+                            onClick={() => onSelectSuggestion(suggestion)}
+                            type="button"
+                        >
+                            Use {suggestion.displayName}
+                        </button>
+                    ))}
                 </div>
             ) : null}
         </section>

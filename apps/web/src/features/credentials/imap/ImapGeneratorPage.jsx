@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { fetchUsers } from "../../users/users-api.js";
 import ImapFieldWorkbench from "./ImapFieldWorkbench.jsx";
 import ImapPreviewInspector from "./ImapPreviewInspector.jsx";
+import PreviousImapPasswordsModal from "./PreviousImapPasswordsModal.jsx";
+import ImapSyncConflictPanel from "./ImapSyncConflictPanel.jsx";
 import ImapUserResolver from "./ImapUserResolver.jsx";
-import { useImapPreview, useImapSave, useImapWorkbench } from "../hooks/useImapGenerator.js";
+import { useImapPreview, useImapSave, useImapWorkbench, usePreviousImapPasswords } from "../hooks/useImapGenerator.js";
 import "./ImapGeneratorPage.css";
 
 const createEmptyFields = () => ({
@@ -23,6 +26,9 @@ const ImapGeneratorPage = () => {
         fullName: "",
         email: ""
     });
+    const [isPreviousPasswordsOpen, setIsPreviousPasswordsOpen] = useState(false);
+    const [resolverQuery, setResolverQuery] = useState("");
+    const [resolverSuggestions, setResolverSuggestions] = useState([]);
     const [fields, setFields] = useState(createEmptyFields);
     const [selectedFields, setSelectedFields] = useState({
         email: false,
@@ -35,6 +41,9 @@ const ImapGeneratorPage = () => {
     const workbenchQuery = useImapWorkbench(attachedUserId);
     const previewMutation = useImapPreview();
     const saveMutation = useImapSave();
+    const previousPasswordsQuery = usePreviousImapPasswords(
+        isPreviousPasswordsOpen && attachedUserId ? attachedUserId : null
+    );
 
     const handleManualIdentityChange = (field, value) => {
         setManualIdentity((current) => ({
@@ -53,6 +62,38 @@ const ImapGeneratorPage = () => {
             ...workbenchQuery.data.fields
         }));
     }, [mode, workbenchQuery.data]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        if (!resolverQuery.trim()) {
+            setResolverSuggestions([]);
+            return () => {
+                cancelled = true;
+            };
+        }
+
+        const loadSuggestions = async () => {
+            const result = await fetchUsers({ search: resolverQuery.trim() });
+            if (cancelled) {
+                return;
+            }
+
+            setResolverSuggestions(
+                (result.users || []).map((user) => ({
+                    id: user.id,
+                    username: user.username,
+                    displayName: user.ldapFields?.cn || user.username
+                }))
+            );
+        };
+
+        loadSuggestions();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [resolverQuery]);
 
     const handleFieldChange = (field, value) => {
         setFields((current) => ({
@@ -104,6 +145,15 @@ const ImapGeneratorPage = () => {
         saveMutation.mutate(previewPayload);
     };
 
+    const handleSelectSuggestion = (suggestion) => {
+        setMode("attached");
+        setResolverQuery("");
+        setResolverSuggestions([]);
+        const params = new URLSearchParams(searchParams);
+        params.set("userId", suggestion.id);
+        window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
+    };
+
     return (
         <section className="workspace-page users-page imap-generator-page">
             <header className="imap-generator-header">
@@ -119,7 +169,12 @@ const ImapGeneratorPage = () => {
                         mode={mode}
                         onManualIdentityChange={handleManualIdentityChange}
                         onModeChange={setMode}
+                        onResolverChange={setResolverQuery}
+                        onSelectSuggestion={handleSelectSuggestion}
+                        resolverQuery={resolverQuery}
+                        suggestions={resolverSuggestions}
                     />
+                    <ImapSyncConflictPanel conflicts={workbenchQuery.data?.conflicts || []} />
                     <ImapFieldWorkbench
                         fields={fields}
                         onFieldChange={handleFieldChange}
@@ -129,11 +184,17 @@ const ImapGeneratorPage = () => {
                 </div>
 
                 <ImapPreviewInspector
+                    onOpenPreviousPasswords={() => setIsPreviousPasswordsOpen(true)}
                     onSave={handleSave}
                     passwordPreview={previewMutation.data?.proposedCredential?.password || "••••••••••••••••"}
                     saveDisabled={saveDisabled}
                 />
             </div>
+            <PreviousImapPasswordsModal
+                entries={previousPasswordsQuery.data || []}
+                isOpen={isPreviousPasswordsOpen}
+                onClose={() => setIsPreviousPasswordsOpen(false)}
+            />
         </section>
     );
 };
