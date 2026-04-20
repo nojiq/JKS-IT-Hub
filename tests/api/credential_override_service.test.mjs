@@ -198,9 +198,11 @@ test("previewCredentialOverride builds deterministic IMAP preview metadata", asy
     assert.equal(result.currentCredential.username, "john.doe@company.com");
     assert.equal(result.proposedCredential.username, "john.doe@company.com");
     assert.match(result.proposedCredential.password.masked, /•+/);
+    assert.equal(result.metadata.subjectKey, "user-1");
     assert.deepEqual(result.metadata.selectedFields, ["dob", "email", "lastName", "phone"]);
     assert.deepEqual(result.metadata.changedFields, ["email", "lastName", "dob", "phone"]);
     assert.equal(stored.session.mode, "imap_deterministic");
+    assert.equal(stored.session.subjectKey, "user-1");
     assert.deepEqual(stored.session.metadata.selectedFields, ["dob", "email", "lastName", "phone"]);
 });
 

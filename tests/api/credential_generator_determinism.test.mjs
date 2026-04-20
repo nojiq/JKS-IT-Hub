@@ -194,3 +194,66 @@ test("IMAP deterministic generator changes password when selected input changes 
     assert.notEqual(first.password, changed.password);
     assert.equal(first.password, reverted.password);
 });
+
+test("IMAP deterministic generator accepts stable subjectKey input", () => {
+    const baseInput = {
+        subjectKey: "manual:abu|abu@example.com",
+        username: "abu@example.com",
+        inputs: {
+            email: "abu@example.com",
+            firstName: "Abu",
+            lastName: "Bakar",
+            fullName: "Abu",
+            dob: "2021-01-21",
+            phone: "123"
+        },
+        selectedFields: {
+            email: false,
+            firstName: false,
+            lastName: false,
+            fullName: false,
+            dob: true,
+            phone: true
+        },
+        origins: {
+            dob: "manual",
+            phone: "manual"
+        }
+    };
+
+    const first = credentialGenerator.generateImapDeterministicPassword(baseInput);
+    const second = credentialGenerator.generateImapDeterministicPassword({
+        ...baseInput,
+        inputs: {
+            phone: "123",
+            dob: "2021-01-21",
+            fullName: "Abu",
+            lastName: "Bakar",
+            firstName: "Abu",
+            email: "abu@example.com"
+        },
+        selectedFields: {
+            phone: true,
+            dob: true,
+            fullName: false,
+            lastName: false,
+            firstName: false,
+            email: false
+        }
+    });
+
+    const changed = credentialGenerator.generateImapDeterministicPassword({
+        ...baseInput,
+        inputs: {
+            ...baseInput.inputs,
+            phone: "999"
+        }
+    });
+
+    const reverted = credentialGenerator.generateImapDeterministicPassword(baseInput);
+
+    assert.equal(first.password, second.password);
+    assert.notEqual(first.password, changed.password);
+    assert.equal(first.password, reverted.password);
+    assert.equal(first.metadata.subjectKey, "manual:abu|abu@example.com");
+});

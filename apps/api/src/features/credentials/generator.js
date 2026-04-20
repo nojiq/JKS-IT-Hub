@@ -285,6 +285,7 @@ const fingerprintImapInputValue = (value) => {
 };
 
 export const generateImapDeterministicPassword = ({
+  subjectKey,
   userId,
   username,
   inputs = {},
@@ -292,6 +293,11 @@ export const generateImapDeterministicPassword = ({
   origins = {},
   previousMetadata = null
 }) => {
+  const resolvedSubjectKey = String(subjectKey ?? userId ?? '').trim();
+  if (!resolvedSubjectKey) {
+    throw new Error('IMAP deterministic generator requires subjectKey or userId');
+  }
+
   const normalizedUsername = normalizeImapInputValue('email', username);
   const resolvedSelectedFields = IMAP_DETERMINISTIC_FIELDS
     .filter((field) => selectedFields[field])
@@ -312,7 +318,7 @@ export const generateImapDeterministicPassword = ({
     mode: IMAP_DETERMINISTIC_MODE,
     algorithmVersion: IMAP_DETERMINISTIC_ALGORITHM_VERSION,
     system: 'imap',
-    userId,
+    subjectKey: resolvedSubjectKey,
     username: normalizedUsername,
     selectedFields: resolvedSelectedFields,
     inputs: normalizedInputs
@@ -348,6 +354,7 @@ export const generateImapDeterministicPassword = ({
     metadata: {
       mode: IMAP_DETERMINISTIC_MODE,
       algorithmVersion: IMAP_DETERMINISTIC_ALGORITHM_VERSION,
+      subjectKey: resolvedSubjectKey,
       selectedFields: resolvedSelectedFields,
       changedFields,
       origins: selectedOrigins,
