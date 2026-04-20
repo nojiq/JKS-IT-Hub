@@ -5,7 +5,6 @@ import RequestReviewModal from '../components/RequestReviewModal';
 import { useSSE } from '../../../shared/hooks/useSSE.js';
 import { SearchInput } from '../../../shared/components/SearchInput/SearchInput';
 import { DataStateBlock } from '../../../shared/workspace/DataStateBlock';
-import { WorkspacePageHeader } from '../../../shared/workspace/WorkspacePageHeader';
 import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel';
 import { DesktopFilterBar } from '../../../shared/workspace/DesktopFilterBar';
 import { BulkActionsBar } from '../../../shared/workspace/BulkActionsBar';
@@ -131,12 +130,6 @@ const ReviewRequestsPage = () => {
 
     return (
         <section className="workspace-page review-requests-page">
-            <WorkspacePageHeader
-                title="Review Requests"
-                description="Process submitted requests with a consistent desktop review flow."
-                meta={meta.total ? `${meta.total} requests` : 'Request queue'}
-            />
-
             <SearchInput
                 value={filterContract.filters.search || ''}
                 onChange={(value) => filterContract.setFilter('search', value)}

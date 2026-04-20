@@ -181,3 +181,96 @@ test("Credential Override API - confirm success does not double-delete preview i
     assert.equal(deletedTokens.length, 0);
     await app.close();
 });
+
+test("Credential Override API - preview accepts IMAP deterministic payload", async () => {
+    const app = Fastify({ logger: false });
+    await app.register(cookie);
+
+    const userRepo = {
+        findUserByUsername: async (username) => (username === actor.username ? actor : null),
+        isUserDisabled: (user) => user?.status === "disabled"
+    };
+
+    const credentialService = {
+        previewCredentialOverride: async (_userId, _system, overrideData) => ({
+            previewToken: "imap-preview-token",
+            expiresAt: "2026-02-09T12:05:00.000Z",
+            currentCredential: { username: "john.doe@company.com" },
+            proposedCredential: {
+                username: "john.doe@company.com",
+                password: { masked: "••••••••" }
+            },
+            changes: {
+                usernameChanged: false,
+                passwordChanged: true,
+                changedFields: ["phone"]
+            },
+            metadata: {
+                mode: overrideData.mode,
+                selectedFields: ["email", "phone"],
+                changedFields: ["phone"]
+            },
+            reason: overrideData.reason
+        }),
+        getPreviewSession: async () => null,
+        confirmCredentialOverride: async () => ({}),
+        deletePreviewSession: async () => true
+    };
+
+    await app.register(credentialRoutes, {
+        prefix: "/api/v1/credentials",
+        config,
+        userRepo,
+        credentialService,
+        auditRepo: null
+    });
+
+    const token = await signSessionToken(
+        {
+            subject: actor.id,
+            payload: {
+                username: actor.username,
+                role: actor.role,
+                status: actor.status
+            }
+        },
+        config.jwt
+    );
+
+    const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/credentials/users/user-1/imap/override/preview",
+        headers: { cookie: `${config.cookie.name}=${token}` },
+        payload: {
+            mode: "imap_deterministic",
+            reason: "Update IMAP deterministic password after data cleanup",
+            inputs: {
+                email: "john.doe@company.com",
+                firstName: "John",
+                lastName: "Doe",
+                fullName: "John Doe",
+                dob: "1990-01-01",
+                phone: "0123456789"
+            },
+            selectedFields: {
+                email: true,
+                firstName: false,
+                lastName: false,
+                fullName: false,
+                dob: false,
+                phone: true
+            },
+            origins: {
+                email: "ldap",
+                phone: "manual"
+            }
+        }
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = response.json();
+    assert.equal(body.data.previewToken, "imap-preview-token");
+    assert.equal(body.data.metadata.mode, "imap_deterministic");
+    assert.deepEqual(body.data.changes.changedFields, ["phone"]);
+    await app.close();
+});

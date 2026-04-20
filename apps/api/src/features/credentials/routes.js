@@ -1289,7 +1289,8 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                     metadata: {
                         system: system,
                         changes: preview.changes,
-                        reason: overrideData.reason
+                        reason: overrideData.reason,
+                        metadata: preview.metadata || null
                     }
                 });
             }
@@ -1301,6 +1302,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                     currentCredential: preview.currentCredential,
                     proposedCredential: preview.proposedCredential,
                     changes: preview.changes,
+                    metadata: preview.metadata || null,
                     reason: overrideData.reason
                 }
             });
@@ -1330,6 +1332,15 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                     system: error.systemId,
                     lockDetails: error.lockDetails,
                     suggestion: "Unlock the credential first, then retry override."
+                }));
+                return;
+            }
+
+            if (error.code === 'UNSUPPORTED_OVERRIDE_MODE') {
+                sendProblem(reply, createProblemDetails({
+                    status: 400,
+                    title: "Invalid Input",
+                    detail: error.message
                 }));
                 return;
             }

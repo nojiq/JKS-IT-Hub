@@ -5,6 +5,14 @@ const CredentialList = ({ credentials, onViewHistory, onRegenerate, onOverride }
     const [expandedId, setExpandedId] = useState(null);
     const [showPassword, setShowPassword] = useState({});
 
+    const getOverrideActionLabel = (system) => {
+        return system === 'imap' ? 'Generate IMAP Password' : 'Override';
+    };
+
+    const getOverrideActionTitle = (system) => {
+        return system === 'imap' ? 'Generate Deterministic IMAP Password' : 'Override Credential';
+    };
+
     const toggleExpand = (id) => {
         setExpandedId(expandedId === id ? null : id);
     };
@@ -48,9 +56,9 @@ const CredentialList = ({ credentials, onViewHistory, onRegenerate, onOverride }
                                 <button 
                                     className="btn-override"
                                     onClick={() => onOverride?.(credential)}
-                                    title="Override Credential"
+                                    title={getOverrideActionTitle(credential.system)}
                                 >
-                                    Override
+                                    {getOverrideActionLabel(credential.system)}
                                 </button>
                                 <button 
                                     className="btn-icon"

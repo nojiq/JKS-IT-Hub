@@ -90,6 +90,21 @@ function CredentialHistory({ userId }) {
     setShowComparison(false);
   };
 
+  if (!resolvedUserId) {
+    return (
+      <div className="credential-history">
+        <header className="history-header">
+          <h2>Credential History</h2>
+          <p className="history-subtitle">
+            Open a user record to compare historical credential versions and regeneration events.
+          </p>
+        </header>
+
+        <HistoryEmptyState hasFilters={false} />
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="credential-history">

@@ -23,7 +23,7 @@ const renderPage = () => {
 
     return render(
         <QueryClientProvider client={queryClient}>
-            <MemoryRouter initialEntries={['/admin/approvals']}>
+            <MemoryRouter initialEntries={['/requests/approvals']}>
                 <AdminApprovalPage />
             </MemoryRouter>
         </QueryClientProvider>
@@ -74,6 +74,8 @@ describe('AdminApprovalPage', () => {
 
         expect(screen.queryByText('1 selected')).not.toBeInTheDocument();
         expect(container.querySelector('.workspace-panel.workspace-panel-table')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Approval Queue' })).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Admin Approvals' })).not.toBeInTheDocument();
         fireEvent.click(screen.getByLabelText('Select request 4K Monitor'));
         expect(screen.getByText('1 selected')).toBeInTheDocument();
     });

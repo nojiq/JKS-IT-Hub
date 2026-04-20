@@ -114,7 +114,7 @@ export function CatalogPage() {
             <div>
               <h2>Catalog Items</h2>
               <p className="onboarding-card-subtitle">
-                Manage the apps, login URLs, and notes that appear in onboarding setup sheets.
+                Maintain the available provisioning inputs, login URLs, and notes that appear in onboarding setup sheets.
               </p>
             </div>
             <span className="onboarding-badge">{catalogItems.length} apps</span>
@@ -247,7 +247,7 @@ export function CatalogPage() {
             <div>
               <h2>Department Bundles</h2>
               <p className="onboarding-card-subtitle">
-                Preselect recommended apps by department so IT does not rebuild the list for every joiner.
+                Reusable rule sets preselect recommended apps by department so IT does not rebuild the list for every joiner.
               </p>
             </div>
             <span className="onboarding-badge">{activeDepartmentCount} active bundles</span>

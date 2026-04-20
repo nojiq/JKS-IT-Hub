@@ -15,7 +15,7 @@ import { useToast } from '../../../shared/hooks/useToast.js';
 import { useSystemConfigs } from '../../system-configs/hooks/useSystemConfigs.js';
 import './CredentialGenerator.css';
 
-const CredentialGenerator = ({ userId, userName, userStatus, onEnableUser, canEnableUser = false }) => {
+const CredentialGenerator = ({ userId, userName, userStatus, userLdapFields, onEnableUser, canEnableUser = false }) => {
     const [showPreview, setShowPreview] = useState(false);
     const [previewData, setPreviewData] = useState(null);
     const [generationError, setGenerationError] = useState(null);
@@ -193,6 +193,7 @@ const CredentialGenerator = ({ userId, userName, userStatus, onEnableUser, canEn
                 onClose={handleCloseOverride}
                 credential={selectedCredential}
                 userId={userId}
+                ldapFields={userLdapFields}
                 onPreview={handleOverridePreview}
                 onConfirm={handleOverrideConfirm}
                 isLoading={isOverrideProcessing}

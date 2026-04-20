@@ -3,7 +3,13 @@ import * as systemConfigRepo from "../system-configs/repo.js";
 import * as userRepo from "../users/repo.js";
 import { createAuditLog } from "../audit/repo.js";
 import { prisma } from "../../shared/db/prisma.js";
-import { generateCredentials, previewCredentials, MissingLdapFieldsError, NoActiveTemplateError } from "./generator.js";
+import {
+    generateCredentials,
+    generateImapDeterministicPassword,
+    previewCredentials,
+    MissingLdapFieldsError,
+    NoActiveTemplateError
+} from "./generator.js";
 import * as normalizationRuleService from "../normalization-rules/service.js";
 import { randomUUID } from "node:crypto";
 
@@ -1070,6 +1076,20 @@ export const getVersionContext = (version) => ({
     ldapFields: version.ldapSources ? Object.keys(version.ldapSources) : []
 });
 
+const getPublicCredentialMetadata = (metadata) => {
+    if (!metadata || typeof metadata !== "object") {
+        return null;
+    }
+
+    return {
+        mode: metadata.mode || null,
+        algorithmVersion: metadata.algorithmVersion ?? null,
+        selectedFields: Array.isArray(metadata.selectedFields) ? metadata.selectedFields : [],
+        changedFields: Array.isArray(metadata.changedFields) ? metadata.changedFields : [],
+        origins: metadata.origins && typeof metadata.origins === "object" ? metadata.origins : {}
+    };
+};
+
 export const formatHistoryEntry = (version) => {
     const reasonLabels = {
         'initial': 'Initial Generation',
@@ -1101,6 +1121,7 @@ export const formatHistoryEntry = (version) => {
             name: version.createdByUser.username
         } : null,
         templateVersion: context.templateVersion,
+        metadata: getPublicCredentialMetadata(version.metadata),
         ldapFields: context.ldapFields,
         isCurrent: context.isCurrent
     };
@@ -1187,17 +1208,58 @@ export const previewCredentialOverride = async (userId, system, overrideData, de
         throw error;
     }
 
-    // 3. Build preview with partial override logic
-    const proposedCredential = {
-        system,
-        username: overrideData.username || credential.username,
-        password: overrideData.password || credential.password
-    };
+    let proposedCredential;
+    let changes;
+    let metadata;
 
-    const changes = {
-        usernameChanged: overrideData.username && overrideData.username !== credential.username,
-        passwordChanged: !!overrideData.password
-    };
+    if (overrideData.mode === "imap_deterministic") {
+        if (system !== "imap") {
+            const error = new Error("Deterministic IMAP override is only supported for the IMAP system");
+            error.code = "UNSUPPORTED_OVERRIDE_MODE";
+            throw error;
+        }
+
+        const deterministicResult = generateImapDeterministicPassword({
+            userId,
+            username: credential.username,
+            inputs: overrideData.inputs,
+            selectedFields: overrideData.selectedFields,
+            origins: overrideData.origins,
+            previousMetadata: credential.metadata
+        });
+
+        metadata = deterministicResult.metadata;
+        if (metadata.changedFields.length === 0 && credential.metadata?.mode !== "imap_deterministic") {
+            metadata = {
+                ...metadata,
+                changedFields: Object.keys(overrideData.selectedFields).filter((field) => overrideData.selectedFields[field])
+            };
+        }
+
+        proposedCredential = {
+            system,
+            username: credential.username,
+            password: deterministicResult.password
+        };
+
+        changes = {
+            usernameChanged: false,
+            passwordChanged: proposedCredential.password !== credential.password,
+            changedFields: metadata.changedFields
+        };
+    } else {
+        // 3. Build preview with partial override logic
+        proposedCredential = {
+            system,
+            username: overrideData.username || credential.username,
+            password: overrideData.password || credential.password
+        };
+
+        changes = {
+            usernameChanged: overrideData.username && overrideData.username !== credential.username,
+            passwordChanged: !!overrideData.password
+        };
+    }
 
     // 4. Build preview object
     const preview = {
@@ -1221,6 +1283,7 @@ export const previewCredentialOverride = async (userId, system, overrideData, de
             }
         },
         changes,
+        metadata,
         reason: overrideData.reason,
         timestamp: new Date().toISOString()
     };
@@ -1236,6 +1299,8 @@ export const previewCredentialOverride = async (userId, system, overrideData, de
         },
         {
             repo: repoApi,
+            mode: overrideData.mode,
+            metadata,
             tokenFactory: deps.tokenFactory
         }
     );
@@ -1263,9 +1328,11 @@ export const storeOverridePreview = async (userId, system, preview, proposedCred
         type: 'override',
         userId,
         system,
+        mode: opts.mode || null,
         proposedCredential,
         currentCredentialId: preview.currentCredential.id,
         changes: preview.changes,
+        metadata: opts.metadata || null,
         reason: preview.reason,
         createdAt: new Date().toISOString()
     };
@@ -1331,6 +1398,7 @@ export const confirmCredentialOverride = async (performedByUserId, previewSessio
             username: currentCredential.username,
             password: currentCredential.password,
             reason: 'override',
+            metadata: currentCredential.metadata || null,
             createdBy: performedByUserId
         }, tx);
 
@@ -1344,6 +1412,7 @@ export const confirmCredentialOverride = async (performedByUserId, previewSessio
             username: proposedCredential.username,
             password: proposedCredential.password,
             templateVersion: currentCredential.templateVersion,
+            metadata: previewSession.metadata || null,
             generatedBy: performedByUserId
         }, tx);
 
@@ -1353,6 +1422,7 @@ export const confirmCredentialOverride = async (performedByUserId, previewSessio
             username: proposedCredential.username,
             password: proposedCredential.password,
             reason: 'override',
+            metadata: previewSession.metadata || null,
             createdBy: performedByUserId
         }, tx);
 
@@ -1368,7 +1438,9 @@ export const confirmCredentialOverride = async (performedByUserId, previewSessio
                     system: system,
                     reason: reason,
                     usernameChanged: previewSession.changes?.usernameChanged || false,
-                    passwordChanged: previewSession.changes?.passwordChanged || false
+                    passwordChanged: previewSession.changes?.passwordChanged || false,
+                    changedFields: previewSession.changes?.changedFields || [],
+                    metadata: previewSession.metadata || null
                 }
             }
         });

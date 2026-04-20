@@ -91,6 +91,8 @@ describe('ReviewRequestsPage', () => {
         expect(container.querySelector('.workspace-filter-bar')).toBeInTheDocument();
         expect(container.querySelector('.workspace-table-container')).toBeInTheDocument();
         expect(container.querySelector('.workspace-panel.workspace-panel-table')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Request Queue' })).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Review Requests' })).not.toBeInTheDocument();
         expect(container.querySelector('.workspace-table thead th')).toBeInTheDocument();
         expect(screen.queryByText('1 selected')).not.toBeInTheDocument();
 

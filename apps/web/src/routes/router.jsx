@@ -4,6 +4,8 @@ import { WorkspaceLayout } from "../shared/workspace/WorkspaceLayout";
 import HomePage from "../features/users/home-page.jsx";
 import LoginPage from "../features/users/login-page.jsx";
 import UserDetailPage from "../features/users/user-detail-page.jsx";
+import { UsersLayout } from "../features/users/UsersLayout.jsx";
+import UsersHomePage from "../features/users/UsersHomePage.jsx";
 import UsersListPage from "../features/users/users-list-page.jsx";
 import TemplateList from "../features/credentials/templates/TemplateList.jsx";
 import TemplateEditor from "../features/credentials/templates/TemplateEditor.jsx";
@@ -27,7 +29,10 @@ import { OnboardingLayout } from "../features/onboarding/OnboardingLayout.jsx";
 import { CatalogPage } from "../features/onboarding/pages/CatalogPage.jsx";
 import { OnboardingDefaultsPage } from "../features/onboarding/pages/OnboardingDefaultsPage.jsx";
 import { OnboardingDefaultsEditor } from "../features/onboarding/pages/OnboardingDefaultsEditor.jsx";
+import OnboardingHomePage from "../features/onboarding/pages/OnboardingHomePage.jsx";
 import { NewJoinerPage } from "../features/onboarding/pages/NewJoinerPage.jsx";
+import { RequestsLayout } from "../features/requests/pages/RequestsLayout.jsx";
+import RequestsHomePage from "../features/requests/pages/RequestsHomePage.jsx";
 
 const ADMIN_ROLES = ["admin", "head_it"];
 
@@ -56,9 +61,6 @@ export const router = createBrowserRouter([
     element: <WorkspaceLayout />,
     children: [
       { index: true, element: <HomePage /> },
-      { path: "users", element: <UsersListPage /> },
-      { path: "users/:id", element: <UserDetailPage /> },
-      { path: "users/:userId/credentials/history", element: <CredentialHistory /> },
       { path: "audit-logs", element: <AuditLogPage /> },
       { path: "systems", element: <SystemManagementPage /> },
       { path: "maintenance/config", element: <MaintenanceConfigPage /> },
@@ -69,10 +71,29 @@ export const router = createBrowserRouter([
       { path: "maintenance/assignment-rules", element: <AssignmentRulesPage /> },
       { path: "maintenance/my-tasks", element: <MyMaintenanceTasksPage /> },
       {
+        path: "requests",
+        element: <RequestsLayout />,
+        children: [
+          { index: true, element: <RequestsHomePage /> },
+          { path: "new", element: <SubmitRequestPage /> },
+          { path: "my-requests", element: <MyRequestsPage /> },
+          { path: ":id", element: <MyRequestsPage /> },
+          { path: "review", element: <ReviewRequestsPage /> },
+          {
+            path: "approvals",
+            element: (
+              <RequireRoles roles={ADMIN_ROLES}>
+                <AdminApprovalPage />
+              </RequireRoles>
+            )
+          }
+        ]
+      },
+      {
         path: "onboarding",
         element: <OnboardingLayout />,
         children: [
-          { index: true, element: <Navigate replace to="new-joiner" /> },
+          { index: true, element: <OnboardingHomePage /> },
           { path: "catalog", element: <CatalogPage /> },
           { path: "defaults", element: <OnboardingDefaultsPage /> },
           { path: "defaults/new", element: <OnboardingDefaultsEditor /> },
@@ -80,29 +101,29 @@ export const router = createBrowserRouter([
           { path: "new-joiner", element: <NewJoinerPage /> }
         ]
       },
+      {
+        path: "users",
+        element: <UsersLayout />,
+        children: [
+          { index: true, element: <UsersHomePage /> },
+          { path: "directory", element: <UsersListPage /> },
+          { path: "locked", element: <LockedCredentialsList /> },
+          { path: "history", element: <CredentialHistory /> },
+          { path: ":id", element: <UserDetailPage /> },
+          { path: ":userId/credentials/history", element: <CredentialHistory /> }
+        ]
+      },
       { path: "credential-templates", element: <TemplateList /> },
-      { path: "credentials/locked", element: <LockedCredentialsList /> },
+      { path: "credentials/locked", element: <Navigate replace to="/users/locked" /> },
       { path: "credential-templates/new", element: <TemplateEditor /> },
       { path: "credential-templates/:id/edit", element: <TemplateEditor /> },
-      { path: "requests/new", element: <SubmitRequestPage /> },
-      { path: "requests/my-requests", element: <MyRequestsPage /> },
-      { path: "requests/:id", element: <MyRequestsPage /> },
-      { path: "requests/review", element: <ReviewRequestsPage /> },
       {
         path: "admin/requests/review",
-        element: (
-          <RequireRoles roles={ADMIN_ROLES}>
-            <ReviewRequestsPage />
-          </RequireRoles>
-        )
+        element: <Navigate replace to="/requests/review" />
       },
       {
         path: "admin/approvals",
-        element: (
-          <RequireRoles roles={ADMIN_ROLES}>
-            <AdminApprovalPage />
-          </RequireRoles>
-        )
+        element: <Navigate replace to="/requests/approvals" />
       },
       { path: "notifications", element: <NotificationsPage /> }
     ]

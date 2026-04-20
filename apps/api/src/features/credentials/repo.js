@@ -258,6 +258,7 @@ export const getCredentialHistoryByUser = async (userId, filters = {}, tx = pris
                 id: true,
                 username: true,
                 reason: true,
+                metadata: true,
                 createdAt: true,
                 createdByUser: {
                     select: { id: true, username: true }

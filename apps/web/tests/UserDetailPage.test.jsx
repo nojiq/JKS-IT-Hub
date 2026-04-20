@@ -89,7 +89,7 @@ describe('UserDetailPage', () => {
         expect(container.querySelector('.workspace-state-block')).not.toBeNull();
     });
 
-    it('renders multiple detail panels instead of one soft shell', () => {
+    it('renders distinct operational zones for identity, status, credentials, and recent actions', () => {
         useQuery.mockImplementation(({ queryKey }) => {
             if (queryKey[0] === 'session') {
                 return createQueryResult({
@@ -122,9 +122,11 @@ describe('UserDetailPage', () => {
 
         const { container } = renderPage();
 
-        expect(screen.getByText('jane.doe')).toBeInTheDocument();
-        expect(screen.getByText('LDAP fields')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'jane.doe' })).toBeInTheDocument();
+        expect(screen.getByText('Identity')).toBeInTheDocument();
+        expect(screen.getByText('Account Status')).toBeInTheDocument();
         expect(screen.getByText('Credential Generator Stub')).toBeInTheDocument();
+        expect(screen.getByText('Recent Actions')).toBeInTheDocument();
         expect(container.querySelectorAll('.workspace-panel.workspace-panel-detail').length).toBeGreaterThanOrEqual(2);
         expect(container.querySelector('.user-detail-card')).toBeNull();
     });

@@ -39,7 +39,7 @@ export class NoActiveTemplateError extends Error {
  * Deterministically derive alphanumeric characters from a seed.
  * Same seed + length always yields the same output.
  */
-const deriveDeterministicChars = (seed, length) => {
+export const deriveDeterministicChars = (seed, length) => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
   let counter = 0;
@@ -62,7 +62,7 @@ const deriveDeterministicChars = (seed, length) => {
   return result;
 };
 
-const stableStringify = (value) => {
+export const stableStringify = (value) => {
   if (Array.isArray(value)) {
     return `[${value.map(stableStringify).join(',')}]`;
   }
@@ -254,6 +254,106 @@ const generatePassword = (pattern, fieldValues, deterministicSeed) => {
       executePatternToken(token, fieldValues, { seed: deterministicSeed, tokenIndex })
     )
     .join('');
+};
+
+const IMAP_DETERMINISTIC_FIELDS = ['email', 'firstName', 'lastName', 'fullName', 'dob', 'phone'];
+const IMAP_DETERMINISTIC_MODE = 'imap_deterministic';
+const IMAP_DETERMINISTIC_ALGORITHM_VERSION = 1;
+
+const normalizeImapInputValue = (field, value) => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  const normalized = String(value).trim();
+  switch (field) {
+    case 'email':
+      return normalized.toLowerCase();
+    case 'firstName':
+    case 'lastName':
+    case 'fullName':
+      return normalized.replace(/\s+/g, ' ').toLowerCase();
+    case 'phone':
+      return normalized.replace(/\D+/g, '');
+    default:
+      return normalized;
+  }
+};
+
+const fingerprintImapInputValue = (value) => {
+  return createHash('sha256').update(value).digest('hex').slice(0, 16);
+};
+
+export const generateImapDeterministicPassword = ({
+  userId,
+  username,
+  inputs = {},
+  selectedFields = {},
+  origins = {},
+  previousMetadata = null
+}) => {
+  const normalizedUsername = normalizeImapInputValue('email', username);
+  const resolvedSelectedFields = IMAP_DETERMINISTIC_FIELDS
+    .filter((field) => selectedFields[field])
+    .sort((a, b) => a.localeCompare(b));
+
+  const normalizedInputs = {};
+  const inputFingerprints = {};
+  const selectedOrigins = {};
+
+  for (const field of resolvedSelectedFields) {
+    const normalizedValue = normalizeImapInputValue(field, inputs[field]);
+    normalizedInputs[field] = normalizedValue;
+    inputFingerprints[field] = fingerprintImapInputValue(normalizedValue);
+    selectedOrigins[field] = origins[field] || 'manual';
+  }
+
+  const deterministicSeed = stableStringify({
+    mode: IMAP_DETERMINISTIC_MODE,
+    algorithmVersion: IMAP_DETERMINISTIC_ALGORITHM_VERSION,
+    system: 'imap',
+    userId,
+    username: normalizedUsername,
+    selectedFields: resolvedSelectedFields,
+    inputs: normalizedInputs
+  });
+
+  const password = deriveDeterministicChars(`${deterministicSeed}:password`, 16);
+  let changedFields = [];
+
+  if (previousMetadata?.mode === IMAP_DETERMINISTIC_MODE) {
+    const previousSelectedFields = new Set(previousMetadata.selectedFields || []);
+    const previousFingerprints = previousMetadata.inputFingerprints || {};
+    const previousOrigins = previousMetadata.origins || {};
+
+    changedFields = IMAP_DETERMINISTIC_FIELDS.filter((field) => {
+      const isSelected = resolvedSelectedFields.includes(field);
+      const wasSelected = previousSelectedFields.has(field);
+
+      if (isSelected !== wasSelected) {
+        return true;
+      }
+
+      if (!isSelected) {
+        return false;
+      }
+
+      return previousFingerprints[field] !== inputFingerprints[field]
+        || (previousOrigins[field] || null) !== (selectedOrigins[field] || null);
+    });
+  }
+
+  return {
+    password,
+    metadata: {
+      mode: IMAP_DETERMINISTIC_MODE,
+      algorithmVersion: IMAP_DETERMINISTIC_ALGORITHM_VERSION,
+      selectedFields: resolvedSelectedFields,
+      changedFields,
+      origins: selectedOrigins,
+      inputFingerprints
+    }
+  };
 };
 
 /**
@@ -455,6 +555,7 @@ export const previewCredentials = (template, user, systemConfig = null) => {
 export default {
   generateCredentials,
   previewCredentials,
+  generateImapDeterministicPassword,
   MissingLdapFieldsError,
   NoActiveTemplateError
 };

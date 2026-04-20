@@ -42,7 +42,6 @@ export default function UserDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [showRegeneration, setShowRegeneration] = useState(false);
-  const [activeTab, setActiveTab] = useState("profile");
   const queryClient = useQueryClient();
 
   const sessionQuery = useQuery({
@@ -61,7 +60,7 @@ export default function UserDetailPage() {
   const historyQuery = useQuery({
     queryKey: ["users", id, "history"],
     queryFn: () => fetchUserHistory(id),
-    enabled: Boolean(sessionQuery.data && id && activeTab === "history")
+    enabled: Boolean(sessionQuery.data && id)
   });
 
   const credentialsQuery = useUserCredentials(id);
@@ -85,6 +84,7 @@ export default function UserDetailPage() {
   const payload = userQuery.data ?? { user: null, fields: [] };
   const user = payload.user;
   const fields = payload.fields ?? [];
+  const historyEntries = historyQuery.data ?? [];
 
   // Deduplicate fields to prevent duplicate React keys
   const uniqueFields = useMemo(() => [...new Set(fields)], [fields]);
@@ -171,7 +171,7 @@ export default function UserDetailPage() {
           title="User not found"
           description="Return to directory to select another user."
           actionLabel="Back to directory"
-          onAction={() => navigate("/users")}
+          onAction={() => navigate("/users/directory")}
         />
       </section>
     );
@@ -180,11 +180,11 @@ export default function UserDetailPage() {
   return (
     <section className="workspace-page user-detail-page">
       <WorkspacePageHeader
-        eyebrow="User Profile"
+        eyebrow="Users & Credentials"
         title={user.username}
-        description="LDAP fields are read-only in IT-Hub."
+        description="Review identity state, credential tools, and recent access work from one user workspace."
         actions={(
-          <Link className="workspace-inline-link" to="/users">
+          <Link className="workspace-inline-link" to="/users/directory">
             Back to directory
           </Link>
         )}
@@ -195,159 +195,152 @@ export default function UserDetailPage() {
           <p className="users-alert-title">LDAP sync has not run yet.</p>
           <p className="users-alert-text">
             Run manual sync to populate LDAP fields.
-            <Link className="users-alert-link" to="/users">
+            <Link className="users-alert-link" to="/users/directory">
               Go to sync panel
             </Link>
           </p>
         </div>
       ) : null}
 
-      <div className="user-detail-tabs">
-        <button
-          className={`tab-button ${activeTab === "profile" ? "active" : ""}`}
-          onClick={() => setActiveTab("profile")}
-        >
-          Profile
-        </button>
-        <button
-          className={`tab-button ${activeTab === "history" ? "active" : ""}`}
-          onClick={() => setActiveTab("history")}
-        >
-          History
-        </button>
-      </div>
-
-      {activeTab === "profile" ? (
-        <>
-          <WorkspacePanel variant="detail" title="Profile Summary" meta="Core role and sync status for this account.">
-            <div className="user-detail-meta">
-              <div>
-                <span className="user-detail-label">Role</span>
-                <span className="user-detail-value">{user.role}</span>
-              </div>
-              <div>
-                <span className="user-detail-label">Status</span>
-                <span className="user-detail-value">{user.status}</span>
-              </div>
-              <div>
-                <span className="user-detail-label">Last LDAP sync</span>
-                <span className="user-detail-value">{formatDate(user.ldapSyncedAt)}</span>
-              </div>
+      <div className="user-detail-zone-grid">
+        <WorkspacePanel variant="detail" title="Identity" meta="Read-only identity snapshot from the latest sync.">
+          <div className="user-detail-meta">
+            <div>
+              <span className="user-detail-label">Username</span>
+              <span className="user-detail-value">{user.username}</span>
             </div>
-          </WorkspacePanel>
-
-          <WorkspacePanel variant="detail" title="LDAP fields" meta="Source: LDAP">
-            <div className="user-detail-field-list">
-              {rows.map((row) => (
-                <div className="user-detail-field" key={row.key}>
-                  <span className="user-detail-field-label">{row.field}</span>
-                  <span className="user-detail-field-value">{formatValue(row.value)}</span>
-                  <span className="user-detail-field-source">Source: LDAP</span>
-                </div>
-              ))}
+            <div>
+              <span className="user-detail-label">Email</span>
+              <span className="user-detail-value">{formatValue(user.ldapFields?.mail)}</span>
             </div>
-          </WorkspacePanel>
+            <div>
+              <span className="user-detail-label">Department</span>
+              <span className="user-detail-value">{formatValue(user.ldapFields?.department)}</span>
+            </div>
+          </div>
 
-          <WorkspacePanel
-            variant="detail"
-            title="Credentials"
-            meta="Generated credentials and account access controls."
-            actions={(
-              <div className="credentials-actions">
-                {canManageCredentials && credentialsQuery.data?.data?.length > 0 ? (
-                  <Link className="workspace-inline-link" to={`/users/${id}/credentials/history`}>
-                    View History
-                  </Link>
-                ) : null}
-                {canManageCredentials ? (
-                  <CredentialExportButton
-                    userId={id}
-                    username={user.username}
-                    credentials={credentialsQuery.data?.data || []}
-                  />
-                ) : null}
-                {canManageCredentials ? (
-                  <Link className="workspace-inline-link" to="/credentials/locked">
-                    Locked Credentials
-                  </Link>
-                ) : null}
-                {canManageCredentials ? (
-                  <button
-                    className="workspace-inline-button"
-                    onClick={() => setShowRegeneration(true)}
-                    disabled={user.status === 'disabled' || !user.ldapSyncedAt}
-                    title={user.status === 'disabled' ? 'Cannot regenerate for disabled users' : !user.ldapSyncedAt ? 'LDAP sync required first' : 'Regenerate credentials'}
-                    type="button"
-                  >
-                    Regenerate Credentials
-                  </button>
-                ) : null}
+          <div className="user-detail-field-list">
+            {rows.map((row) => (
+              <div className="user-detail-field" key={row.key}>
+                <span className="user-detail-field-label">{row.field}</span>
+                <span className="user-detail-field-value">{formatValue(row.value)}</span>
+                <span className="user-detail-field-source">Source: LDAP</span>
               </div>
-            )}
-          >
-            {canManageCredentials ? (
-              <CredentialGenerator
-                userId={id}
+            ))}
+          </div>
+        </WorkspacePanel>
+
+        <WorkspacePanel variant="detail" title="Account Status" meta="Operational status and sync checkpoints for this account.">
+          <div className="user-detail-meta">
+            <div>
+              <span className="user-detail-label">Role</span>
+              <span className="user-detail-value">{user.role}</span>
+            </div>
+            <div>
+              <span className="user-detail-label">Status</span>
+              <span className="user-detail-value">{user.status}</span>
+            </div>
+            <div>
+              <span className="user-detail-label">Last LDAP sync</span>
+              <span className="user-detail-value">{formatDate(user.ldapSyncedAt)}</span>
+            </div>
+          </div>
+        </WorkspacePanel>
+
+        <WorkspacePanel
+          variant="detail"
+          title="Credentials"
+          meta="Generated credentials, exports, locks, and regeneration controls."
+          actions={(
+            <div className="credentials-actions">
+              {canManageCredentials && credentialsQuery.data?.data?.length > 0 ? (
+                <Link className="workspace-inline-link" to={`/users/${id}/credentials/history`}>
+                  View History
+                </Link>
+              ) : null}
+              {canManageCredentials ? (
+                <CredentialExportButton
+                  userId={id}
+                  username={user.username}
+                  credentials={credentialsQuery.data?.data || []}
+                />
+              ) : null}
+              {canManageCredentials ? (
+                <Link className="workspace-inline-link" to="/users/locked">
+                  Locked Credentials
+                </Link>
+              ) : null}
+              {canManageCredentials ? (
+                <button
+                  className="workspace-inline-button"
+                  onClick={() => setShowRegeneration(true)}
+                  disabled={user.status === "disabled" || !user.ldapSyncedAt}
+                  title={user.status === "disabled" ? "Cannot regenerate for disabled users" : !user.ldapSyncedAt ? "LDAP sync required first" : "Regenerate credentials"}
+                  type="button"
+                >
+                  Regenerate Credentials
+                </button>
+              ) : null}
+            </div>
+          )}
+        >
+          {canManageCredentials ? (
+            <CredentialGenerator
+              userId={id}
+              userName={user.username}
+              userStatus={user.status}
+              userLdapFields={user.ldapFields}
+              canEnableUser={canEnableUsers}
+              onEnableUser={canEnableUsers ? handleEnableUser : undefined}
+            />
+          ) : (
+            <>
+              <DisabledUserBanner
                 userName={user.username}
                 userStatus={user.status}
-                canEnableUser={canEnableUsers}
-                onEnableUser={canEnableUsers ? handleEnableUser : undefined}
               />
-            ) : (
-              <>
-                <DisabledUserBanner
+              {credentialsQuery.isLoading ? (
+                <p className="credentials-loading">Loading credentials...</p>
+              ) : credentialsQuery.error ? (
+                <p className="credentials-error">Unable to load credentials</p>
+              ) : credentialsQuery.data?.data?.length > 0 ? (
+                <CredentialList
+                  credentials={credentialsQuery.data.data}
+                  userId={id}
                   userName={user.username}
-                  userStatus={user.status}
+                  userEmail={user.ldapFields?.mail}
+                  canManageLocks={canManageCredentials}
                 />
-                {credentialsQuery.isLoading ? (
-                  <p className="credentials-loading">Loading credentials...</p>
-                ) : credentialsQuery.error ? (
-                  <p className="credentials-error">Unable to load credentials</p>
-                ) : credentialsQuery.data?.data?.length > 0 ? (
-                  <CredentialList
-                    credentials={credentialsQuery.data.data}
-                    userId={id}
-                    userName={user.username}
-                    userEmail={user.ldapFields?.mail}
-                    canManageLocks={canManageCredentials}
-                  />
-                ) : (
-                  <p className="credentials-empty">No active credentials for this user.</p>
-                )}
-              </>
-            )}
-          </WorkspacePanel>
-        </>
-      ) : (
-        <WorkspacePanel variant="detail" title="LDAP Change History" meta="Source: Audit Log">
+              ) : (
+                <p className="credentials-empty">No active credentials for this user.</p>
+              )}
+            </>
+          )}
+        </WorkspacePanel>
+
+        <WorkspacePanel
+          variant="detail"
+          title="Recent Actions"
+          meta="Most recent LDAP changes and credential follow-up entry points."
+          actions={(
+            <Link className="workspace-inline-link" to={`/users/${id}/credentials/history`}>
+              Full History
+            </Link>
+          )}
+        >
           {historyQuery.isLoading ? (
             <p className="history-loading">Loading history…</p>
           ) : historyQuery.error ? (
             <p className="history-error">Unable to load history: {historyQuery.error.message}</p>
-          ) : historyQuery.data?.length > 0 ? (
-            <div className="history-table-container">
-              <table className="history-table">
-                <thead>
-                  <tr>
-                    <th>Timestamp</th>
-                    <th>Field</th>
-                    <th>Old Value</th>
-                    <th>New Value</th>
-                    <th>Actor</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {historyQuery.data.map((entry) => (
-                    <tr key={entry.id}>
-                      <td>{formatDate(entry.timestamp)}</td>
-                      <td>{entry.field}</td>
-                      <td className="old-value">{formatValue(entry.oldValue)}</td>
-                      <td className="new-value">{formatValue(entry.newValue)}</td>
-                      <td>{entry.actor}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          ) : historyEntries.length > 0 ? (
+            <div className="user-detail-recent-actions">
+              {historyEntries.slice(0, 5).map((entry) => (
+                <div className="user-detail-action-row" key={entry.id}>
+                  <strong>{entry.field}</strong>
+                  <span>{formatDate(entry.timestamp)}</span>
+                  <span>{formatValue(entry.newValue)}</span>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="history-empty">
@@ -356,7 +349,7 @@ export default function UserDetailPage() {
             </div>
           )}
         </WorkspacePanel>
-      )}
+      </div>
 
       {showRegeneration && (
         <div className="modal-overlay" onClick={() => setShowRegeneration(false)}>

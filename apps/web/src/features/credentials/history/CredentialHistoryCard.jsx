@@ -2,6 +2,15 @@ import { useState } from 'react';
 import CredentialRevealer from './CredentialRevealer.jsx';
 import './CredentialHistory.css';
 
+const IMAP_FIELD_LABELS = {
+  email: 'Email address',
+  firstName: 'First name',
+  lastName: 'Last name',
+  fullName: 'Full name',
+  dob: 'Date of birth',
+  phone: 'Phone number'
+};
+
 /**
  * CredentialHistoryCard Component
  * 
@@ -76,6 +85,10 @@ function CredentialHistoryCard({ entry, isSelected, onSelect, canSelect }) {
       .replace(/_/g, ' ')
       .replace(/\b\w/g, l => l.toUpperCase());
   };
+
+  const changedFieldLabels = (entry.metadata?.changedFields || [])
+    .map((field) => IMAP_FIELD_LABELS[field])
+    .filter(Boolean);
 
   return (
     <div className={`history-card ${isSelected ? 'selected' : ''}`}>
@@ -153,6 +166,17 @@ function CredentialHistoryCard({ entry, isSelected, onSelect, canSelect }) {
                 <label>Notes</label>
                 <div className="detail-value notes">
                   {entry.notes}
+                </div>
+              </div>
+            )}
+
+            {entry.metadata?.mode === 'imap_deterministic' && changedFieldLabels.length > 0 && (
+              <div className="detail-field">
+                <label>Information Changed</label>
+                <div className="detail-value changed-field-list">
+                  {changedFieldLabels.map((label) => (
+                    <span className="changed-field-chip" key={label}>{label}</span>
+                  ))}
                 </div>
               </div>
             )}

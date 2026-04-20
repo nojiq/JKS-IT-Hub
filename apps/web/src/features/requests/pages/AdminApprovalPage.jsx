@@ -5,7 +5,6 @@ import { SearchInput } from '../../../shared/components/SearchInput/SearchInput'
 import { FilterSelect } from '../../../shared/components/FilterPanel/FilterSelect';
 import { SearchEmptyState } from '../../../shared/components/EmptyState/SearchEmptyState';
 import { useSharedFilters } from '../../../shared/workspace/useSharedFilters';
-import { WorkspacePageHeader } from '../../../shared/workspace/WorkspacePageHeader';
 import { DesktopFilterBar } from '../../../shared/workspace/DesktopFilterBar';
 import { BulkActionsBar } from '../../../shared/workspace/BulkActionsBar';
 import { DataStateBlock } from '../../../shared/workspace/DataStateBlock';
@@ -82,12 +81,6 @@ const AdminApprovalPage = () => {
 
     return (
         <section className="workspace-page admin-approval-page">
-            <WorkspacePageHeader
-                title="Admin Approvals"
-                description="Review and approve requests that have already passed IT review."
-                meta={meta.total ? `${meta.total} pending approvals` : 'Approval queue'}
-            />
-
             <SearchInput
                 value={filterContract.filters.search || ''}
                 onChange={(value) => filterContract.setFilter('search', value)}

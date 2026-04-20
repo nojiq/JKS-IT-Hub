@@ -1,23 +1,23 @@
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap");
 
 :root {
   /* Canonical desktop tokens */
-  --ui-surface-canvas: #f6f8fb;
-  --ui-surface-elevated: #ffffff;
-  --ui-surface-muted: #f1f5f9;
-  --ui-surface-hover: #e8eef6;
-  --ui-surface-active: #dfe8f3;
+  --ui-surface-canvas: #f3f7fc;
+  --ui-surface-elevated: #fbfdff;
+  --ui-surface-muted: #edf3fa;
+  --ui-surface-hover: #e1eaf6;
+  --ui-surface-active: #d5e2f1;
 
   --ui-text-primary: #0f172a;
   --ui-text-secondary: #334155;
   --ui-text-muted: #64748b;
-  --ui-text-inverse: #f8fafc;
+  --ui-text-inverse: #eff6ff;
 
-  --ui-border-subtle: #dbe4ef;
-  --ui-border-strong: #bfd0e3;
+  --ui-border-subtle: #d5dfec;
+  --ui-border-strong: #b9cada;
 
-  --ui-accent-primary: #1d4ed8;
-  --ui-accent-primary-hover: #1e40af;
+  --ui-accent-primary: #2563eb;
+  --ui-accent-primary-hover: #1d4ed8;
   --ui-accent-muted: #dbeafe;
 
   --ui-feedback-success: #16a34a;
@@ -28,6 +28,9 @@
   --ui-feedback-error-muted: #fee2e2;
   --ui-feedback-info: #0284c7;
   --ui-feedback-info-muted: #e0f2fe;
+
+  --font-heading: "Lexend", "Segoe UI", sans-serif;
+  --font-body: "Source Sans 3", "Segoe UI", sans-serif;
 
   /* Legacy aliases mapped to canonical tokens */
   --bg-primary: var(--ui-surface-canvas);
@@ -95,33 +98,33 @@
   --color-info-muted: var(--ui-feedback-info-muted);
 
   --shadow-sm: 0 8px 16px rgba(15, 23, 42, 0.06);
-  --shadow-md: 0 14px 28px rgba(15, 23, 42, 0.08);
-  --shadow-lg: 0 20px 40px rgba(15, 23, 42, 0.12);
-  --shadow-button: 0 10px 24px rgba(15, 23, 42, 0.2);
+  --shadow-md: 0 14px 30px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 22px 48px rgba(15, 23, 42, 0.12);
+  --shadow-button: 0 12px 28px rgba(37, 99, 235, 0.18);
 
-  --bg-body: radial-gradient(circle at top left, #e0f2fe 0%, var(--ui-surface-canvas) 45%);
+  --bg-body: radial-gradient(circle at top left, #dceeff 0%, var(--ui-surface-canvas) 38%);
   --touch-target-min: 44px;
 
-  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  font-family: var(--font-body);
   line-height: 1.5;
   color: var(--text-primary);
   background-color: var(--bg-primary);
 }
 
 [data-theme="dark"] {
-  --ui-surface-canvas: #0f172a;
-  --ui-surface-elevated: #162334;
-  --ui-surface-muted: #1f2f45;
-  --ui-surface-hover: #263850;
-  --ui-surface-active: #2d4260;
+  --ui-surface-canvas: #09111f;
+  --ui-surface-elevated: #101a2a;
+  --ui-surface-muted: #182438;
+  --ui-surface-hover: #1f2e45;
+  --ui-surface-active: #263652;
 
-  --ui-text-primary: #e2e8f0;
-  --ui-text-secondary: #cbd5e1;
-  --ui-text-muted: #94a3b8;
-  --ui-text-inverse: #0f172a;
+  --ui-text-primary: #e2ecfa;
+  --ui-text-secondary: #c8d6ea;
+  --ui-text-muted: #93a6c3;
+  --ui-text-inverse: #09111f;
 
-  --ui-border-subtle: #2f435d;
-  --ui-border-strong: #3b546f;
+  --ui-border-subtle: #22324b;
+  --ui-border-strong: #314666;
 
   --ui-accent-primary: #60a5fa;
   --ui-accent-primary-hover: #3b82f6;
@@ -145,7 +148,7 @@
   --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.45);
   --shadow-button: 0 10px 24px rgba(0, 0, 0, 0.5);
 
-  --bg-body: var(--bg-primary);
+  --bg-body: radial-gradient(circle at top left, rgba(37, 99, 235, 0.18) 0%, var(--bg-primary) 34%);
 }
 
 /* Global transition */
@@ -161,6 +164,23 @@ body {
   margin: 0;
   min-height: 100vh;
   background: var(--bg-body);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.brand,
+.workspace-brand-name,
+.workspace-nav-link,
+.workspace-page-title,
+.workspace-panel-title {
+  font-family: var(--font-heading);
 }
 
 .app-shell {

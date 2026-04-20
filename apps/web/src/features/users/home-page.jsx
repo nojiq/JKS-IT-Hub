@@ -1,51 +1,25 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useOutletContext } from "react-router-dom";
-import { fetchAuditLogs } from "../audit/audit-api.js";
+import { useOutletContext } from "react-router-dom";
 import { fetchWindows } from "../maintenance/api/maintenanceApi.js";
-import { getNotifications, getUnreadCount } from "../notifications/api/notifications.js";
-import { fetchAllRequests, fetchMyRequests } from "../requests/api/requestsApi.js";
-import { fetchUsers } from "./users-api.js";
+import { fetchAllRequests } from "../requests/api/requestsApi.js";
 import { WorkspacePageHeader } from "../../shared/workspace/WorkspacePageHeader.jsx";
-import { WorkspacePanel } from "../../shared/workspace/WorkspacePanel.jsx";
+import { ModuleLauncherCard } from "../../shared/workspace/ModuleLauncherCard.jsx";
+import { resolveLauncherModules } from "../../shared/workspace/workspaceModules.js";
+import { fetchUsers } from "./users-api.js";
 import "../../shared/workspace/workspace.css";
 
-const IT_ROLES = ["it", "admin", "head_it"];
 const ADMIN_ROLES = ["admin", "head_it"];
+const EMPTY_USERS = [];
+const EMPTY_REQUESTS = [];
+const EMPTY_WINDOWS = [];
 
 const formatRoleLabel = (role) =>
   String(role || "user")
     .replace(/_/g, " ")
     .replace(/\b\w/g, (value) => value.toUpperCase());
 
-const getUnreadCountValue = (payload) =>
-  Number(payload?.data?.count ?? payload?.count ?? payload?.meta?.count ?? 0);
-
-const getListItems = (payload) => payload?.data ?? [];
-
+const getListItems = (payload) => payload?.data ?? EMPTY_REQUESTS;
 const getListTotal = (payload) => Number(payload?.meta?.total ?? getListItems(payload).length ?? 0);
-
-const formatStatusLabel = (status) =>
-  String(status || "unknown")
-    .toLowerCase()
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (value) => value.toUpperCase());
-
-const formatDateTime = (value) => {
-  if (!value) {
-    return "Unknown time";
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return "Unknown time";
-  }
-
-  return parsed.toLocaleString();
-};
-
-const requestTitleFor = (isItUser) => (isItUser ? "Review Queue" : "My Requests");
-const requestDescriptionFor = (isItUser) =>
-  isItUser ? "Submitted requests awaiting IT action." : "Track the requests you have submitted.";
 
 export default function HomePage() {
   const { user } = useOutletContext() ?? {};
@@ -54,8 +28,8 @@ export default function HomePage() {
     return null;
   }
 
-  const isItUser = IT_ROLES.includes(user.role);
   const isAdminUser = ADMIN_ROLES.includes(user.role);
+  const launcherModules = resolveLauncherModules(user);
 
   const usersQuery = useQuery({
     queryKey: ["users", { page: "1", perPage: "100" }],
@@ -63,232 +37,74 @@ export default function HomePage() {
     retry: false
   });
 
-  const unreadCountQuery = useQuery({
-    queryKey: ["notifications", "unread-count"],
-    queryFn: getUnreadCount,
+  const requestsReviewQuery = useQuery({
+    queryKey: ["requests", "review-home", { status: "SUBMITTED", page: "1", perPage: "5" }],
+    queryFn: () => fetchAllRequests({ status: "SUBMITTED", page: "1", perPage: "5" }),
     retry: false
   });
 
-  const requestsQuery = useQuery({
-    queryKey: [
-      "requests",
-      isItUser ? "admin" : "my",
-      isItUser ? { status: "SUBMITTED", page: "1", perPage: "5" } : { page: "1", perPage: "5" }
-    ],
-    queryFn: () =>
-      isItUser
-        ? fetchAllRequests({ status: "SUBMITTED", page: "1", perPage: "5" })
-        : fetchMyRequests({ page: "1", perPage: "5" }),
-    retry: false
-  });
-
-  const maintenanceQuery = useQuery({
-    queryKey: ["maintenance", "windows", "status-overview"],
-    queryFn: () => fetchWindows({ page: "1", perPage: "20", status: ["SCHEDULED", "UPCOMING", "OVERDUE"] }),
-    enabled: isItUser,
-    retry: false
-  });
-
-  const auditQuery = useQuery({
-    queryKey: ["audit-logs", "recent"],
-    queryFn: () => fetchAuditLogs({ page: 1, limit: 4 }),
+  const requestsApprovalQuery = useQuery({
+    queryKey: ["requests", "approval-home", { status: "IT_REVIEWED", page: "1", perPage: "5" }],
+    queryFn: () => fetchAllRequests({ status: "IT_REVIEWED", page: "1", perPage: "5" }),
     enabled: isAdminUser,
     retry: false
   });
 
-  const notificationsQuery = useQuery({
-    queryKey: ["notifications", "recent"],
-    queryFn: () => getNotifications({ page: 1, limit: 4 }),
-    enabled: !isItUser,
+  const maintenanceQuery = useQuery({
+    queryKey: ["maintenance", "windows", "module-launcher"],
+    queryFn: () => fetchWindows({ page: "1", perPage: "20", status: ["SCHEDULED", "UPCOMING", "OVERDUE"] }),
     retry: false
   });
 
-  const users = usersQuery.data?.users ?? [];
+  const users = usersQuery.data?.users ?? EMPTY_USERS;
   const totalUsers = Number(usersQuery.data?.meta?.total ?? users.length ?? 0);
-  const activeUsers = users.filter((entry) => String(entry.status).toLowerCase() === "active").length;
   const disabledUsers = users.filter((entry) => String(entry.status).toLowerCase() === "disabled").length;
-  const unreadCount = getUnreadCountValue(unreadCountQuery.data);
-  const requestItems = getListItems(requestsQuery.data);
-  const requestTotal = getListTotal(requestsQuery.data);
-  const maintenanceItems = getListItems(maintenanceQuery.data);
+  const requestReviewCount = getListTotal(requestsReviewQuery.data);
+  const requestApprovalCount = getListTotal(requestsApprovalQuery.data);
+  const maintenanceItems = getListItems(maintenanceQuery.data) ?? EMPTY_WINDOWS;
   const upcomingMaintenance = maintenanceItems.filter((entry) => entry.status === "UPCOMING").length;
   const overdueMaintenance = maintenanceItems.filter((entry) => entry.status === "OVERDUE").length;
-  const auditItems = getListItems(auditQuery.data);
-  const notificationItems = getListItems(notificationsQuery.data);
-  const requestsPath = isItUser ? "/requests/review" : "/requests/my-requests";
-  const maintenancePath = isItUser ? "/maintenance/schedule" : "/maintenance/my-tasks";
+
+  const metricsByModule = {
+    requests: [
+      { value: String(requestReviewCount), label: "need IT review" },
+      { value: String(requestApprovalCount), label: "waiting for approval" }
+    ],
+    onboarding: [],
+    users: [
+      { value: String(totalUsers), label: "total users" },
+      { value: String(disabledUsers), label: "disabled" }
+    ],
+    maintenance: [
+      { value: String(overdueMaintenance), label: "overdue" },
+      { value: String(upcomingMaintenance), label: "upcoming" }
+    ]
+  };
+
+  const descriptionOverrides = {
+    onboarding: "Start a new joiner setup or manage defaults."
+  };
 
   return (
     <section className="workspace-page dashboard-page">
       <WorkspacePageHeader
-        title="Dashboard"
-        description="Operational overview for current workload, directory health, and recent activity."
+        title="Operations"
+        description="Choose a workflow to continue. Each module owns its own search, filters, and next-step context."
         meta={`${formatRoleLabel(user.role)} workspace`}
       />
 
-      <section className="dashboard-stat-grid" aria-label="Dashboard summary">
-        <WorkspacePanel variant="metric" className="dashboard-stat-card" eyebrow="Summary" title="Unread Notifications">
-          <p className="dashboard-stat-value">{unreadCount}</p>
-          <p className="dashboard-stat-meta">
-            {unreadCount > 0 ? "Unread updates need attention." : "You're caught up for now."}
-          </p>
-        </WorkspacePanel>
-
-        <WorkspacePanel variant="metric" className="dashboard-stat-card" eyebrow="Directory" title="Users in Directory">
-          <p className="dashboard-stat-value">{totalUsers}</p>
-          <p className="dashboard-stat-meta">
-            {activeUsers} active, {disabledUsers} disabled
-          </p>
-        </WorkspacePanel>
-
-        <WorkspacePanel variant="metric" className="dashboard-stat-card" eyebrow="Queue" title={requestTitleFor(isItUser)}>
-          <p className="dashboard-stat-value">{requestTotal}</p>
-          <p className="dashboard-stat-meta">{requestDescriptionFor(isItUser)}</p>
-        </WorkspacePanel>
-
-        {isItUser ? (
-          <WorkspacePanel variant="metric" className="dashboard-stat-card" eyebrow="Schedule" title="Maintenance Status">
-            <p className="dashboard-stat-value">{upcomingMaintenance + overdueMaintenance}</p>
-            <p className="dashboard-stat-meta">
-              {upcomingMaintenance} upcoming, {overdueMaintenance} overdue
-            </p>
-          </WorkspacePanel>
-        ) : null}
-      </section>
-
-      <section className="dashboard-main-grid">
-        <WorkspacePanel
-          variant="content"
-          className="dashboard-panel"
-          title={requestTitleFor(isItUser)}
-          meta={
-            isItUser
-              ? "Prioritize submitted requests waiting for IT review."
-              : "Keep track of your latest request activity."
-          }
-          actions={
-            <Link className="workspace-inline-link" to={requestsPath}>
-              Open {requestTitleFor(isItUser)}
-            </Link>
-          }
-        >
-          {requestItems.length ? (
-            <div className="dashboard-list workspace-panel-inset-list">
-              {requestItems.slice(0, 4).map((request) => (
-                <article className="dashboard-list-item workspace-panel-inset-row" key={request.id}>
-                  <div>
-                    <p className="dashboard-list-title">
-                      {request.itemName || request.title || request.id}
-                    </p>
-                    <p className="dashboard-list-meta">
-                      {formatStatusLabel(request.status)}
-                      {request.priority ? ` • ${formatStatusLabel(request.priority)}` : ""}
-                    </p>
-                  </div>
-                  <span className="dashboard-list-timestamp">
-                    {formatDateTime(request.createdAt || request.updatedAt)}
-                  </span>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <p className="dashboard-empty-copy">No request activity to show.</p>
-          )}
-        </WorkspacePanel>
-
-        <WorkspacePanel
-          variant="content"
-          className="dashboard-panel"
-          title="Quick Actions"
-          meta="Jump into the desktop workflows used most often."
-        >
-          <div className="dashboard-actions">
-            <Link className="workspace-inline-link is-primary" to="/users">
-              Open Users Directory
-            </Link>
-            <Link className="workspace-inline-link" to={requestsPath}>
-              Open Requests
-            </Link>
-            <Link className="workspace-inline-link" to="/notifications">
-              Open Notifications
-            </Link>
-            {isItUser ? (
-              <Link className="workspace-inline-link" to={maintenancePath}>
-                Open Maintenance
-              </Link>
-            ) : null}
-            {isItUser ? (
-              <Link className="workspace-inline-link" to="/systems">
-                Manage Systems &amp; Rules
-              </Link>
-            ) : null}
-            {isAdminUser ? (
-              <Link className="workspace-inline-link" to="/audit-logs">
-                Review Audit Logs
-              </Link>
-            ) : null}
-          </div>
-        </WorkspacePanel>
-
-        {isAdminUser ? (
-          <WorkspacePanel
-            variant="content"
-            className="dashboard-panel"
-            title="Recent Audit Activity"
-            meta="Latest administrative events affecting the workspace."
-            actions={
-              <Link className="workspace-inline-link" to="/audit-logs">
-                View Audit Logs
-              </Link>
-            }
-          >
-            {auditItems.length ? (
-              <div className="dashboard-list workspace-panel-inset-list">
-                {auditItems.map((entry) => (
-                  <article className="dashboard-list-item workspace-panel-inset-row" key={entry.id ?? `${entry.action}-${entry.createdAt}`}>
-                    <div>
-                      <p className="dashboard-list-title">{formatStatusLabel(entry.action)}</p>
-                      <p className="dashboard-list-meta">{entry.actor?.username || "System event"}</p>
-                    </div>
-                    <span className="dashboard-list-timestamp">{formatDateTime(entry.createdAt)}</span>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <p className="dashboard-empty-copy">No recent audit entries available.</p>
-            )}
-          </WorkspacePanel>
-        ) : (
-          <WorkspacePanel
-            variant="content"
-            className="dashboard-panel"
-            title="Recent Notifications"
-            meta="Latest in-app alerts relevant to your account."
-            actions={
-              <Link className="workspace-inline-link" to="/notifications">
-                View Notifications
-              </Link>
-            }
-          >
-            {notificationItems.length ? (
-              <div className="dashboard-list workspace-panel-inset-list">
-                {notificationItems.map((entry) => (
-                  <article className="dashboard-list-item workspace-panel-inset-row" key={entry.id}>
-                    <div>
-                      <p className="dashboard-list-title">{entry.title || entry.type || "Notification"}</p>
-                      <p className="dashboard-list-meta">{entry.message || "Open notifications for details."}</p>
-                    </div>
-                    <span className="dashboard-list-timestamp">
-                      {formatDateTime(entry.createdAt || entry.updatedAt)}
-                    </span>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <p className="dashboard-empty-copy">No recent notifications available.</p>
-            )}
-          </WorkspacePanel>
-        )}
+      <section className="workspace-module-launcher-grid" aria-label="Operations modules">
+        {launcherModules.map((module) => (
+          <ModuleLauncherCard
+            key={module.id}
+            actionLabel={module.launcherActionLabel}
+            description={descriptionOverrides[module.id] ?? module.launcherDescription}
+            icon={module.icon}
+            metrics={metricsByModule[module.id] ?? []}
+            title={module.label}
+            to={module.to}
+          />
+        ))}
       </section>
     </section>
   );

@@ -91,7 +91,11 @@ describe('WorkspaceLayout', () => {
         expect(await screen.findByText('Dashboard Content')).toBeInTheDocument();
 
         const sidebar = screen.getByLabelText('Workspace sections');
-        const topbarSearch = screen.getByLabelText('Search users');
+        expect(screen.getByText('IT Hub')).toBeInTheDocument();
+        expect(screen.getByText('IT Operations Console')).toBeInTheDocument();
+        expect(screen.getByText('Core Operations')).toBeInTheDocument();
+        expect(screen.getByText('Administration')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Search users')).not.toBeInTheDocument();
 
         await act(async () => {
             await router.navigate('/users');
@@ -99,12 +103,12 @@ describe('WorkspaceLayout', () => {
 
         expect(await screen.findByText('Users Content')).toBeInTheDocument();
         expect(screen.getByLabelText('Workspace sections')).toBe(sidebar);
-        expect(screen.getByLabelText('Search users')).toBe(topbarSearch);
+        expect(screen.queryByLabelText('Search users')).not.toBeInTheDocument();
         expect(screen.getByTestId('notification-bell')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /toggle sidebar/i })).toBeInTheDocument();
     });
 
-    it('renders onboarding child links in the sidebar only while inside onboarding routes', async () => {
+    it('keeps onboarding as a top-level sidebar module without nested child links', async () => {
         const queryClient = new QueryClient({
             defaultOptions: {
                 queries: { retry: false, gcTime: 0 }
@@ -147,9 +151,11 @@ describe('WorkspaceLayout', () => {
             await router.navigate('/onboarding/new-joiner');
         });
 
-        expect(await screen.findByRole('link', { name: 'Catalog' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Defaults' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'New Joiner' })).toBeInTheDocument();
+        expect(await screen.findByText('Onboarding Shell')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Onboarding' })).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Catalog' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Defaults' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'New Joiner' })).not.toBeInTheDocument();
     });
 
     it('collapses desktop sidebar and persists preference', async () => {

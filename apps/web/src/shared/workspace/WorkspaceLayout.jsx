@@ -6,16 +6,10 @@ import { NotificationBell } from "../../features/notifications/components/Notifi
 import { ThemeToggle } from "../ui/ThemeToggle/ThemeToggle";
 import { DataStateBlock } from "./DataStateBlock";
 import { useIsDesktop } from "../hooks/useMediaQuery";
-import { SidebarCollapseIcon, SidebarMenuIcon } from "./WorkspaceIcons";
+import { SidebarCollapseIcon, SidebarMenuIcon, WorkspaceNavIcon } from "./WorkspaceIcons";
+import { resolveWorkspaceGroups } from "./workspaceModules";
 import "./workspace.css";
 
-const IT_ROLES = ["it", "admin", "head_it"];
-const AUDIT_ROLES = ["admin", "head_it"];
-const ONBOARDING_CHILDREN = [
-  { label: "Catalog", to: "/onboarding/catalog", matchPrefix: "/onboarding/catalog" },
-  { label: "Defaults", to: "/onboarding/defaults", matchPrefix: "/onboarding/defaults" },
-  { label: "New Joiner", to: "/onboarding/new-joiner", matchPrefix: "/onboarding/new-joiner" }
-];
 const SIDEBAR_STORAGE_KEY = "workspace-sidebar-collapsed";
 
 const hasRole = (role, allowedRoles) => {
@@ -49,7 +43,6 @@ export function WorkspaceLayout() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const isDesktop = useIsDesktop();
-  const [searchValue, setSearchValue] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     if (typeof window === "undefined") {
@@ -153,32 +146,10 @@ export function WorkspaceLayout() {
   if (!user) {
     return <Navigate replace to="/login" />;
   }
-
-  const requestsPath = IT_ROLES.includes(user.role) ? "/requests/review" : "/requests/my-requests";
-  const maintenancePath = IT_ROLES.includes(user.role) ? "/maintenance/schedule" : "/maintenance/my-tasks";
-  const isOnboardingRoute = location.pathname === "/onboarding" || location.pathname.startsWith("/onboarding/");
-
-  const navItems = [
-    { label: "Dashboard", to: "/" },
-    { label: "Users", to: "/users" },
-    { label: "Requests", to: requestsPath },
-    { label: "Admin Review", to: "/admin/requests/review", roles: AUDIT_ROLES },
-    { label: "Approvals", to: "/admin/approvals", roles: AUDIT_ROLES },
-    { label: "Onboarding", to: "/onboarding", roles: IT_ROLES },
-    { label: "Maintenance", to: maintenancePath, roles: IT_ROLES },
-    { label: "Systems", to: "/systems", roles: IT_ROLES },
-    { label: "Audit", to: "/audit-logs", roles: AUDIT_ROLES }
-  ];
-
-  const handleSearchSubmit = (event) => {
-    event.preventDefault();
-    const query = searchValue.trim();
-    if (!query) {
-      return;
-    }
-
-    navigate(`/users?search=${encodeURIComponent(query)}`);
-  };
+  const resolvedGroups = resolveWorkspaceGroups(user).map((group) => ({
+    ...group,
+    items: group.items.filter((item) => hasRole(user.role, item.roles))
+  }));
 
   const handleSidebarToggle = () => {
     if (isDesktop) {
@@ -205,49 +176,37 @@ export function WorkspaceLayout() {
         aria-label="Workspace sections"
       >
         <div className="workspace-brand">
-          <span className="workspace-brand-mark">IT</span>
-          <strong className="workspace-brand-name">{isSidebarCollapsed ? "Hub" : "Hub Workspace"}</strong>
-          {isSidebarCollapsed ? null : <p className="workspace-brand-subtitle">Desktop operations shell</p>}
+          <span className="workspace-brand-mark">ITH</span>
+          <strong className="workspace-brand-name">IT Hub</strong>
+          {isSidebarCollapsed ? null : <p className="workspace-brand-subtitle">IT Operations Console</p>}
         </div>
 
         <nav className="workspace-nav">
-          {navItems
-            .filter((item) => hasRole(user.role, item.roles))
-            .map((item) => {
-              const showChildren = item.to === "/onboarding" && isOnboardingRoute;
-
-              return (
-                <div key={item.to} className="workspace-nav-item">
-                  <NavLink
-                    to={item.to}
-                    className={({ isActive }) =>
-                      `workspace-nav-link${isActive ? " is-active" : ""}`
-                    }
-                  >
-                    <span className="workspace-nav-link-label">{item.label}</span>
-                  </NavLink>
-
-                  {showChildren && !isSidebarCollapsed ? (
-                    <div className="workspace-nav-children" aria-label="Onboarding sections">
-                      {ONBOARDING_CHILDREN.map((child) => {
-                        const isChildActive =
-                          location.pathname === child.to || location.pathname.startsWith(`${child.matchPrefix}/`);
-
-                        return (
-                          <NavLink
-                            key={child.to}
-                            to={child.to}
-                            className={`workspace-subnav-link${isChildActive ? " is-active" : ""}`}
-                          >
-                            <span>{child.label}</span>
-                          </NavLink>
-                        );
-                      })}
+          {resolvedGroups.map((group) => (
+            <section key={group.id} className="workspace-nav-group" aria-label={group.label}>
+              <p className="workspace-nav-group-label">{group.label}</p>
+              <div className="workspace-nav-group-items">
+                {group.items.map((item) => {
+                  return (
+                    <div key={item.id} className="workspace-nav-item">
+                      <NavLink
+                        to={item.to}
+                        aria-label={item.label}
+                        className={({ isActive }) =>
+                          `workspace-nav-link${isActive ? " is-active" : ""}`
+                        }
+                      >
+                        <span className="workspace-nav-link-icon" aria-hidden="true">
+                          <WorkspaceNavIcon icon={item.icon} className="workspace-nav-icon" />
+                        </span>
+                        <span className="workspace-nav-link-label">{item.label}</span>
+                      </NavLink>
                     </div>
-                  ) : null}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            </section>
+          ))}
         </nav>
       </aside>
 
@@ -266,20 +225,6 @@ export function WorkspaceLayout() {
               <SidebarMenuIcon className="workspace-sidebar-toggle-icon" />
             )}
           </button>
-
-          <form className="workspace-topbar-search" onSubmit={handleSearchSubmit}>
-            <input
-              className="workspace-topbar-search-input"
-              type="search"
-              value={searchValue}
-              onChange={(event) => setSearchValue(event.target.value)}
-              placeholder="Search users"
-              aria-label="Search users"
-            />
-            <button className="workspace-topbar-search-btn" type="submit">
-              Search
-            </button>
-          </form>
 
           <div className="workspace-topbar-utilities">
             <NotificationBell />

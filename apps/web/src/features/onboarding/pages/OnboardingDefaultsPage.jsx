@@ -3,11 +3,11 @@ import TemplateList from "../../credentials/templates/TemplateList.jsx";
 export function OnboardingDefaultsPage() {
   return (
     <TemplateList
-      pageTitle="Onboarding Defaults"
-      pageDescription="Reuse the advanced credential template editor as the canonical rule set for future new joiners."
-      createLabel="Create Default Rule Set"
+      pageTitle="Reusable Default Sets"
+      pageDescription="Maintain the reusable rule sets that prefill common onboarding decisions for each department."
+      createLabel="Create Default Set"
       emptyTitle="No onboarding defaults found."
-      emptyActionLabel="Create Your First Default"
+      emptyActionLabel="Create Your First Default Set"
     />
   );
 }

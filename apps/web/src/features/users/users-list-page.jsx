@@ -8,7 +8,6 @@ import LdapSyncPanel from "./ldap-sync-panel.jsx";
 import { SearchInput } from "../../shared/components/SearchInput/SearchInput";
 import { FilterSelect } from "../../shared/components/FilterPanel/FilterSelect";
 import { SearchEmptyState } from "../../shared/components/EmptyState/SearchEmptyState";
-import { WorkspacePageHeader } from "../../shared/workspace/WorkspacePageHeader";
 import { WorkspacePanel } from "../../shared/workspace/WorkspacePanel";
 import { BulkActionsBar } from "../../shared/workspace/BulkActionsBar";
 import { DataStateBlock } from "../../shared/workspace/DataStateBlock";
@@ -275,12 +274,15 @@ export default function UsersListPage() {
 
   return (
     <section className="workspace-page users-page">
-      <WorkspacePageHeader
-        eyebrow="Directory"
-        title="Users"
-        description="Read-only LDAP profile data synced into IT-Hub."
-        meta={payload.meta?.total ? `${payload.meta.total} users` : "User directory"}
-      />
+      <section className="users-page-intro">
+        <h2 className="users-page-title">User Directory</h2>
+        <p className="users-page-description">
+          Review synced LDAP records, confirm account status, and open credential actions from the directory.
+        </p>
+        <p className="users-page-meta">
+          {payload.meta?.total ? `${payload.meta.total} users in scope` : "Directory tools stay inside Users & Credentials"}
+        </p>
+      </section>
 
       <section className="dashboard-sync-panel users-sync-panel">
         <h3>LDAP Synchronization</h3>
@@ -308,7 +310,7 @@ export default function UsersListPage() {
           <p className="users-alert-title">LDAP sync has not run yet.</p>
           <p className="users-alert-text">
             Run manual sync first to populate directory fields.
-            <Link className="users-alert-link" to="/users">
+            <Link className="users-alert-link" to="/users/directory">
               Go to sync panel
             </Link>
           </p>

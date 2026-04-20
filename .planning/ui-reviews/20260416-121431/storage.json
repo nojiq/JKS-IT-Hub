@@ -1,0 +1,15 @@
+{
+  "cookies": [
+    {
+      "name": "it-hub-session",
+      "value": "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6ImhhemlxLmFmZW5kaSIsInJvbGUiOiJhZG1pbiIsInN0YXR1cyI6ImFjdGl2ZSIsImlhdCI6MTc3NjMxMjg3Miwic3ViIjoiZWUxYmY5ZjAtNjRiNi00ZDRkLTk2MzgtNmY3NjU5NjRlZTIxIiwiaXNzIjoiaXQtaHViIiwiYXVkIjoiaXQtaHViLXdlYiIsImV4cCI6MTc3NjM1NjA3Mn0.J5p_RmQR7SPyikeLwskEd24hS4P-c3HxHXTUBfIg4Ow",
+      "domain": "localhost",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": []
+}

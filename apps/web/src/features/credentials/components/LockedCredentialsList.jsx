@@ -60,8 +60,8 @@ const LockedCredentialsList = () => {
     return (
         <div className="locked-credentials">
             <div className="locked-credentials-header">
-                <h2>Locked Credentials</h2>
-                <p>Manage and unlock credentials that are currently protected.</p>
+                <h2>Locked Credentials Queue</h2>
+                <p>Review protected credentials, understand why they were frozen, and unlock them without leaving the module.</p>
             </div>
 
             <div className="locked-credentials-filters">

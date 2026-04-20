@@ -34,33 +34,40 @@ const createQueryResult = (overrides = {}) => ({
     ...overrides
 });
 
+const hasExactText = (value) => (_, element) => element?.tagName === 'LI' && element?.textContent === value;
+
 describe('HomePage', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         useQuery.mockReset();
     });
 
-    it('renders an admin ops overview instead of a personal welcome card', () => {
+    it('renders a module launcher in IT workflow priority order', () => {
         useQuery.mockImplementation(({ queryKey }) => {
             if (queryKey[0] === 'users') {
                 return createQueryResult({
                     data: {
                         users: [
                             { id: '1', status: 'active' },
-                            { id: '2', status: 'disabled' }
+                            { id: '2', status: 'disabled' },
+                            { id: '3', status: 'active' }
                         ],
                         fields: [],
-                        meta: { total: 2 }
+                        meta: { total: 3 }
                     }
                 });
             }
 
-            if (queryKey[0] === 'notifications' && queryKey[1] === 'unread-count') {
-                return createQueryResult({ data: { data: { count: 4 } } });
+            if (queryKey[0] === 'requests' && queryKey[2]?.status === 'SUBMITTED') {
+                return createQueryResult({
+                    data: { data: [{ id: 'r1' }, { id: 'r2' }, { id: 'r3' }], meta: { total: 3 } }
+                });
             }
 
-            if (queryKey[0] === 'requests') {
-                return createQueryResult({ data: { data: [{ id: 'r1' }, { id: 'r2' }], meta: { total: 2 } } });
+            if (queryKey[0] === 'requests' && queryKey[2]?.status === 'IT_REVIEWED') {
+                return createQueryResult({
+                    data: { data: [{ id: 'a1' }], meta: { total: 1 } }
+                });
             }
 
             if (queryKey[0] === 'maintenance') {
@@ -75,67 +82,61 @@ describe('HomePage', () => {
                 });
             }
 
-            if (queryKey[0] === 'audit-logs') {
-                return createQueryResult({
-                    data: {
-                        data: [
-                            { id: 'a1', action: 'USER_UPDATED', createdAt: '2026-03-14T09:00:00Z' }
-                        ]
-                    }
-                });
-            }
-
             return createQueryResult();
         });
 
         const { container } = renderPage({ role: 'admin', username: 'admin.user', status: 'active' });
 
-        expect(screen.getByText('Dashboard')).toBeInTheDocument();
-        expect(screen.queryByText('Welcome back')).not.toBeInTheDocument();
-        expect(screen.queryByText('Directory Synchronization')).not.toBeInTheDocument();
-        expect(screen.getByText('Unread Notifications')).toBeInTheDocument();
-        expect(screen.getByText('Users in Directory')).toBeInTheDocument();
-        expect(screen.getAllByRole('heading', { name: 'Review Queue' }).length).toBeGreaterThanOrEqual(1);
-        expect(screen.getByText('Maintenance Status')).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Recent Audit Activity' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Open Users Directory' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Manage Systems & Rules' })).toBeInTheDocument();
-        expect(container.querySelectorAll('.workspace-panel.workspace-panel-metric')).toHaveLength(4);
-        expect(container.querySelectorAll('.workspace-panel.workspace-panel-content').length).toBeGreaterThanOrEqual(2);
-        expect(container.querySelectorAll('.workspace-panel-inset-row').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByRole('heading', { name: 'Operations' })).toBeInTheDocument();
+        expect(screen.queryByText('Unread Notifications')).not.toBeInTheDocument();
+        expect(screen.queryByText('Users in Directory')).not.toBeInTheDocument();
+        expect(container.querySelector('.workspace-module-launcher-grid')).toBeInTheDocument();
+
+        const moduleTitles = [...container.querySelectorAll('.workspace-module-card-title')].map((node) => node.textContent);
+        expect(moduleTitles).toEqual(['Requests', 'Onboarding', 'Users & Credentials', 'Maintenance']);
+
+        expect(screen.getByRole('link', { name: /open requests/i })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /open onboarding/i })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /open users & credentials/i })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /open maintenance/i })).toBeInTheDocument();
+        expect(screen.getByText(hasExactText('3 need IT review'))).toBeInTheDocument();
+        expect(screen.getByText(hasExactText('1 waiting for approval'))).toBeInTheDocument();
+        expect(screen.getByText(hasExactText('3 total users'))).toBeInTheDocument();
+        expect(screen.getByText(hasExactText('1 overdue'))).toBeInTheDocument();
     });
 
-    it('renders requester-focused work and hides admin-only ops panels', () => {
+    it('keeps launcher cards visible even when some operational counts are unavailable', () => {
         useQuery.mockImplementation(({ queryKey }) => {
             if (queryKey[0] === 'users') {
                 return createQueryResult({
                     data: {
-                        users: [{ id: '1', status: 'active' }],
+                        users: [],
                         fields: [],
-                        meta: { total: 1 }
+                        meta: { total: 0 }
                     }
                 });
             }
 
-            if (queryKey[0] === 'notifications' && queryKey[1] === 'unread-count') {
-                return createQueryResult({ data: { data: { count: 1 } } });
+            if (queryKey[0] === 'requests') {
+                return createQueryResult({
+                    data: { data: [], meta: { total: 0 } }
+                });
             }
 
-            if (queryKey[0] === 'requests') {
-                return createQueryResult({ data: { data: [{ id: 'r1' }], meta: { total: 1 } } });
+            if (queryKey[0] === 'maintenance') {
+                return createQueryResult({
+                    data: { data: [], meta: { total: 0 } }
+                });
             }
 
             return createQueryResult();
         });
 
-        const { container } = renderPage({ role: 'requester', username: 'req.user', status: 'active' });
+        renderPage({ role: 'it', username: 'it.user', status: 'active' });
 
-        expect(screen.getAllByRole('heading', { name: 'My Requests' }).length).toBeGreaterThanOrEqual(1);
-        expect(screen.getAllByRole('heading', { name: 'Recent Notifications' }).length).toBeGreaterThanOrEqual(1);
-        expect(screen.queryByRole('heading', { name: 'Recent Audit Activity' })).not.toBeInTheDocument();
-        expect(screen.queryByText('Maintenance Status')).not.toBeInTheDocument();
-        expect(screen.queryByRole('link', { name: 'Manage Systems & Rules' })).not.toBeInTheDocument();
-        expect(container.querySelectorAll('.workspace-panel.workspace-panel-metric')).toHaveLength(3);
-        expect(container.querySelectorAll('.workspace-panel.workspace-panel-content').length).toBeGreaterThanOrEqual(2);
+        expect(screen.getByRole('heading', { name: 'Operations' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /open requests/i })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /open onboarding/i })).toBeInTheDocument();
+        expect(screen.getByText('Start a new joiner setup or manage defaults.')).toBeInTheDocument();
     });
 });

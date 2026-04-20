@@ -1,6 +1,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import LockedCredentialsList from '../LockedCredentialsList';
 import * as credentialsHooks from '../../hooks/useCredentials.js';
 
@@ -53,6 +53,7 @@ describe('LockedCredentialsList', () => {
         });
 
         render(<LockedCredentialsList />);
+        expect(screen.getByText('Locked Credentials Queue')).toBeInTheDocument();
         expect(screen.getByText('No locked credentials found.')).toBeInTheDocument();
     });
 
@@ -148,7 +149,9 @@ describe('LockedCredentialsList', () => {
         render(<LockedCredentialsList />);
 
         const unlockButton = screen.getByText('Unlock');
-        fireEvent.click(unlockButton);
+        await act(async () => {
+            fireEvent.click(unlockButton);
+        });
 
         expect(mockUnlockMutateAsync).toHaveBeenCalledWith({
             userId: 'user-1',

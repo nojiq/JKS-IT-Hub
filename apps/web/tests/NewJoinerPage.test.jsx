@@ -150,6 +150,11 @@ describe('NewJoinerPage', () => {
     it('auto-selects recommended apps from the chosen department and keeps them editable', async () => {
         renderPage();
 
+        expect(await screen.findByRole('heading', { name: 'Identity Source' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Default Bundle' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'App Access Selection' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Preview and Confirm' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Draft Recovery' })).toBeInTheDocument();
         expect(await screen.findByLabelText('Department')).toBeInTheDocument();
         expect(await screen.findByRole('option', { name: 'Marketing' })).toBeInTheDocument();
 
@@ -249,7 +254,7 @@ describe('NewJoinerPage', () => {
 
         renderPage();
 
-        expect(await screen.findByRole('heading', { name: 'Saved Drafts' })).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: 'Draft Recovery' })).toBeInTheDocument();
         expect(await screen.findByText((content) => content.includes('haziq.afendi@jkseng.com'))).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: 'Open Draft' }));

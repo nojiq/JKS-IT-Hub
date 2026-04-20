@@ -66,16 +66,17 @@ describe('Onboarding navigation', () => {
         });
     });
 
-    it('shows Onboarding in the workspace nav and renders nested onboarding links in the sidebar', async () => {
+    it('renders onboarding-local navigation inside the module shell', async () => {
         renderApp();
 
         expect(await screen.findByRole('link', { name: 'Onboarding' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Onboarding' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Catalog' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Defaults' })).toBeInTheDocument();
+        expect(screen.getByText('Prepare access, defaults, and credential packs for new joiners.')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Overview' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'New Joiner' })).toBeInTheDocument();
-        expect(screen.getByLabelText('Workspace sections')).toContainElement(screen.getByRole('link', { name: 'Catalog' }));
-        expect(document.querySelector('.onboarding-subnav')).not.toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Defaults' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Catalog' })).toBeInTheDocument();
+        expect(document.querySelector('.onboarding-subnav')).toBeInTheDocument();
         expect(screen.getByText('New Joiner Content')).toBeInTheDocument();
     });
 });

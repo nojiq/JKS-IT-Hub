@@ -268,10 +268,9 @@ export function NewJoinerPage() {
       <article className="onboarding-card">
         <div className="onboarding-card-header">
           <div>
-            <h2>New Joiner Setup</h2>
+            <h2>Identity Source</h2>
             <p className="onboarding-card-subtitle">
-              Pick a joiner source, auto-apply the department bundle, then adjust the final app
-              list before saving.
+              Start from a manual joiner draft or pull from the directory before building the setup sheet.
             </p>
           </div>
           {resolvedDepartment ? <span className="onboarding-badge">{resolvedDepartment}</span> : null}
@@ -381,10 +380,29 @@ export function NewJoinerPage() {
       <article className="onboarding-card">
         <div className="onboarding-card-header">
           <div>
-            <h2>Recommended App Bundle</h2>
+            <h2>Default Bundle</h2>
             <p className="onboarding-card-subtitle">
-              Department rules preselect apps, but you can still add or remove anything before
-              saving.
+              Department rules preselect the most likely access package before you finalize the app list.
+            </p>
+          </div>
+          <span className="onboarding-badge">{resolvedDepartment || "No department yet"}</span>
+        </div>
+
+        <div className="onboarding-step-summary">
+          <p className="onboarding-muted">
+            {resolvedDepartment
+              ? `${resolvedDepartment} defaults are ready. Review the app selection below before previewing credentials.`
+              : "Choose a department or directory user first so the module can load the right default bundle."}
+          </p>
+        </div>
+      </article>
+
+      <article className="onboarding-card">
+        <div className="onboarding-card-header">
+          <div>
+            <h2>App Access Selection</h2>
+            <p className="onboarding-card-subtitle">
+              Add or remove provisioning inputs after the default bundle is applied.
             </p>
           </div>
           <span className="onboarding-badge">{selectedItemKeys.size} selected</span>
@@ -406,6 +424,22 @@ export function NewJoinerPage() {
               <p>{item.notes || item.loginUrl}</p>
             </div>
           ))}
+        </div>
+      </article>
+
+      <article className="onboarding-card">
+        <div className="onboarding-card-header">
+          <div>
+            <h2>Preview and Confirm</h2>
+            <p className="onboarding-card-subtitle">
+              Generate the setup sheet, validate usernames and passwords, then save the onboarding package.
+            </p>
+          </div>
+          {previewResult?.recommendedItemKeys?.length ? (
+            <span className="onboarding-badge is-muted">
+              Recommended: {previewResult.recommendedItemKeys.join(", ")}
+            </span>
+          ) : null}
         </div>
 
         <div className="onboarding-actions">
@@ -430,22 +464,6 @@ export function NewJoinerPage() {
         {previewMutation.error ? <p className="onboarding-muted">{previewMutation.error.message}</p> : null}
         {confirmMutation.error ? <p className="onboarding-muted">{confirmMutation.error.message}</p> : null}
         {linkMutation.error ? <p className="onboarding-muted">{linkMutation.error.message}</p> : null}
-      </article>
-
-      <article className="onboarding-card">
-        <div className="onboarding-card-header">
-          <div>
-            <h2>Setup Sheet</h2>
-            <p className="onboarding-card-subtitle">
-              Copy this into the assigned laptop handoff once the defaults and app list look right.
-            </p>
-          </div>
-          {previewResult?.recommendedItemKeys?.length ? (
-            <span className="onboarding-badge is-muted">
-              Recommended: {previewResult.recommendedItemKeys.join(", ")}
-            </span>
-          ) : null}
-        </div>
 
         {!setupSheet?.entries?.length ? (
           <div className="onboarding-empty">
@@ -480,7 +498,7 @@ export function NewJoinerPage() {
       <article className="onboarding-card">
         <div className="onboarding-card-header">
           <div>
-            <h2>Saved Drafts</h2>
+            <h2>Draft Recovery</h2>
             <p className="onboarding-card-subtitle">
               Reopen manual onboarding drafts, copy their setup sheet, or link them to a real
               directory user later.

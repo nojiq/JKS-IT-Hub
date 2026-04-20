@@ -1,10 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import {
+import * as credentialGenerator from "../../apps/api/src/features/credentials/generator.js";
+
+const {
     generateCredentials,
     MissingLdapFieldsError
-} from "../../apps/api/src/features/credentials/generator.js";
+} = credentialGenerator;
 
 test("generator is deterministic when no password pattern is provided", () => {
     const template = {
@@ -90,4 +92,105 @@ test("generator reports required missing LDAP fields", () => {
             return true;
         }
     );
+});
+
+test("IMAP deterministic generator is stable across same inputs and toggles", () => {
+    const result = credentialGenerator.generateImapDeterministicPassword({
+        userId: "user-123",
+        username: "john.doe@company.com",
+        inputs: {
+            email: "John.Doe@Company.com ",
+            firstName: "John",
+            lastName: "Doe",
+            fullName: "John Doe",
+            dob: "1990-01-01",
+            phone: "012-345 6789"
+        },
+        selectedFields: {
+            email: true,
+            firstName: false,
+            lastName: true,
+            fullName: false,
+            dob: true,
+            phone: true
+        },
+        origins: {
+            email: "ldap",
+            lastName: "ldap",
+            dob: "manual",
+            phone: "manual"
+        }
+    });
+
+    const second = credentialGenerator.generateImapDeterministicPassword({
+        userId: "user-123",
+        username: "john.doe@company.com",
+        inputs: {
+            phone: "012-345 6789",
+            dob: "1990-01-01",
+            fullName: "John Doe",
+            lastName: "Doe",
+            firstName: "John",
+            email: "john.doe@company.com"
+        },
+        selectedFields: {
+            phone: true,
+            dob: true,
+            fullName: false,
+            lastName: true,
+            firstName: false,
+            email: true
+        },
+        origins: {
+            phone: "manual",
+            dob: "manual",
+            lastName: "ldap",
+            email: "ldap"
+        }
+    });
+
+    assert.equal(result.password, second.password);
+    assert.deepEqual(result.metadata.selectedFields, ["dob", "email", "lastName", "phone"]);
+    assert.deepEqual(result.metadata.changedFields, []);
+});
+
+test("IMAP deterministic generator changes password when selected input changes and restores on revert", () => {
+    const base = {
+        userId: "user-123",
+        username: "john.doe@company.com",
+        inputs: {
+            email: "john.doe@company.com",
+            firstName: "John",
+            lastName: "Doe",
+            fullName: "John Doe",
+            dob: "1990-01-01",
+            phone: "0123456789"
+        },
+        selectedFields: {
+            email: true,
+            firstName: false,
+            lastName: false,
+            fullName: false,
+            dob: true,
+            phone: true
+        },
+        origins: {
+            email: "ldap",
+            dob: "manual",
+            phone: "manual"
+        }
+    };
+
+    const first = credentialGenerator.generateImapDeterministicPassword(base);
+    const changed = credentialGenerator.generateImapDeterministicPassword({
+        ...base,
+        inputs: {
+            ...base.inputs,
+            phone: "0199999999"
+        }
+    });
+    const reverted = credentialGenerator.generateImapDeterministicPassword(base);
+
+    assert.notEqual(first.password, changed.password);
+    assert.equal(first.password, reverted.password);
 });
