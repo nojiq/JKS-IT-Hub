@@ -70,6 +70,7 @@ model User {
   auditLogs    AuditLog[]
   credentialTemplates CredentialTemplate[]
   credentials  UserCredential[]
+  imapProfile  UserImapProfile?
   generatedCredentials UserCredential[] @relation("GeneratedBy")
   credentialVersions CredentialVersion[]
   lockedCredentials LockedCredential[]
@@ -256,6 +257,26 @@ model OnboardingDraftCredential {
   @@index([catalogItemId], map: "idx_onboarding_draft_credentials_catalog_item_id")
   @@index([isActive], map: "idx_onboarding_draft_credentials_is_active")
   @@map("onboarding_draft_credentials")
+}
+
+model UserImapProfile {
+  id                      String   @id @default(uuid()) @db.Char(36) @map("id")
+  userId                  String   @unique @db.Char(36) @map("user_id")
+  deterministicSubjectKey String   @db.VarChar(191) @map("deterministic_subject_key")
+  email                   String?  @db.VarChar(191) @map("email")
+  firstName               String?  @db.VarChar(191) @map("first_name")
+  lastName                String?  @db.VarChar(191) @map("last_name")
+  fullName                String?  @db.VarChar(191) @map("full_name")
+  dob                     String?  @db.VarChar(191) @map("dob")
+  phone                   String?  @db.VarChar(191) @map("phone")
+  resolvedLdapFingerprints Json?   @map("resolved_ldap_fingerprints")
+  updatedBy               String   @db.Char(36) @map("updated_by")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_imap_profiles")
 }
 
 model UserCredential {
