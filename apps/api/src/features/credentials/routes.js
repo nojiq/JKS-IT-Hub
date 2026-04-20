@@ -15,6 +15,11 @@ import {
     compareVersionsSchema,
     versionIdSchema
 } from "./schema.js";
+import {
+    previewImapGeneratorSchema,
+    saveImapGeneratorSchema,
+    reviewImapConflictsSchema
+} from "./imap/schema.js";
 import { CredentialLockedError, CredentialsLockedError, DisabledUserError, NoChangesDetectedError } from "./service.js";
 import { hasItRole } from "../../shared/auth/rbac.js";
 import { requireItRole } from "../../shared/auth/middleware.js";
@@ -60,6 +65,19 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                 userStatus: "disabled"
             }
         });
+    };
+
+    const ensureImapGeneratorAccess = (actor, reply, detail = "Only IT roles can access the IMAP generator") => {
+        if (['it', 'admin', 'head_it'].includes(actor.role)) {
+            return true;
+        }
+
+        sendProblem(reply, createProblemDetails({
+            status: 403,
+            title: "Forbidden",
+            detail
+        }));
+        return false;
     };
 
     app.post("/", async (request, reply) => {
@@ -1553,6 +1571,87 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                 detail: error.message || "Failed to complete credential override"
             }));
         }
+    });
+
+    app.get("/imap/users/:userId/workbench", async (request, reply) => {
+        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        if (!actor) return;
+        if (!ensureImapGeneratorAccess(actor, reply)) return;
+
+        const { userId } = request.params;
+        const result = await credentialService.loadImapWorkbench(userId);
+        reply.send({ data: result });
+    });
+
+    app.post("/imap/preview", async (request, reply) => {
+        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        if (!actor) return;
+        if (!ensureImapGeneratorAccess(actor, reply)) return;
+
+        const validation = previewImapGeneratorSchema.safeParse(request.body || {});
+        if (!validation.success) {
+            sendProblem(reply, createProblemDetails({
+                status: 400,
+                title: "Invalid Input",
+                detail: validation.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ')
+            }));
+            return;
+        }
+
+        const result = await credentialService.previewImapPassword(validation.data);
+        reply.send({ data: result });
+    });
+
+    app.post("/imap/save", async (request, reply) => {
+        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        if (!actor) return;
+        if (!ensureImapGeneratorAccess(actor, reply)) return;
+
+        const validation = saveImapGeneratorSchema.safeParse(request.body || {});
+        if (!validation.success) {
+            sendProblem(reply, createProblemDetails({
+                status: 400,
+                title: "Invalid Input",
+                detail: validation.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ')
+            }));
+            return;
+        }
+
+        const result = await credentialService.saveImapPassword(validation.data, actor.id);
+        reply.code(201).send({ data: result });
+    });
+
+    app.get("/imap/users/:userId/passwords", async (request, reply) => {
+        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        if (!actor) return;
+        if (!ensureImapGeneratorAccess(actor, reply)) return;
+
+        const { userId } = request.params;
+        const result = await credentialService.listPreviousImapPasswords(userId);
+        reply.send({ data: result });
+    });
+
+    app.post("/imap/users/:userId/conflicts/review", async (request, reply) => {
+        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        if (!actor) return;
+        if (!ensureImapGeneratorAccess(actor, reply)) return;
+
+        const validation = reviewImapConflictsSchema.safeParse(request.body || {});
+        if (!validation.success) {
+            sendProblem(reply, createProblemDetails({
+                status: 400,
+                title: "Invalid Input",
+                detail: validation.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ')
+            }));
+            return;
+        }
+
+        const { userId } = request.params;
+        const result = await credentialService.applyImapConflictResolution({
+            userId,
+            ...validation.data
+        }, actor.id);
+        reply.send({ data: result });
     });
 
     // Lock/Unlock Routes (Story 2.9)

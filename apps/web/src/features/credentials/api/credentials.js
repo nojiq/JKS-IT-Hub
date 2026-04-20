@@ -224,3 +224,47 @@ export const getUserLockedCredentials = async (userId, filters = {}) => {
     });
     return handleResponse(response);
 };
+
+export const getImapWorkbench = async (userId) => {
+    const response = await fetch(`${CREDENTIALS_BASE}/imap/users/${userId}/workbench`, {
+        credentials: 'include'
+    });
+    return handleResponse(response);
+};
+
+export const previewImapPassword = async (payload) => {
+    const response = await fetch(`${CREDENTIALS_BASE}/imap/preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+    });
+    return handleResponse(response);
+};
+
+export const saveImapPassword = async (payload) => {
+    const response = await fetch(`${CREDENTIALS_BASE}/imap/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+    });
+    return handleResponse(response);
+};
+
+export const getPreviousImapPasswords = async (userId) => {
+    const response = await fetch(`${CREDENTIALS_BASE}/imap/users/${userId}/passwords`, {
+        credentials: 'include'
+    });
+    return handleResponse(response);
+};
+
+export const reviewImapConflicts = async (userId, payload) => {
+    const response = await fetch(`${CREDENTIALS_BASE}/imap/users/${userId}/conflicts/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+    });
+    return handleResponse(response);
+};

@@ -1219,7 +1219,9 @@ export const previewCredentialOverride = async (userId, system, overrideData, de
             throw error;
         }
 
+        const resolvedSubjectKey = credential.metadata?.subjectKey || userId;
         const deterministicResult = generateImapDeterministicPassword({
+            subjectKey: resolvedSubjectKey,
             userId,
             username: credential.username,
             inputs: overrideData.inputs,
@@ -1301,6 +1303,7 @@ export const previewCredentialOverride = async (userId, system, overrideData, de
             repo: repoApi,
             mode: overrideData.mode,
             metadata,
+            subjectKey: metadata?.subjectKey,
             tokenFactory: deps.tokenFactory
         }
     );
@@ -1329,6 +1332,7 @@ export const storeOverridePreview = async (userId, system, preview, proposedCred
         userId,
         system,
         mode: opts.mode || null,
+        subjectKey: opts.subjectKey || null,
         proposedCredential,
         currentCredentialId: preview.currentCredential.id,
         changes: preview.changes,

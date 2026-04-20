@@ -10,6 +10,7 @@ export function UsersLayout() {
   const navItems = [
     { label: "Overview", to: "/users" },
     { label: "Directory", to: "/users/directory" },
+    { label: "IMAP Generator", to: "/users/imap-generator" },
     { label: "Locked Credentials", to: "/users/locked" },
     { label: "History", to: "/users/history" }
   ];

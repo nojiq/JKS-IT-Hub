@@ -137,6 +137,54 @@ export const getUserById = async (id, tx = prisma) => {
     return tx.user.findUnique({ where: { id } });
 };
 
+export const getUserImapProfile = async (userId, tx = prisma) => {
+    return tx.userImapProfile.findUnique({
+        where: { userId }
+    });
+};
+
+export const upsertUserImapProfile = async (data, tx = prisma) => {
+    const {
+        userId,
+        deterministicSubjectKey,
+        email = null,
+        firstName = null,
+        lastName = null,
+        fullName = null,
+        dob = null,
+        phone = null,
+        resolvedLdapFingerprints = null,
+        updatedBy
+    } = data;
+
+    return tx.userImapProfile.upsert({
+        where: { userId },
+        create: {
+            userId,
+            deterministicSubjectKey,
+            email,
+            firstName,
+            lastName,
+            fullName,
+            dob,
+            phone,
+            resolvedLdapFingerprints,
+            updatedBy
+        },
+        update: {
+            deterministicSubjectKey,
+            email,
+            firstName,
+            lastName,
+            fullName,
+            dob,
+            phone,
+            resolvedLdapFingerprints,
+            updatedBy
+        }
+    });
+};
+
 export const createUserCredential = async (data, tx = prisma) => {
     return tx.userCredential.create({
         data: {
@@ -144,6 +192,10 @@ export const createUserCredential = async (data, tx = prisma) => {
             password: encryptSecret(data.password)
         }
     });
+};
+
+export const createImapCredentialRecord = async (data, tx = prisma) => {
+    return createUserCredential(data, tx);
 };
 
 export const updateUserCredential = async (id, data, tx = prisma) => {
@@ -196,6 +248,18 @@ export const getActiveCredentialsForUser = async (userId, tx = prisma) => {
     });
 
     return decryptPasswordFields(credentials);
+};
+
+export const listImapCredentialRecords = async (userId, tx = prisma) => {
+    const records = await tx.userCredential.findMany({
+        where: {
+            userId,
+            systemId: 'imap'
+        },
+        orderBy: { generatedAt: 'desc' }
+    });
+
+    return decryptPasswordFields(records);
 };
 
 export const deactivateUserCredentials = async (userId, tx = prisma) => {

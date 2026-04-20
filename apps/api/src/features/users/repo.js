@@ -158,8 +158,33 @@ export const listUsersFiltered = async (filters = {}, pagination = {}) => {
       },
       {
         ldapAttributes: {
+          path: '$.cn',
+          string_contains: filters.search
+        }
+      },
+      {
+        ldapAttributes: {
+          path: '$.givenName',
+          string_contains: filters.search
+        }
+      },
+      {
+        ldapAttributes: {
+          path: '$.sn',
+          string_contains: filters.search
+        }
+      },
+      {
+        ldapAttributes: {
           path: '$.department',
           string_contains: filters.search
+        }
+      },
+      {
+        imapProfile: {
+          is: {
+            fullName: { contains: filters.search }
+          }
         }
       }
     ];

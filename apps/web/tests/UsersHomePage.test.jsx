@@ -150,6 +150,7 @@ describe('Users module overview route', () => {
         expect(screen.getByRole('navigation', { name: 'Users and credentials sections' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page');
         expect(screen.getByRole('link', { name: 'Directory' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'IMAP Generator' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Locked Credentials' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'History' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'User Directory' })).toBeInTheDocument();
