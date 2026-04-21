@@ -1063,6 +1063,14 @@ export const compareCredentialVersions = async (
     };
 };
 
+export {
+    loadImapWorkbench,
+    previewImapPassword,
+    saveImapPassword,
+    listPreviousImapPasswords,
+    applyImapConflictResolution
+} from "./imap/service.js";
+
 /**
  * Format a history entry for API response
  * @param {Object} version - Raw version from database

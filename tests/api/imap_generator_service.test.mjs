@@ -12,9 +12,18 @@ import {
     previewImapPassword,
     saveImapPassword
 } from "../../apps/api/src/features/credentials/imap/service.js";
+import * as credentialService from "../../apps/api/src/features/credentials/service.js";
 
 const fingerprint = (value) =>
     createHash("sha256").update(String(value)).digest("hex").slice(0, 16);
+
+test("main credential service exports IMAP generator handlers for live route wiring", () => {
+    assert.equal(typeof credentialService.loadImapWorkbench, "function");
+    assert.equal(typeof credentialService.previewImapPassword, "function");
+    assert.equal(typeof credentialService.saveImapPassword, "function");
+    assert.equal(typeof credentialService.listPreviousImapPasswords, "function");
+    assert.equal(typeof credentialService.applyImapConflictResolution, "function");
+});
 
 test("upsertUserImapProfile persists deterministic subject key and system fields", async () => {
     let upsertArgs = null;
