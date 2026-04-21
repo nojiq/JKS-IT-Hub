@@ -250,7 +250,7 @@ describe('ImapGeneratorPage', () => {
         renderApp('/users/imap-generator?userId=user-42');
 
         expect(await screen.findByDisplayValue('123')).toBeInTheDocument();
-        fireEvent.click(screen.getAllByRole('checkbox', { name: 'Use' })[5]);
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Use Phone' }));
         fireEvent.change(screen.getByRole('textbox', { name: 'Phone' }), {
             target: { value: '999' }
         });
@@ -274,7 +274,7 @@ describe('ImapGeneratorPage', () => {
         renderApp('/users/imap-generator?userId=user-42');
 
         expect(await screen.findByDisplayValue('123')).toBeInTheDocument();
-        fireEvent.click(screen.getAllByRole('checkbox', { name: 'Use' })[5]);
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Use Phone' }));
         fireEvent.change(screen.getByRole('textbox', { name: 'Phone' }), {
             target: { value: '999' }
         });
@@ -301,7 +301,7 @@ describe('ImapGeneratorPage', () => {
         fireEvent.change(screen.getByRole('textbox', { name: 'Manual Email' }), {
             target: { value: 'abu@example.com' }
         });
-        fireEvent.click(screen.getAllByRole('checkbox', { name: 'Use' })[4]);
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Use DOB' }));
         fireEvent.change(screen.getByRole('textbox', { name: 'DOB' }), {
             target: { value: '2021-01-21' }
         });

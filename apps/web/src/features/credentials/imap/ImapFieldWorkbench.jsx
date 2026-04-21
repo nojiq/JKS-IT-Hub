@@ -21,11 +21,11 @@ const ImapFieldWorkbench = ({ fields, onFieldChange, selectedFields, onToggleFie
                     <div className="imap-generator-field-row" key={field.key} role="row">
                         <label className="imap-generator-toggle">
                             <input
+                                aria-label={`Use ${field.label}`}
                                 checked={Boolean(selectedFields[field.key])}
                                 onChange={(event) => onToggleField(field.key, event.target.checked)}
                                 type="checkbox"
                             />
-                            <span>Use</span>
                         </label>
                         <span className="imap-generator-field-name">{field.label}</span>
                         <input
