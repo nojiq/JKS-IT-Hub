@@ -43,7 +43,7 @@ const ImapUserResolver = ({
                                 onClick={() => onSelectSuggestion(suggestion)}
                                 type="button"
                             >
-                                Use {suggestion.displayName}
+                                {suggestion.displayName}
                             </button>
                         ))}
                     </div>

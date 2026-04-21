@@ -406,7 +406,7 @@ describe('ImapGeneratorPage', () => {
 
         expect(screen.getByRole('searchbox', { name: 'Search by full name' })).toHaveAttribute('aria-expanded', 'true');
         expect(await screen.findByRole('listbox', { name: 'User search suggestions' })).toBeInTheDocument();
-        expect(await screen.findByRole('button', { name: 'Use Abu Bakar' })).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: 'Abu Bakar' })).toBeInTheDocument();
     });
 
     it('attaches a selected fuzzy-search suggestion into the page state', async () => {
@@ -446,7 +446,7 @@ describe('ImapGeneratorPage', () => {
         fireEvent.change(screen.getByRole('searchbox', { name: 'Search by full name' }), {
             target: { value: 'abu' }
         });
-        fireEvent.click(await screen.findByRole('button', { name: 'Use Abu Bakar' }));
+        fireEvent.click(await screen.findByRole('button', { name: 'Abu Bakar' }));
 
         expect(await screen.findByText('Attached user: user-99')).toBeInTheDocument();
         expect(await screen.findByDisplayValue('abu@example.com')).toBeInTheDocument();
