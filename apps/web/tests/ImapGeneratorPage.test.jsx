@@ -91,70 +91,80 @@ describe('ImapGeneratorPage', () => {
         });
 
         getImapWorkbench.mockResolvedValue({
-            subjectKey: 'user-42',
-            fields: {
-                email: { value: 'abdullah.fauzi@jkseng.com', source: 'ldap' },
-                firstName: { value: 'Abdullah', source: 'ldap' },
-                lastName: { value: 'Fauzi', source: 'ldap' },
-                fullName: { value: 'Abu', source: 'system' },
-                dob: { value: '2021-01-21', source: 'empty' },
-                phone: { value: '123', source: 'system' }
-            },
-            conflicts: []
+            data: {
+                subjectKey: 'user-42',
+                fields: {
+                    email: { value: 'abdullah.fauzi@jkseng.com', source: 'ldap' },
+                    firstName: { value: 'Abdullah', source: 'ldap' },
+                    lastName: { value: 'Fauzi', source: 'ldap' },
+                    fullName: { value: 'Abu', source: 'system' },
+                    dob: { value: '2021-01-21', source: 'empty' },
+                    phone: { value: '123', source: 'system' }
+                },
+                conflicts: []
+            }
         });
 
         previewImapPassword.mockResolvedValue({
-            proposedCredential: {
-                username: 'abdullah.fauzi@jkseng.com',
-                password: 'StablePass123456'
-            },
-            metadata: {
-                subjectKey: 'user-42',
-                selectedFields: ['phone'],
-                sources: {
-                    email: 'ldap',
-                    firstName: 'ldap',
-                    lastName: 'ldap',
-                    fullName: 'manual',
-                    dob: 'manual',
-                    phone: 'manual'
+            data: {
+                proposedCredential: {
+                    username: 'abdullah.fauzi@jkseng.com',
+                    password: 'StablePass123456'
+                },
+                metadata: {
+                    subjectKey: 'user-42',
+                    selectedFields: ['phone'],
+                    sources: {
+                        email: 'ldap',
+                        firstName: 'ldap',
+                        lastName: 'ldap',
+                        fullName: 'manual',
+                        dob: 'manual',
+                        phone: 'manual'
+                    }
                 }
             }
         });
 
         saveImapPassword.mockResolvedValue({
-            record: {
-                id: 'cred-1',
-                isActive: false
+            data: {
+                record: {
+                    id: 'cred-1',
+                    isActive: false
+                }
             }
         });
 
-        getPreviousImapPasswords.mockResolvedValue([
-            {
-                id: 'cred-1',
-                username: 'abdullah.fauzi@jkseng.com',
-                isActive: true,
-                metadata: { saveMode: 'active' }
-            },
-            {
-                id: 'cred-2',
-                username: 'abdullah.fauzi@jkseng.com',
-                isActive: false,
-                metadata: { saveMode: 'history_only' }
-            }
-        ]);
+        getPreviousImapPasswords.mockResolvedValue({
+            data: [
+                {
+                    id: 'cred-1',
+                    username: 'abdullah.fauzi@jkseng.com',
+                    isActive: true,
+                    metadata: { saveMode: 'active' }
+                },
+                {
+                    id: 'cred-2',
+                    username: 'abdullah.fauzi@jkseng.com',
+                    isActive: false,
+                    metadata: { saveMode: 'history_only' }
+                }
+            ]
+        });
 
         reviewImapConflicts.mockResolvedValue({
-            subjectKey: 'user-42',
-            fields: {
-                email: { value: 'abdullah.fauzi@jkseng.com', source: 'ldap' },
-                firstName: { value: 'Abdullah', source: 'ldap' },
-                lastName: { value: 'Fauzi', source: 'ldap' },
-                fullName: { value: 'Abdullah Fauzi', source: 'ldap' },
-                dob: { value: '2021-01-21', source: 'empty' },
-                phone: { value: '123', source: 'system' }
-            },
-            conflicts: []
+            data: {
+                subjectKey: 'user-42',
+                fields: {
+                    email: { value: 'abdullah.fauzi@jkseng.com', source: 'ldap' },
+                    firstName: { value: 'Abdullah', source: 'ldap' },
+                    lastName: { value: 'Fauzi', source: 'ldap' },
+                    fullName: { value: 'Abdullah Fauzi', source: 'ldap' },
+                    dob: { value: '2021-01-21', source: 'empty' },
+                    phone: { value: '123', source: 'system' }
+                },
+                conflicts: []
+            }
         });
 
         fetchUsers.mockResolvedValue({
@@ -355,22 +365,24 @@ describe('ImapGeneratorPage', () => {
 
     it('shows sync conflict review only when workbench data includes conflicts', async () => {
         getImapWorkbench.mockResolvedValueOnce({
-            subjectKey: 'user-42',
-            fields: {
-                email: { value: 'abdullah.fauzi@jkseng.com', source: 'ldap' },
-                firstName: { value: 'Abdullah', source: 'ldap' },
-                lastName: { value: 'Fauzi', source: 'ldap' },
-                fullName: { value: 'Abu', source: 'system' },
-                dob: { value: '2021-01-21', source: 'empty' },
-                phone: { value: '123', source: 'system' }
-            },
-            conflicts: [
-                {
-                    field: 'fullName',
-                    systemValue: 'Abu',
-                    ldapValue: 'Abdullah Fauzi'
-                }
-            ]
+            data: {
+                subjectKey: 'user-42',
+                fields: {
+                    email: { value: 'abdullah.fauzi@jkseng.com', source: 'ldap' },
+                    firstName: { value: 'Abdullah', source: 'ldap' },
+                    lastName: { value: 'Fauzi', source: 'ldap' },
+                    fullName: { value: 'Abu', source: 'system' },
+                    dob: { value: '2021-01-21', source: 'empty' },
+                    phone: { value: '123', source: 'system' }
+                },
+                conflicts: [
+                    {
+                        field: 'fullName',
+                        systemValue: 'Abu',
+                        ldapValue: 'Abdullah Fauzi'
+                    }
+                ]
+            }
         });
 
         renderApp('/users/imap-generator?userId=user-42');
@@ -392,34 +404,40 @@ describe('ImapGeneratorPage', () => {
             expect(fetchUsers).toHaveBeenCalledWith({ search: 'abu' });
         });
 
+        expect(screen.getByRole('searchbox', { name: 'Search by full name' })).toHaveAttribute('aria-expanded', 'true');
+        expect(await screen.findByRole('listbox', { name: 'User search suggestions' })).toBeInTheDocument();
         expect(await screen.findByRole('button', { name: 'Use Abu Bakar' })).toBeInTheDocument();
     });
 
     it('attaches a selected fuzzy-search suggestion into the page state', async () => {
         getImapWorkbench
             .mockResolvedValueOnce({
-                subjectKey: 'user-42',
-                fields: {
-                    email: { value: 'abdullah.fauzi@jkseng.com', source: 'ldap' },
-                    firstName: { value: 'Abdullah', source: 'ldap' },
-                    lastName: { value: 'Fauzi', source: 'ldap' },
-                    fullName: { value: 'Abu', source: 'system' },
-                    dob: { value: '2021-01-21', source: 'empty' },
-                    phone: { value: '123', source: 'system' }
-                },
-                conflicts: []
+                data: {
+                    subjectKey: 'user-42',
+                    fields: {
+                        email: { value: 'abdullah.fauzi@jkseng.com', source: 'ldap' },
+                        firstName: { value: 'Abdullah', source: 'ldap' },
+                        lastName: { value: 'Fauzi', source: 'ldap' },
+                        fullName: { value: 'Abu', source: 'system' },
+                        dob: { value: '2021-01-21', source: 'empty' },
+                        phone: { value: '123', source: 'system' }
+                    },
+                    conflicts: []
+                }
             })
             .mockResolvedValueOnce({
-                subjectKey: 'user-99',
-                fields: {
-                    email: { value: 'abu@example.com', source: 'ldap' },
-                    firstName: { value: 'Abu', source: 'ldap' },
-                    lastName: { value: 'Bakar', source: 'ldap' },
-                    fullName: { value: 'Abu Bakar', source: 'ldap' },
-                    dob: { value: '', source: 'empty' },
-                    phone: { value: '', source: 'empty' }
-                },
-                conflicts: []
+                data: {
+                    subjectKey: 'user-99',
+                    fields: {
+                        email: { value: 'abu@example.com', source: 'ldap' },
+                        firstName: { value: 'Abu', source: 'ldap' },
+                        lastName: { value: 'Bakar', source: 'ldap' },
+                        fullName: { value: 'Abu Bakar', source: 'ldap' },
+                        dob: { value: '', source: 'empty' },
+                        phone: { value: '', source: 'empty' }
+                    },
+                    conflicts: []
+                }
             });
 
         renderApp('/users/imap-generator?userId=user-42');
@@ -436,22 +454,24 @@ describe('ImapGeneratorPage', () => {
 
     it('submits an explicit use_ldap decision from the conflict panel', async () => {
         getImapWorkbench.mockResolvedValueOnce({
-            subjectKey: 'user-42',
-            fields: {
-                email: { value: 'abdullah.fauzi@jkseng.com', source: 'ldap' },
-                firstName: { value: 'Abdullah', source: 'ldap' },
-                lastName: { value: 'Fauzi', source: 'ldap' },
-                fullName: { value: 'Abu', source: 'system' },
-                dob: { value: '2021-01-21', source: 'empty' },
-                phone: { value: '123', source: 'system' }
-            },
-            conflicts: [
-                {
-                    field: 'fullName',
-                    systemValue: 'Abu',
-                    ldapValue: 'Abdullah Fauzi'
-                }
-            ]
+            data: {
+                subjectKey: 'user-42',
+                fields: {
+                    email: { value: 'abdullah.fauzi@jkseng.com', source: 'ldap' },
+                    firstName: { value: 'Abdullah', source: 'ldap' },
+                    lastName: { value: 'Fauzi', source: 'ldap' },
+                    fullName: { value: 'Abu', source: 'system' },
+                    dob: { value: '2021-01-21', source: 'empty' },
+                    phone: { value: '123', source: 'system' }
+                },
+                conflicts: [
+                    {
+                        field: 'fullName',
+                        systemValue: 'Abu',
+                        ldapValue: 'Abdullah Fauzi'
+                    }
+                ]
+            }
         });
 
         renderApp('/users/imap-generator?userId=user-42');
@@ -470,22 +490,24 @@ describe('ImapGeneratorPage', () => {
 
     it('refreshes visible field values from the conflict-review response', async () => {
         getImapWorkbench.mockResolvedValueOnce({
-            subjectKey: 'user-42',
-            fields: {
-                email: { value: 'abdullah.fauzi@jkseng.com', source: 'ldap' },
-                firstName: { value: 'Abdullah', source: 'ldap' },
-                lastName: { value: 'Fauzi', source: 'ldap' },
-                fullName: { value: 'Abu', source: 'system' },
-                dob: { value: '2021-01-21', source: 'empty' },
-                phone: { value: '123', source: 'system' }
-            },
-            conflicts: [
-                {
-                    field: 'fullName',
-                    systemValue: 'Abu',
-                    ldapValue: 'Abdullah Fauzi'
-                }
-            ]
+            data: {
+                subjectKey: 'user-42',
+                fields: {
+                    email: { value: 'abdullah.fauzi@jkseng.com', source: 'ldap' },
+                    firstName: { value: 'Abdullah', source: 'ldap' },
+                    lastName: { value: 'Fauzi', source: 'ldap' },
+                    fullName: { value: 'Abu', source: 'system' },
+                    dob: { value: '2021-01-21', source: 'empty' },
+                    phone: { value: '123', source: 'system' }
+                },
+                conflicts: [
+                    {
+                        field: 'fullName',
+                        systemValue: 'Abu',
+                        ldapValue: 'Abdullah Fauzi'
+                    }
+                ]
+            }
         });
 
         renderApp('/users/imap-generator?userId=user-42');
