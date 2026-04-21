@@ -269,6 +269,9 @@ describe('ImapGeneratorPage', () => {
             }));
         });
 
+        await waitFor(() => {
+            expect(previewImapPassword).toHaveBeenCalledTimes(1);
+        });
         expect(screen.getByText('abdullah.fauzi@jkseng.com')).toBeInTheDocument();
         expect(screen.getByText('StablePass123456')).toBeInTheDocument();
     });

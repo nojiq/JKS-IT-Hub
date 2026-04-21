@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { fetchUsers } from "../../users/users-api.js";
 import ImapFieldWorkbench from "./ImapFieldWorkbench.jsx";
@@ -41,6 +41,7 @@ const ImapGeneratorPage = () => {
     const [resolverQuery, setResolverQuery] = useState("");
     const [resolverSuggestions, setResolverSuggestions] = useState([]);
     const [fields, setFields] = useState(createEmptyFields);
+    const [previewResult, setPreviewResult] = useState(null);
     const [selectedFields, setSelectedFields] = useState({
         email: false,
         firstName: false,
@@ -56,6 +57,11 @@ const ImapGeneratorPage = () => {
     const previousPasswordsQuery = usePreviousImapPasswords(
         isPreviousPasswordsOpen && selectedUserId ? selectedUserId : null
     );
+    const previewMutateRef = useRef(previewMutation.mutate);
+
+    useEffect(() => {
+        previewMutateRef.current = previewMutation.mutate;
+    }, [previewMutation.mutate]);
 
     useEffect(() => {
         setSelectedUserId(initialUserId);
@@ -168,11 +174,22 @@ const ImapGeneratorPage = () => {
         const hasAttachedUser = mode !== "attached" || Boolean(selectedUserId);
 
         if (!hasSelectedFields || !hasValidManualIdentity || !hasAttachedUser) {
+            setPreviewResult(null);
             return;
         }
 
-        previewMutation.mutate(previewPayload);
-    }, [manualIdentity.email, manualIdentity.fullName, mode, previewMutation, previewPayload, selectedUserId, selectedFields]);
+        const timer = window.setTimeout(() => {
+            previewMutateRef.current(previewPayload, {
+                onSuccess: (data) => {
+                    setPreviewResult(data);
+                }
+            });
+        }, 200);
+
+        return () => {
+            window.clearTimeout(timer);
+        };
+    }, [manualIdentity.email, manualIdentity.fullName, mode, previewPayload, selectedUserId, selectedFields]);
 
     const handleSave = () => {
         const payload = {
@@ -255,13 +272,13 @@ const ImapGeneratorPage = () => {
                 <ImapPreviewInspector
                     onOpenPreviousPasswords={() => setIsPreviousPasswordsOpen(true)}
                     onSave={handleSave}
-                    passwordPreview={previewMutation.data?.proposedCredential?.password || null}
+                    passwordPreview={previewResult?.proposedCredential?.password || null}
                     saveDisabled={saveDisabled}
                     selectedFieldsText={Object.entries(selectedFields)
                         .filter(([, enabled]) => enabled)
                         .map(([key]) => FIELD_LABELS[key] || key)
                         .join(", ") || "None"}
-                    usernamePreview={previewMutation.data?.proposedCredential?.username || fields.email?.value || manualIdentity.email || "—"}
+                    usernamePreview={previewResult?.proposedCredential?.username || fields.email?.value || manualIdentity.email || "—"}
                 />
             </div>
             <PreviousImapPasswordsModal
