@@ -18,6 +18,15 @@ const createEmptyFields = () => ({
     phone: { value: "", source: "empty" }
 });
 
+const FIELD_LABELS = {
+    email: "Email",
+    firstName: "First Name",
+    lastName: "Last Name",
+    fullName: "Full Name",
+    dob: "DOB",
+    phone: "Phone"
+};
+
 const ImapGeneratorPage = () => {
     const [searchParams] = useSearchParams();
     const initialUserId = searchParams.get("userId") || "";
@@ -220,7 +229,7 @@ const ImapGeneratorPage = () => {
             <div className="imap-generator-shell">
                 <div className="imap-generator-workbench">
                     <ImapUserResolver
-                        attachedUserLabel={selectedUserLabel}
+                        attachedUserLabel={selectedUserLabel || fields.fullName?.value || fields.email?.value}
                         attachedUserId={selectedUserId}
                         manualIdentity={manualIdentity}
                         mode={mode}
@@ -246,8 +255,13 @@ const ImapGeneratorPage = () => {
                 <ImapPreviewInspector
                     onOpenPreviousPasswords={() => setIsPreviousPasswordsOpen(true)}
                     onSave={handleSave}
-                    passwordPreview={previewMutation.data?.proposedCredential?.password || "••••••••••••••••"}
+                    passwordPreview={previewMutation.data?.proposedCredential?.password || null}
                     saveDisabled={saveDisabled}
+                    selectedFieldsText={Object.entries(selectedFields)
+                        .filter(([, enabled]) => enabled)
+                        .map(([key]) => FIELD_LABELS[key] || key)
+                        .join(", ") || "None"}
+                    usernamePreview={previewMutation.data?.proposedCredential?.username || fields.email?.value || manualIdentity.email || "—"}
                 />
             </div>
             <PreviousImapPasswordsModal

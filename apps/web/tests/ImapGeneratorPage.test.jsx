@@ -196,6 +196,8 @@ describe('ImapGeneratorPage', () => {
 
         expect(await screen.findByRole('heading', { name: 'IMAP Generator' })).toBeInTheDocument();
         expect(await screen.findByText('Attached user: Abu (user-42)')).toBeInTheDocument();
+        expect(screen.getByText('abdullah.fauzi@jkseng.com')).toBeInTheDocument();
+        expect(screen.getByText('Select fields to generate')).toBeInTheDocument();
     });
 
     it('shows manual identity fields and blocks save until they are filled', async () => {
@@ -267,6 +269,7 @@ describe('ImapGeneratorPage', () => {
             }));
         });
 
+        expect(screen.getByText('abdullah.fauzi@jkseng.com')).toBeInTheDocument();
         expect(screen.getByText('StablePass123456')).toBeInTheDocument();
     });
 
