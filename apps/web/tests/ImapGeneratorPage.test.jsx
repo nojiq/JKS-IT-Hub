@@ -195,7 +195,7 @@ describe('ImapGeneratorPage', () => {
         renderApp('/users/imap-generator?userId=user-42');
 
         expect(await screen.findByRole('heading', { name: 'IMAP Generator' })).toBeInTheDocument();
-        expect(screen.getByText('Attached user: user-42')).toBeInTheDocument();
+        expect(await screen.findByText('Attached user: Abu (user-42)')).toBeInTheDocument();
     });
 
     it('shows manual identity fields and blocks save until they are filled', async () => {
@@ -448,7 +448,7 @@ describe('ImapGeneratorPage', () => {
         });
         fireEvent.click(await screen.findByRole('button', { name: 'Abu Bakar' }));
 
-        expect(await screen.findByText('Attached user: user-99')).toBeInTheDocument();
+        expect(await screen.findByText('Attached user: Abu Bakar (user-99)')).toBeInTheDocument();
         expect(await screen.findByDisplayValue('abu@example.com')).toBeInTheDocument();
     });
 

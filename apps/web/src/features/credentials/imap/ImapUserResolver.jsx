@@ -1,4 +1,5 @@
 const ImapUserResolver = ({
+    attachedUserLabel,
     attachedUserId,
     mode,
     onModeChange,
@@ -68,7 +69,9 @@ const ImapUserResolver = ({
                 </button>
             </div>
             {mode === "attached" && attachedUserId ? (
-                <p className="imap-generator-helper">Attached user: {attachedUserId}</p>
+                <p className="imap-generator-helper">
+                    Attached user: {attachedUserLabel ? `${attachedUserLabel} (${attachedUserId})` : attachedUserId}
+                </p>
             ) : null}
             {mode === "manual" ? (
                 <div className="imap-generator-manual-panel">

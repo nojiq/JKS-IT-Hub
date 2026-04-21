@@ -22,6 +22,7 @@ const ImapGeneratorPage = () => {
     const [searchParams] = useSearchParams();
     const initialUserId = searchParams.get("userId") || "";
     const [selectedUserId, setSelectedUserId] = useState(initialUserId);
+    const [selectedUserLabel, setSelectedUserLabel] = useState("");
     const [mode, setMode] = useState(initialUserId ? "attached" : "attached");
     const [manualIdentity, setManualIdentity] = useState({
         fullName: "",
@@ -62,6 +63,12 @@ const ImapGeneratorPage = () => {
         if (!workbenchQuery.data?.fields || mode !== "attached") {
             return;
         }
+
+        const derivedLabel =
+            workbenchQuery.data.fields?.fullName?.value ||
+            workbenchQuery.data.user?.username ||
+            "";
+        setSelectedUserLabel(derivedLabel);
 
         setFields((current) => ({
             ...current,
@@ -175,6 +182,7 @@ const ImapGeneratorPage = () => {
     const handleSelectSuggestion = (suggestion) => {
         setMode("attached");
         setSelectedUserId(suggestion.id);
+        setSelectedUserLabel(suggestion.displayName || suggestion.username || "");
         setResolverQuery("");
         setResolverSuggestions([]);
     };
@@ -212,6 +220,7 @@ const ImapGeneratorPage = () => {
             <div className="imap-generator-shell">
                 <div className="imap-generator-workbench">
                     <ImapUserResolver
+                        attachedUserLabel={selectedUserLabel}
                         attachedUserId={selectedUserId}
                         manualIdentity={manualIdentity}
                         mode={mode}
