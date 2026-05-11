@@ -170,6 +170,7 @@ export default async function (app, { config, userRepo, auditRepo }) {
         // Fetch user-related audit logs including both user updates and credential events
         const logs = await auditRepo.findAuditLogsByEntity(id, "user", {
             actions: [
+                "user.ldap_create",
                 "user.ldap_update",
                 "user.update",
                 "credentials.regenerate.preview",
@@ -202,6 +203,20 @@ export default async function (app, { config, userRepo, auditRepo }) {
                         type: 'field_change'
                     });
                 }
+            }
+
+            else if (log.action === 'user.ldap_create') {
+                history.push({
+                    id: log.id,
+                    timestamp: log.createdAt,
+                    field: 'account',
+                    oldValue: null,
+                    newValue: 'Created from LDAP sync',
+                    actor: actorName,
+                    action: log.action,
+                    type: 'lifecycle_event',
+                    metadata: log.metadata
+                });
             }
 
             // Handle credential event logs (regenerate, override, etc.)

@@ -8,7 +8,8 @@ const cookie = require("@fastify/cookie");
 import ldapRoutes from "../../apps/api/src/features/ldap/routes.js";
 import {
   createLdapSyncRunner,
-  LdapSyncInProgressError
+  LdapSyncInProgressError,
+  serializeSyncRun
 } from "../../apps/api/src/features/ldap/syncService.js";
 import { buildLdapSyncEvent, createLdapSyncEventChannel } from "../../apps/api/src/features/ldap/syncEvents.js";
 import { signSessionToken } from "../../apps/api/src/shared/auth/jwt.js";
@@ -599,4 +600,76 @@ test("LDAP sync event channel publishes events", async () => {
   assert.equal(payload.data.run.id, "run-10");
 
   stream.destroy();
+});
+
+test("manual sync writes audit rows for newly created LDAP users", async () => {
+  const auditEntries = [];
+  const syncRepo = createInMemorySyncRepo();
+  const runner = createLdapSyncRunner({
+    config: baseConfig,
+    ldapService: {
+      searchEntries: async () => [
+        {
+          dn: "uid=newuser,dc=example,dc=com",
+          uid: "newuser",
+          cn: "New User",
+          mail: "new@example.com"
+        }
+      ]
+    },
+    syncRepo,
+    userRepo: {
+      findUsersByUsernames: async () => [],
+      upsertUserFromLdap: async (data) => ({
+        id: "created-user-1",
+        username: data.username,
+        ldapDn: data.ldapDn
+      })
+    },
+    auditRepo: {
+      createAuditLog: async (entry) => {
+        auditEntries.push(entry);
+        return entry;
+      }
+    },
+    eventChannel: null
+  });
+
+  const run = await runner.startScheduledSync();
+
+  assert.equal(run.createdCount, 1);
+  const createdAudit = auditEntries.find((entry) => entry.action === "user.ldap_create");
+  assert.ok(createdAudit, "expected user.ldap_create audit entry");
+  assert.equal(createdAudit.actorUserId, null);
+  assert.equal(createdAudit.entityType, "user");
+  assert.equal(createdAudit.entityId, "created-user-1");
+  assert.equal(createdAudit.metadata.username, "newuser");
+  assert.equal(createdAudit.metadata.ldapDn, "uid=newuser,dc=example,dc=com");
+  assert.equal(createdAudit.metadata.syncRunId, run.id);
+});
+
+test("serializeSyncRun includes compact created user summary", () => {
+  const payload = serializeSyncRun({
+    id: "run-1",
+    status: "completed",
+    startedAt: new Date("2026-05-11T00:00:00.000Z"),
+    completedAt: new Date("2026-05-11T00:00:01.000Z"),
+    processedCount: 3,
+    createdCount: 2,
+    updatedCount: 0,
+    skippedCount: 1,
+    errorMessage: null,
+    triggeredByUserId: null,
+    createdUsers: [
+      { id: "u1", username: "ali" },
+      { id: "u2", username: "sara" }
+    ],
+    createdUsersHasMore: false
+  });
+
+  assert.deepEqual(payload.createdUsers, [
+    { id: "u1", username: "ali" },
+    { id: "u2", username: "sara" }
+  ]);
+  assert.equal(payload.createdUsersHasMore, false);
 });

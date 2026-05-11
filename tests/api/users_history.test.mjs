@@ -98,6 +98,17 @@ test("GET /users/:id/audit-logs returns history", async () => {
             ]
         }
     });
+    await createAuditLog({
+        action: "user.ldap_create",
+        actorUserId: null,
+        entityType: "user",
+        entityId: targetUser.id,
+        metadata: {
+            username: targetUser.username,
+            ldapDn: "uid=target,dc=example,dc=com",
+            syncRunId: "sync-run-1"
+        }
+    });
 
     const auditRepo = await import("../../apps/api/src/features/audit/repo.js");
     const app = await createTestApp({ userRepo: userRepoMock, auditRepo });
@@ -120,6 +131,12 @@ test("GET /users/:id/audit-logs returns history", async () => {
     assert.ok(entry, "Should find the specific change entry");
     assert.equal(entry.oldValue, "Sales");
     assert.equal(entry.actor, "System");
+    const createEntry = history.find(h => h.action === "user.ldap_create");
+    assert.ok(createEntry, "Should include LDAP create lifecycle entry");
+    assert.equal(createEntry.field, "account");
+    assert.equal(createEntry.newValue, "Created from LDAP sync");
+    assert.equal(createEntry.actor, "System");
+    assert.equal(createEntry.metadata.username, targetUser.username);
 
     await app.close();
 });

@@ -155,7 +155,9 @@ export const serializeSyncRun = (run) => {
     updatedCount: run.updatedCount ?? 0,
     skippedCount: run.skippedCount ?? 0,
     errorMessage: run.errorMessage ?? null,
-    triggeredByUserId: run.triggeredByUserId
+    triggeredByUserId: run.triggeredByUserId,
+    createdUsers: Array.isArray(run.createdUsers) ? run.createdUsers : [],
+    createdUsersHasMore: Boolean(run.createdUsersHasMore)
   };
 };
 
@@ -248,6 +250,8 @@ export const createLdapSyncRunner = ({
     let createdCount = 0;
     let updatedCount = 0;
     let skippedCount = 0;
+    const createdUsers = [];
+    let createdUsersHasMore = false;
 
     const entriesWithUsernames = [];
     for (const entry of entries) {
@@ -273,6 +277,8 @@ export const createLdapSyncRunner = ({
       const existingUser = existingUsersMap.get(username);
       const newLdapAttributes = mapEntryAttributes(entry, attributes);
 
+      const isNewUser = !existingUser;
+
       if (existingUser) {
         const oldLdapAttributes = existingUser.ldapAttributes || {};
         const changes = calculateDiff(oldLdapAttributes, newLdapAttributes);
@@ -296,15 +302,40 @@ export const createLdapSyncRunner = ({
         createdCount += 1;
       }
 
-      await userRepo.upsertUserFromLdap({
+      const syncedUser = await userRepo.upsertUserFromLdap({
         username,
         ldapDn: entry.dn,
         ldapAttributes: newLdapAttributes,
         syncedAt: new Date()
       });
+
+      if (isNewUser && syncedUser?.id) {
+        if (createdUsers.length < 5) {
+          createdUsers.push({
+            id: syncedUser.id,
+            username: syncedUser.username ?? username
+          });
+        } else {
+          createdUsersHasMore = true;
+        }
+
+        if (auditRepo?.createAuditLog) {
+          await auditRepo.createAuditLog({
+            action: "user.ldap_create",
+            actorUserId: null,
+            entityType: "user",
+            entityId: syncedUser.id,
+            metadata: {
+              username,
+              ldapDn: entry.dn,
+              syncRunId: run.id
+            }
+          });
+        }
+      }
     }
 
-    return syncRepo.updateSyncRun(run.id, {
+    const completedRun = await syncRepo.updateSyncRun(run.id, {
       status: "completed",
       completedAt: new Date(),
       processedCount,
@@ -313,6 +344,12 @@ export const createLdapSyncRunner = ({
       skippedCount,
       errorMessage: null
     });
+
+    return {
+      ...completedRun,
+      createdUsers,
+      createdUsersHasMore
+    };
   };
 
   const startSync = async ({ actor, triggerType, waitForCompletion = false }) => {
