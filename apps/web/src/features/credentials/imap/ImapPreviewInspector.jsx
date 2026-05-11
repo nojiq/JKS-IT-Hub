@@ -1,8 +1,10 @@
 const ImapPreviewInspector = ({
     passwordPreview = null,
     saveDisabled = false,
+    setActive = false,
     onOpenPreviousPasswords,
     onSave,
+    onSetActiveChange,
     selectedFieldsText = "None",
     usernamePreview = "—"
 }) => {
@@ -26,7 +28,11 @@ const ImapPreviewInspector = ({
                 <span>{selectedFieldsText}</span>
             </div>
             <label className="imap-generator-toggle imap-generator-active-toggle">
-                <input type="checkbox" />
+                <input
+                    checked={setActive}
+                    onChange={(event) => onSetActiveChange?.(event.target.checked)}
+                    type="checkbox"
+                />
                 <span>Set as active</span>
             </label>
             <div className="imap-generator-action-stack">

@@ -42,6 +42,7 @@ const ImapGeneratorPage = () => {
     const [resolverSuggestions, setResolverSuggestions] = useState([]);
     const [fields, setFields] = useState(createEmptyFields);
     const [previewResult, setPreviewResult] = useState(null);
+    const [setActive, setSetActive] = useState(false);
     const [selectedFields, setSelectedFields] = useState({
         email: false,
         firstName: false,
@@ -193,7 +194,8 @@ const ImapGeneratorPage = () => {
 
     const handleSave = () => {
         const payload = {
-            ...previewPayload
+            ...previewPayload,
+            setActive
         };
 
         if (mode === "manual" && !selectedUserId && manualIdentity.email.trim()) {
@@ -272,8 +274,10 @@ const ImapGeneratorPage = () => {
                 <ImapPreviewInspector
                     onOpenPreviousPasswords={() => setIsPreviousPasswordsOpen(true)}
                     onSave={handleSave}
+                    onSetActiveChange={setSetActive}
                     passwordPreview={previewResult?.proposedCredential?.password || null}
                     saveDisabled={saveDisabled}
+                    setActive={setActive}
                     selectedFieldsText={Object.entries(selectedFields)
                         .filter(([, enabled]) => enabled)
                         .map(([key]) => FIELD_LABELS[key] || key)

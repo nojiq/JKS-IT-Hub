@@ -296,6 +296,22 @@ describe('ImapGeneratorPage', () => {
         });
     });
 
+    it('sends setActive when the live preview active checkbox is selected', async () => {
+        renderApp('/users/imap-generator?userId=user-42');
+
+        expect(await screen.findByDisplayValue('123')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Use Phone' }));
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Set as active' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Save IMAP Password' }));
+
+        await waitFor(() => {
+            expect(saveImapPassword).toHaveBeenCalledWith(expect.objectContaining({
+                userId: 'user-42',
+                setActive: true
+            }));
+        });
+    });
+
     it('sends createUser payload when manual mode saves without an attached user', async () => {
         renderApp();
 
