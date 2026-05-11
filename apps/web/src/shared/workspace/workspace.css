@@ -6,10 +6,10 @@
 }
 
 .workspace-sidebar {
-  width: 260px;
+  width: 280px;
   border-right: 1px solid var(--ui-border-subtle);
   background: var(--ui-surface-elevated);
-  padding: 1rem 0.9rem;
+  padding: 1.5rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -35,8 +35,8 @@
   justify-content: center;
   min-width: 2.4rem;
   min-height: 2.4rem;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--ui-accent-primary) 18%, var(--ui-surface-hover));
+  border-radius: var(--radius-control);
+  background: var(--ui-accent-primary);
   color: var(--ui-text-inverse);
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -56,7 +56,7 @@
 
 .workspace-nav {
   display: grid;
-  gap: 0.9rem;
+  gap: 1rem;
 }
 
 .workspace-nav-group {
@@ -91,10 +91,10 @@
   text-decoration: none;
   color: var(--ui-text-secondary);
   border: 1px solid transparent;
-  border-radius: 12px;
-  padding: 0.72rem 0.8rem;
-  font-size: 0.92rem;
-  font-weight: 560;
+  border-radius: var(--radius-control);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
   transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
 }
 
@@ -135,9 +135,10 @@
 }
 
 .workspace-nav-link.is-active {
-  color: var(--ui-text-primary);
-  background: var(--ui-accent-muted);
-  border-color: var(--ui-accent-primary);
+  color: var(--ui-accent-primary);
+  background: var(--ui-surface-hover);
+  border-color: var(--ui-border-subtle);
+  box-shadow: inset 2px 0 0 var(--ui-accent-primary);
 }
 
 .workspace-nav-children {
@@ -153,7 +154,7 @@
   align-items: center;
   min-height: 2.4rem;
   padding: 0.55rem 0.7rem;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   border: 1px solid transparent;
   text-decoration: none;
   color: var(--ui-text-secondary);
@@ -185,10 +186,9 @@
   position: sticky;
   top: 0;
   z-index: 40;
-  height: var(--workspace-topbar-height, 68px);
+  height: var(--workspace-topbar-height, 64px);
   border-bottom: 1px solid var(--ui-border-subtle);
-  background: color-mix(in srgb, var(--ui-surface-elevated) 92%, transparent);
-  backdrop-filter: blur(8px);
+  background: var(--ui-surface-elevated);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -202,7 +202,7 @@
   color: var(--ui-text-secondary);
   min-width: 2.4rem;
   height: 2.4rem;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -244,7 +244,7 @@
   border: 1px solid var(--ui-border-subtle);
   background: var(--ui-surface-elevated);
   color: var(--ui-text-primary);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   padding: 0.3rem 0.6rem;
   cursor: pointer;
   display: inline-flex;
@@ -259,9 +259,9 @@
 .workspace-user-avatar {
   width: 1.65rem;
   height: 1.65rem;
-  border-radius: 999px;
-  background: var(--ui-accent-muted);
-  color: var(--ui-accent-primary);
+  border-radius: var(--radius-control);
+  background: var(--ui-accent-primary);
+  color: var(--ui-text-inverse);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -276,7 +276,7 @@
   min-width: 210px;
   border: 1px solid var(--ui-border-subtle);
   background: var(--ui-surface-elevated);
-  border-radius: 12px;
+  border-radius: var(--radius-panel);
   box-shadow: var(--shadow-md);
   padding: 0.75rem;
   display: grid;
@@ -305,7 +305,7 @@
   border: 1px solid var(--ui-border-subtle);
   background: var(--ui-surface-elevated);
   color: var(--ui-text-secondary);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   min-height: 2rem;
   cursor: pointer;
 }

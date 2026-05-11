@@ -268,9 +268,9 @@ export function CatalogPage() {
   };
 
   return (
-    <div className="onboarding-panel catalog-page">
-      <div className="onboarding-split-grid">
-        <article className="onboarding-card">
+    <div className="onboarding-panel catalog-page catalog-page-shell">
+      <div className="onboarding-split-grid catalog-page-grid">
+        <article className="onboarding-card catalog-panel">
           <div className="onboarding-card-header catalog-card-header">
             <div className="catalog-card-heading">
               <div className="catalog-card-title-row">
@@ -355,7 +355,7 @@ export function CatalogPage() {
               />
             </div>
 
-            <div className="onboarding-actions catalog-actions">
+            <div className="onboarding-actions catalog-actions catalog-form-footer">
               <button className="catalog-button catalog-button-primary" type="submit" disabled={saveCatalogItemMutation.isPending}>
                 {editingItemId ? "Update Item" : "Add Item"}
               </button>
@@ -431,7 +431,7 @@ export function CatalogPage() {
           </div>
         </article>
 
-        <article className="onboarding-card">
+        <article className="onboarding-card catalog-panel">
           <div className="onboarding-card-header catalog-card-header">
             <div className="catalog-card-heading">
               <div className="catalog-card-title-row">
@@ -511,7 +511,7 @@ export function CatalogPage() {
               </div>
             </div>
 
-            <div className="onboarding-actions catalog-actions">
+            <div className="onboarding-actions catalog-actions catalog-form-footer">
               <button className="catalog-button catalog-button-primary" type="submit" disabled={saveBundleMutation.isPending}>
                 {editingBundleId ? "Update Bundle" : "Add Bundle"}
               </button>

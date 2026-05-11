@@ -277,6 +277,15 @@
   gap: 1.25rem;
 }
 
+.catalog-page-shell {
+  width: 100%;
+}
+
+.catalog-page-grid {
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
 .catalog-page .onboarding-card {
   padding: 1.25rem;
   gap: 1.1rem;
@@ -475,6 +484,12 @@
   gap: 0.55rem;
 }
 
+.catalog-form-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
 .catalog-page .catalog-button {
   min-height: 2.25rem;
   border: 1px solid transparent;
@@ -515,6 +530,8 @@
 }
 
 .catalog-page .catalog-empty-state {
+  display: grid;
+  width: 100%;
   border: 1px solid var(--ui-border-subtle);
   border-radius: 18px;
   background: linear-gradient(180deg, color-mix(in srgb, var(--ui-surface-elevated) 98%, transparent), var(--ui-surface-muted));
@@ -561,6 +578,7 @@
 
 .catalog-page .catalog-selection-grid {
   gap: 0.65rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(15.5rem, 100%), 1fr));
 }
 
 .catalog-page .catalog-selection-option {

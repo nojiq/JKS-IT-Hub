@@ -30,9 +30,9 @@ export default function LoginPage() {
   return (
     <section className="auth-card">
       <header className="auth-header">
-        <p className="auth-eyebrow">Internal access</p>
-        <h1>Sign in to IT-Hub</h1>
-        <p className="auth-subtitle">Use your LDAP credentials to continue.</p>
+        <p className="auth-eyebrow">Enterprise Manager Login</p>
+        <h1>IT Hub</h1>
+        <p className="auth-subtitle">Sign in with your company credentials.</p>
       </header>
       <form className="auth-form" onSubmit={handleSubmit}>
         <label className="auth-field">
@@ -41,7 +41,7 @@ export default function LoginPage() {
             autoComplete="username"
             name="username"
             onChange={(event) => setUsername(event.target.value)}
-            placeholder="e.g. jdoe"
+            placeholder="admin@enterprise.local"
             required
             type="text"
             value={username}
@@ -61,7 +61,7 @@ export default function LoginPage() {
         </label>
         {errorMessage ? <p className="auth-error">{errorMessage}</p> : null}
         <button className="auth-submit" disabled={mutation.isPending} type="submit">
-          {mutation.isPending ? "Signing in..." : "Sign in"}
+          {mutation.isPending ? "Signing in..." : "Sign In"}
         </button>
       </form>
     </section>

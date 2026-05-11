@@ -42,6 +42,10 @@ vi.mock('../src/features/requests/pages/ReviewRequestsPage.jsx', () => ({
     default: () => <div>Review Queue View</div>
 }));
 
+vi.mock('../src/features/requests/pages/MyRequestsPage.jsx', () => ({
+    default: () => <div>My Requests View</div>
+}));
+
 import { fetchAllRequests } from '../src/features/requests/api/requestsApi.js';
 import { useAllRequests } from '../src/features/requests/hooks/useRequests.js';
 import { router as appRouter } from '../src/routes/router.jsx';
@@ -152,8 +156,10 @@ describe('RequestsHomePage', () => {
 
         expect(moduleTabs).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page');
+        expect(screen.getByRole('link', { name: 'My Requests' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Review Queue' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Approvals' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'New Request' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Needs Review' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Waiting for Approval' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Blocked' })).toBeInTheDocument();
@@ -166,8 +172,23 @@ describe('RequestsHomePage', () => {
 
         expect(await screen.findByText('Review Queue View')).toBeInTheDocument();
         expect(screen.getByRole('navigation', { name: 'Requests sections' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'My Requests' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Review Queue' })).toHaveAttribute('aria-current', 'page');
         expect(screen.getByRole('link', { name: 'Approvals' })).toBeInTheDocument();
+    });
+
+    it('keeps my requests active inside shared module tabs', async () => {
+        renderProductionRequestsRoute({ initialEntry: '/requests/my-requests' });
+
+        expect(await screen.findByText('My Requests View')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'My Requests' })).toHaveAttribute('aria-current', 'page');
+    });
+
+    it('keeps my requests active for request detail routes', async () => {
+        renderProductionRequestsRoute({ initialEntry: '/requests/request-123' });
+
+        expect(await screen.findByText('My Requests View')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'My Requests' })).toHaveAttribute('aria-current', 'page');
     });
 
     it('lets admin users open approvals and keeps the approvals tab active', async () => {
@@ -188,6 +209,8 @@ describe('RequestsHomePage', () => {
         renderProductionRequestsRoute({ user: requesterUser });
 
         expect(await screen.findByRole('heading', { name: 'Requests' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'My Requests' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'New Request' })).toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Approvals' })).not.toBeInTheDocument();
     });
 

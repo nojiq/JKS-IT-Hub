@@ -5,6 +5,18 @@ import { WorkspaceModuleTabs } from '../src/shared/workspace/WorkspaceModuleTabs
 
 const requestsItems = [
     { label: 'Overview', to: '/requests' },
+    {
+        label: 'My Requests',
+        to: '/requests/my-requests',
+        matches: (pathname) => {
+            if (pathname === '/requests/my-requests') {
+                return true;
+            }
+
+            const detailMatch = pathname.match(/^\/requests\/([^/]+)$/);
+            return !!detailMatch && !['new', 'my-requests', 'review', 'approvals'].includes(detailMatch[1]);
+        }
+    },
     { label: 'Review Queue', to: '/requests/review' },
     { label: 'Approvals', to: '/requests/approvals' }
 ];
@@ -58,6 +70,7 @@ describe('WorkspaceModuleTabs', () => {
 
         expect(screen.getByRole('navigation', { name: /sections/i })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Overview' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'My Requests' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Review Queue' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Approvals' })).toBeInTheDocument();
         expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
@@ -67,6 +80,8 @@ describe('WorkspaceModuleTabs', () => {
 
     it.each([
         ['/requests', requestsItems, 'Overview'],
+        ['/requests/my-requests', requestsItems, 'My Requests'],
+        ['/requests/123', requestsItems, 'My Requests'],
         ['/requests/review', requestsItems, 'Review Queue'],
         ['/requests/approvals', requestsItems, 'Approvals'],
         ['/users', usersItems, 'Overview'],
@@ -95,8 +110,6 @@ describe('WorkspaceModuleTabs', () => {
 
     it.each([
         ['/requests/new', requestsItems],
-        ['/requests/my-requests', requestsItems],
-        ['/requests/123', requestsItems],
         ['/users/123', usersItems],
         ['/users/123/credentials/history', usersItems]
     ])('does not mark any tab active for detail route %s', (path, items) => {
