@@ -284,11 +284,7 @@ export default function UsersListPage() {
         </p>
       </section>
 
-      <section className="dashboard-sync-panel users-sync-panel">
-        <h3>LDAP Synchronization</h3>
-        <p className="dashboard-summary-text">
-          Run directory sync here before reviewing user records or credential data.
-        </p>
+      <section className="users-directory-actions" aria-label="Directory actions">
         <LdapSyncPanel />
       </section>
 
@@ -309,10 +305,7 @@ export default function UsersListPage() {
         <div className="users-alert">
           <p className="users-alert-title">LDAP sync has not run yet.</p>
           <p className="users-alert-text">
-            Run manual sync first to populate directory fields.
-            <Link className="users-alert-link" to="/users/directory">
-              Go to sync panel
-            </Link>
+            Use the sync button in the directory toolbar to populate LDAP fields.
           </p>
         </div>
       ) : null}

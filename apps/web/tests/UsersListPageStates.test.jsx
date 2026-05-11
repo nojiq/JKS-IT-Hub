@@ -16,7 +16,7 @@ vi.mock('../src/features/exports/components/BatchCredentialExportButton.jsx', ()
 }));
 
 vi.mock('../src/features/users/ldap-sync-panel.jsx', () => ({
-    default: () => <div>LDAP Sync Panel Stub</div>
+    default: () => <button type="button" aria-label="Sync LDAP">Sync LDAP</button>
 }));
 
 import { useQuery } from '@tanstack/react-query';
@@ -96,12 +96,20 @@ describe('UsersListPage states', () => {
         expect(screen.getByText('No users found')).toBeInTheDocument();
     });
 
-    it('renders the LDAP sync panel under module-child copy instead of a top-level page title', () => {
+    it('renders LDAP sync as a toolbar action instead of a heavy page panel', () => {
         useQuery.mockReturnValue({
             data: {
-                users: [],
-                fields: [],
-                meta: {}
+                users: [
+                    {
+                        id: '1',
+                        username: 'alice',
+                        role: 'requester',
+                        status: 'active',
+                        ldapFields: { mail: 'alice@example.com' }
+                    }
+                ],
+                fields: ['mail'],
+                meta: { total: 1, page: 1, perPage: 20 }
             },
             isLoading: false,
             error: null,
@@ -113,11 +121,13 @@ describe('UsersListPage states', () => {
 
         expect(screen.getByText('User Directory')).toBeInTheDocument();
         expect(screen.getByText('Review synced LDAP records, confirm account status, and open credential actions from the directory.')).toBeInTheDocument();
-        expect(screen.getByText('LDAP Sync Panel Stub')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Sync LDAP' })).toBeInTheDocument();
+        expect(screen.queryByText('LDAP Synchronization')).not.toBeInTheDocument();
+        expect(screen.queryByText('Run directory sync here before reviewing user records or credential data.')).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Back to dashboard' })).not.toBeInTheDocument();
     });
 
-    it('points the sync helper link back to the users page', () => {
+    it('points empty sync guidance to the toolbar sync action', () => {
         useQuery.mockReturnValue({
             data: {
                 users: [],
@@ -132,7 +142,8 @@ describe('UsersListPage states', () => {
 
         renderPage();
 
-        expect(screen.getByRole('link', { name: 'Go to sync panel' })).toHaveAttribute('href', '/users/directory');
+        expect(screen.getByText('Use the sync button in the directory toolbar to populate LDAP fields.')).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Go to sync panel' })).not.toBeInTheDocument();
     });
 
     it('renders desktop table layout by default', () => {

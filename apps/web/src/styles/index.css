@@ -496,6 +496,101 @@ h6,
   font-size: 0.95rem;
 }
 
+.users-directory-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ldap-sync-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--touch-target-min, 44px);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.ldap-sync-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-control, 4px);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.ldap-sync-icon-button:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+.ldap-sync-icon-button:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.ldap-sync-icon {
+  display: inline-block;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.ldap-sync-icon.is-spinning {
+  animation: ldap-sync-spin 900ms linear infinite;
+}
+
+.ldap-sync-status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--text-muted);
+}
+
+.ldap-sync-toolbar-started .ldap-sync-status-dot {
+  background: var(--info);
+}
+
+.ldap-sync-toolbar-completed .ldap-sync-status-dot {
+  background: var(--success);
+}
+
+.ldap-sync-toolbar-failed .ldap-sync-status-dot {
+  background: var(--error);
+}
+
+.ldap-sync-status-label,
+.ldap-sync-timestamp {
+  white-space: nowrap;
+}
+
+.ldap-sync-created-chip {
+  border: 1px solid var(--success-border);
+  border-radius: 999px;
+  padding: 0.18rem 0.45rem;
+  color: var(--success);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.ldap-sync-created-chip:hover {
+  background: var(--success-bg);
+}
+
+.ldap-sync-error {
+  color: var(--error);
+  font-weight: 600;
+}
+
+@keyframes ldap-sync-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .users-page,
 .user-detail {
   width: min(980px, 92vw);
