@@ -227,11 +227,6 @@ h6,
   font-size: 1.25rem;
 }
 
-.brand-tagline {
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-}
-
 .app-content {
   flex: 1;
   display: flex;
@@ -239,6 +234,32 @@ h6,
   justify-content: center;
   padding: 1.5rem;
   background: var(--ui-surface-muted);
+}
+
+.app-content--login {
+  align-items: stretch;
+}
+
+.login-page {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-page-card-wrap {
+  position: relative;
+  width: min(440px, 92vw);
+  max-width: 100%;
+}
+
+.login-page-toolbar {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 2;
 }
 
 .auth-card,
@@ -260,13 +281,18 @@ h6,
   font-weight: 700;
 }
 
-.auth-eyebrow {
+.auth-company-logo {
   margin: 0;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
-  color: var(--text-muted);
+  line-height: 0;
+}
+
+.auth-company-logo-img {
+  display: block;
+  width: auto;
+  max-width: min(220px, 100%);
+  height: auto;
+  max-height: 5.5rem;
+  object-fit: contain;
 }
 
 .auth-subtitle {

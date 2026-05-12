@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavLink, Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { fetchSession, logout } from "../../features/users/auth-api";
+import { DEV_ONLY_ROLES } from "../auth/workspaceRoles.js";
 import { NotificationBell } from "../../features/notifications/components/NotificationBell";
+import ConnectionStatus from "../components/ConnectionStatus.jsx";
 import { ThemeToggle } from "../ui/ThemeToggle/ThemeToggle";
 import { DataStateBlock } from "./DataStateBlock";
 import { useIsDesktop } from "../hooks/useMediaQuery";
@@ -361,6 +363,8 @@ export function WorkspaceLayout() {
           <Outlet context={{ user }} />
         </main>
       </div>
+
+      {hasRole(user?.role, DEV_ONLY_ROLES) ? <ConnectionStatus /> : null}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { ThemeToggle } from "../../shared/ui/ThemeToggle/ThemeToggle";
 import { login } from "./auth-api.js";
 
 export default function LoginPage() {
@@ -28,40 +29,55 @@ export default function LoginPage() {
   };
 
   return (
-    <section className="auth-card">
-      <header className="auth-header">
-        <p className="auth-eyebrow">Enterprise Manager Login</p>
-        <h1>IT Hub</h1>
-        <p className="auth-subtitle">Sign in with your company credentials.</p>
-      </header>
-      <form className="auth-form" onSubmit={handleSubmit}>
-        <label className="auth-field">
-          <span>Username or email</span>
-          <input
-            autoComplete="username"
-            name="username"
-            onChange={(event) => setUsername(event.target.value)}
-            required
-            type="text"
-            value={username}
-          />
-        </label>
-        <label className="auth-field">
-          <span>Password</span>
-          <input
-            autoComplete="current-password"
-            name="password"
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            type="password"
-            value={password}
-          />
-        </label>
-        {errorMessage ? <p className="auth-error">{errorMessage}</p> : null}
-        <button className="auth-submit" disabled={mutation.isPending} type="submit">
-          {mutation.isPending ? "Signing in..." : "Sign In"}
-        </button>
-      </form>
-    </section>
+    <div className="login-page">
+      <div className="login-page-card-wrap">
+        <div className="login-page-toolbar">
+          <ThemeToggle />
+        </div>
+        <section className="auth-card">
+          <header className="auth-header">
+            <div className="auth-company-logo">
+              <img
+                alt="JKS — Justification Knowledge Skills"
+                className="auth-company-logo-img"
+                height={570}
+                src="/brand/jks-logo.png"
+                width={810}
+              />
+            </div>
+            <h1>IT Hub</h1>
+            <p className="auth-subtitle">Sign in using JKS credential</p>
+          </header>
+          <form className="auth-form" onSubmit={handleSubmit}>
+            <label className="auth-field">
+              <span>Username or email</span>
+              <input
+                autoComplete="username"
+                name="username"
+                onChange={(event) => setUsername(event.target.value)}
+                required
+                type="text"
+                value={username}
+              />
+            </label>
+            <label className="auth-field">
+              <span>Password</span>
+              <input
+                autoComplete="current-password"
+                name="password"
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                type="password"
+                value={password}
+              />
+            </label>
+            {errorMessage ? <p className="auth-error">{errorMessage}</p> : null}
+            <button className="auth-submit" disabled={mutation.isPending} type="submit">
+              {mutation.isPending ? "Signing in..." : "Sign In"}
+            </button>
+          </form>
+        </section>
+      </div>
+    </div>
   );
 }
