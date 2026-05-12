@@ -56,3 +56,12 @@ export const updateUserStatus = async (userId, status) => {
   });
   return parsePayload(response);
 };
+
+export const updateUserProfileFields = async (userId, values) => {
+  const response = await apiFetch(`/users/${userId}/profile-fields`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ values })
+  });
+  return parsePayload(response);
+};

@@ -2,15 +2,34 @@ import { requireItUser } from "../../shared/auth/requireItUser.js";
 import { requireAdminOrHead } from "../../shared/auth/requireAdminOrHead.js";
 import { createProblemDetails, sendProblem } from "../../shared/errors/problemDetails.js";
 
-export default async function (app, { config, userRepo, auditRepo }) {
-    const mapUser = (user) => ({
+export default async function (app, { config, userRepo, auditRepo, userFieldRepo }) {
+    let loadedUserFieldRepo = null;
+    const getUserFieldRepo = async () => {
+        if (userFieldRepo) {
+            return userFieldRepo;
+        }
+        if (!process.env.DATABASE_URL) {
+            return null;
+        }
+        loadedUserFieldRepo ??= await import("./profileFieldsRepo.js");
+        return loadedUserFieldRepo;
+    };
+    const mapUser = (user, profileFields) => {
+        const mapped = {
         id: user.id,
         username: user.username,
         role: user.role,
         status: user.status,
         ldapSyncedAt: user.ldapSyncedAt,
         ldapFields: user.ldapAttributes || {}
-    });
+        };
+
+        if (profileFields !== undefined) {
+            mapped.profileFields = profileFields;
+        }
+
+        return mapped;
+    };
 
 
     app.get("/users", async (request, reply) => {
@@ -91,12 +110,94 @@ export default async function (app, { config, userRepo, auditRepo }) {
             return;
         }
 
+        const profileFieldRepository = await getUserFieldRepo();
+        const profileFields = profileFieldRepository
+            ? await profileFieldRepository.listProfileFieldsForUser(id, { includeSensitive: true })
+            : [];
+
         return {
             data: {
                 fields: [config.ldapSync.usernameAttribute, ...config.ldapSync.attributes],
-                user: mapUser(user)
+                user: mapUser(user, profileFields)
             }
         };
+    });
+
+    app.patch("/users/:id/profile-fields", async (request, reply) => {
+        const actor = await requireItUser(request, reply, {
+            config,
+            userRepo,
+            forbiddenDetail: "Only IT, Admin, and Head of IT can edit user profile fields."
+        });
+        if (!actor) return;
+
+        const { id } = request.params;
+        const target = await userRepo.findUserById(id);
+        if (!target) {
+            sendProblem(reply, createProblemDetails({
+                status: 404,
+                title: "Not Found",
+                detail: "User not found"
+            }));
+            return;
+        }
+
+        const values = request.body?.values;
+        if (!values || typeof values !== "object" || Array.isArray(values)) {
+            sendProblem(reply, createProblemDetails({
+                status: 400,
+                title: "Invalid Input",
+                detail: "values must be an object keyed by field key."
+            }));
+            return;
+        }
+
+        try {
+            const profileFieldRepository = await getUserFieldRepo();
+            if (!profileFieldRepository) {
+                sendProblem(reply, createProblemDetails({
+                    status: 500,
+                    title: "Profile Fields Unavailable",
+                    detail: "Profile field storage is not configured."
+                }));
+                return;
+            }
+
+            const profileFields = await profileFieldRepository.updateProfileFieldValues({
+                userId: id,
+                values,
+                updatedBy: actor.id
+            });
+
+            if (auditRepo) {
+                await auditRepo.createAuditLog({
+                    action: "user.profile_fields_update",
+                    actorUserId: actor.id,
+                    entityType: "user",
+                    entityId: id,
+                    metadata: {
+                        changedFields: Object.keys(values)
+                    }
+                });
+            }
+
+            return {
+                data: {
+                    profileFields
+                }
+            };
+        } catch (error) {
+            if (["INVALID_PROFILE_FIELDS", "UNKNOWN_PROFILE_FIELD"].includes(error.code)) {
+                sendProblem(reply, createProblemDetails({
+                    status: 400,
+                    title: "Invalid Input",
+                    detail: error.message
+                }));
+                return;
+            }
+
+            throw error;
+        }
     });
 
     app.patch("/users/:id/status", async (request, reply) => {

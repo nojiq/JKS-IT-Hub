@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { fetchSession } from "./auth-api.js";
-import { fetchUserDetail, fetchUserHistory, updateUserStatus } from "./users-api.js";
+import { fetchUserDetail, fetchUserHistory, updateUserProfileFields, updateUserStatus } from "./users-api.js";
 import { CredentialRegeneration } from "../credentials/regeneration";
 import { useInitiateRegeneration, useConfirmRegeneration, useUnlockCredential } from "../credentials/hooks/useCredentials.js";
 import { useUserCredentials } from "../credentials/hooks/useCredentials.js";
@@ -38,10 +38,66 @@ const formatDate = (value) => {
   return date.toLocaleString();
 };
 
+const getLdapValue = (fields, keys = []) => {
+  if (!fields || typeof fields !== "object") {
+    return null;
+  }
+
+  const entries = Object.entries(fields);
+  for (const key of keys) {
+    if (fields[key] !== undefined && fields[key] !== null && fields[key] !== "") {
+      return fields[key];
+    }
+
+    const matched = entries.find(([entryKey]) => entryKey.toLowerCase() === key.toLowerCase());
+    if (matched?.[1] !== undefined && matched[1] !== null && matched[1] !== "") {
+      return matched[1];
+    }
+  }
+
+  return null;
+};
+
+const getProfileFieldFallback = (field, user) => {
+  if (field.key === "name") {
+    const value = getLdapValue(user?.ldapFields, ["displayName", "cn", "name"]);
+    return value ? { value, source: "ldap" } : null;
+  }
+
+  if (field.key === "email") {
+    const value = getLdapValue(user?.ldapFields, ["mail", "email", "userPrincipalName"]);
+    return value ? { value, source: "ldap" } : null;
+  }
+
+  return null;
+};
+
+const buildProfileFieldDraft = (fields = []) => {
+  return Object.fromEntries(fields.map((field) => [field.key, field.value ?? ""]));
+};
+
+const profileFieldInputType = (type) => {
+  if (type === "email" || type === "date" || type === "password") {
+    return type;
+  }
+  return "text";
+};
+
+const formatProfileFieldValue = (field, value) => {
+  if (field.sensitive && value) {
+    return "********";
+  }
+  return formatValue(value);
+};
+
+const EMPTY_PROFILE_FIELDS = [];
+
 export default function UserDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [showRegeneration, setShowRegeneration] = useState(false);
+  const [isEditingProfileFields, setIsEditingProfileFields] = useState(false);
+  const [profileFieldDraft, setProfileFieldDraft] = useState({});
   const queryClient = useQueryClient();
 
   const sessionQuery = useQuery({
@@ -69,7 +125,16 @@ export default function UserDetailPage() {
   const unlockCredential = useUnlockCredential();
   const sessionUser = sessionQuery.data?.user ?? sessionQuery.data ?? null;
   const canManageCredentials = sessionUser?.role && ['it', 'admin', 'head_it'].includes(sessionUser.role);
+  const canEditProfileFields = sessionUser?.role && ['it', 'admin', 'head_it'].includes(sessionUser.role);
   const canEnableUsers = sessionUser?.role && ['admin', 'head_it'].includes(sessionUser.role);
+  const updateProfileFieldsMutation = useMutation({
+    mutationFn: ({ userId, values }) => updateUserProfileFields(userId, values),
+    onSuccess: async () => {
+      setIsEditingProfileFields(false);
+      await userQuery.refetch();
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    }
+  });
   const updateUserStatusMutation = useMutation({
     mutationFn: ({ userId, status }) => updateUserStatus(userId, status),
     onSuccess: async () => {
@@ -85,6 +150,7 @@ export default function UserDetailPage() {
   const user = payload.user;
   const fields = payload.fields ?? [];
   const historyEntries = historyQuery.data ?? [];
+  const profileFields = user?.profileFields ?? EMPTY_PROFILE_FIELDS;
 
   // Deduplicate fields to prevent duplicate React keys
   const uniqueFields = useMemo(() => [...new Set(fields)], [fields]);
@@ -106,9 +172,41 @@ export default function UserDetailPage() {
     }
   }, [navigate, sessionQuery.data, sessionQuery.isLoading]);
 
+  useEffect(() => {
+    if (user && !isEditingProfileFields) {
+      setProfileFieldDraft(buildProfileFieldDraft(profileFields));
+    }
+  }, [isEditingProfileFields, profileFields, user]);
+
   const handleEnableUser = async () => {
     if (!canEnableUsers || updateUserStatusMutation.isPending) return;
     await updateUserStatusMutation.mutateAsync({ userId: id, status: "active" });
+  };
+
+  const handleStartEditProfileFields = () => {
+    setProfileFieldDraft(buildProfileFieldDraft(profileFields));
+    setIsEditingProfileFields(true);
+  };
+
+  const handleCancelEditProfileFields = () => {
+    setProfileFieldDraft(buildProfileFieldDraft(profileFields));
+    setIsEditingProfileFields(false);
+  };
+
+  const handleProfileFieldChange = (key, value) => {
+    setProfileFieldDraft((current) => ({
+      ...current,
+      [key]: value
+    }));
+  };
+
+  const handleSaveProfileFields = async (event) => {
+    event.preventDefault();
+    if (!canEditProfileFields || updateProfileFieldsMutation.isPending) return;
+    await updateProfileFieldsMutation.mutateAsync({
+      userId: id,
+      values: profileFieldDraft
+    });
   };
 
   if (sessionQuery.isLoading) {
@@ -203,7 +301,21 @@ export default function UserDetailPage() {
       ) : null}
 
       <div className="user-detail-zone-grid">
-        <WorkspacePanel variant="detail" title="Identity" meta="Read-only identity snapshot from the latest sync.">
+        <WorkspacePanel
+          variant="detail"
+          title="Identity"
+          meta={isEditingProfileFields ? "Edit manual profile fields. LDAP rows remain read-only below." : "Manual profile fields and read-only LDAP snapshot from the latest sync."}
+          actions={canEditProfileFields && !isEditingProfileFields ? (
+            <button
+              className="workspace-inline-button"
+              type="button"
+              onClick={handleStartEditProfileFields}
+              aria-label="Edit profile fields"
+            >
+              Edit
+            </button>
+          ) : null}
+        >
           <div className="user-detail-meta">
             <div>
               <span className="user-detail-label">Username</span>
@@ -218,6 +330,76 @@ export default function UserDetailPage() {
               <span className="user-detail-value">{formatValue(user.ldapFields?.department)}</span>
             </div>
           </div>
+
+          {profileFields.length ? (
+            isEditingProfileFields ? (
+              <form className="user-detail-field-list" onSubmit={handleSaveProfileFields}>
+                {profileFields.map((field) => (
+                  <label className="user-detail-field" key={field.key}>
+                    <span className="user-detail-field-label">{field.label}</span>
+                    {field.type === "textarea" ? (
+                      <textarea
+                        className="form-control"
+                        value={profileFieldDraft[field.key] ?? ""}
+                        onChange={(event) => handleProfileFieldChange(field.key, event.target.value)}
+                        required={field.required}
+                        rows={3}
+                      />
+                    ) : (
+                      <input
+                        className="form-control"
+                        type={profileFieldInputType(field.type)}
+                        value={profileFieldDraft[field.key] ?? ""}
+                        onChange={(event) => handleProfileFieldChange(field.key, event.target.value)}
+                        required={field.required}
+                      />
+                    )}
+                  </label>
+                ))}
+                {updateProfileFieldsMutation.error ? (
+                  <p className="credentials-error">{updateProfileFieldsMutation.error.message}</p>
+                ) : null}
+                <div className="credentials-actions">
+                  <button
+                    className="workspace-inline-button"
+                    type="submit"
+                    disabled={updateProfileFieldsMutation.isPending}
+                    aria-label="Save profile fields"
+                  >
+                    {updateProfileFieldsMutation.isPending ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    className="workspace-inline-link"
+                    type="button"
+                    onClick={handleCancelEditProfileFields}
+                    disabled={updateProfileFieldsMutation.isPending}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="user-detail-field-list">
+                {profileFields.map((field) => {
+                  const fallback = !field.value ? getProfileFieldFallback(field, user) : null;
+                  const value = field.value || fallback?.value || null;
+                  const source = field.source || fallback?.source || null;
+
+                  return (
+                    <div className="user-detail-field" key={field.key}>
+                      <span className="user-detail-field-label">{field.label}</span>
+                      <span className="user-detail-field-value">{formatProfileFieldValue(field, value)}</span>
+                      {source ? (
+                        <span className="user-detail-field-source">
+                          Source: {source === "ldap" ? "LDAP" : "Manual"}
+                        </span>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          ) : null}
 
           <div className="user-detail-field-list">
             {rows.map((row) => (

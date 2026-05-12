@@ -83,10 +83,47 @@ model User {
   approvedRequests   ItemRequest[] @relation("ApprovedBy")
   notifications      EmailNotification[]
   inAppNotifications InAppNotification[]
+  profileFieldValues UserFieldValue[]
 
   @@index([status])
   @@index([role])
   @@map("users")
+}
+
+model UserFieldDefinition {
+  id        String   @id @default(uuid()) @db.Char(36) @map("id")
+  fieldKey  String   @unique @db.VarChar(191) @map("field_key")
+  label     String   @db.VarChar(191) @map("label")
+  fieldType String   @db.VarChar(50) @map("field_type")
+  required  Boolean  @default(false) @map("required")
+  sensitive Boolean  @default(false) @map("sensitive")
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  values UserFieldValue[]
+
+  @@index([isActive, sortOrder], map: "idx_user_field_definitions_active_order")
+  @@map("user_field_definitions")
+}
+
+model UserFieldValue {
+  id                String   @id @default(uuid()) @db.Char(36) @map("id")
+  userId            String   @db.Char(36) @map("user_id")
+  fieldDefinitionId String   @db.Char(36) @map("field_definition_id")
+  value             String?  @db.Text @map("value")
+  updatedBy         String?  @db.Char(36) @map("updated_by")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fieldDefinition UserFieldDefinition @relation(fields: [fieldDefinitionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, fieldDefinitionId], map: "uniq_user_field_values_user_definition")
+  @@index([fieldDefinitionId], map: "idx_user_field_values_definition_id")
+  @@index([userId], map: "idx_user_field_values_user_id")
+  @@map("user_field_values")
 }
 
 model LdapSyncRun {
