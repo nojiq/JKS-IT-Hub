@@ -54,8 +54,7 @@ test("detectChanges collects known LDAP sources from stored metadata", () => {
   assert.equal(result.ldapChanged, false);
 });
 
-test("buildCredentialComparison marks locked systems with normalized reason code", () => {
-  const lockedMap = new Map([["vpn", { isLocked: true }]]);
+test("buildCredentialComparison never marks rows skipped after lock removal", () => {
   const result = buildCredentialComparison(
     [
       { system: "email", username: "u1", password: "p1" },
@@ -65,13 +64,12 @@ test("buildCredentialComparison marks locked systems with normalized reason code
       { system: "email", username: "u1", password: "p3" },
       { system: "vpn", username: "u2", password: "p4" }
     ],
-    {},
-    lockedMap
+    {}
   );
 
   const vpn = result.find((entry) => entry.system === "vpn");
-  assert.equal(vpn.skipped, true);
-  assert.equal(vpn.skipReason, "credential_locked");
+  assert.equal(vpn.skipped, false);
+  assert.equal(vpn.skipReason, null);
 });
 
 test("mapRegenerationReason maps change type to AC-compliant reason values", () => {

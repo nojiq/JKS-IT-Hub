@@ -67,8 +67,6 @@ export const confirmRegenerationSchema = z.object({
         message: "Explicit confirmation required to overwrite credentials"
     }),
     acknowledgedWarnings: z.boolean().default(false),
-    skipLocked: z.boolean().optional(),
-    force: z.boolean().optional(),
     csrfToken: z.string().optional()
 });
 
@@ -170,12 +168,4 @@ export const confirmOverrideSchema = z.object({
     confirmed: z.boolean().refine((val) => val === true, {
         message: "Explicit confirmation required"
     })
-});
-
-// Lock/Unlock Schemas (Story 2.9)
-export const lockCredentialSchema = z.object({
-    reason: z.string().max(255).optional()
-});
-
-export const unlockCredentialSchema = z.object({
 });

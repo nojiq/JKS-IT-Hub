@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
 import CredentialComparison from './CredentialComparison';
-import RegenerationBlockedModal from '../components/RegenerationBlockedModal.jsx';
 import './CredentialRegeneration.css';
 
 /**
  * CredentialRegeneration Component
- * 
+ *
  * Main component for credential regeneration with confirmation workflow.
  * Handles preview, comparison display, and explicit confirmation.
- * 
+ *
  * Story 2.4 - AC1, AC2, AC3, AC5
- * 
+ *
  * @param {Object} props
  * @param {string} props.userId - Target user ID
  * @param {string} props.userName - Target user name for display
@@ -20,7 +19,6 @@ import './CredentialRegeneration.css';
  * @param {Function} props.onCancel - Callback when user cancels
  * @param {Function} props.onSuccess - Callback when regeneration succeeds
  * @param {Function} props.onEnableUser - Callback to enable disabled user
- * @param {Function} props.onUnlockCredential - API function to unlock selected credentials
  */
 const CredentialRegeneration = ({
     userId,
@@ -30,36 +28,24 @@ const CredentialRegeneration = ({
     onConfirmRegeneration,
     onCancel,
     onSuccess,
-    onEnableUser,
-    onUnlockCredential
+    onEnableUser
 }) => {
     const [step, setStep] = useState('idle'); // idle, loading, preview, confirming, success, error
     const [previewData, setPreviewData] = useState(null);
     const [error, setError] = useState(null);
     const [acknowledged, setAcknowledged] = useState(false);
     const [result, setResult] = useState(null);
-    const [lockedCredentials, setLockedCredentials] = useState([]);
-    const [skipLocked, setSkipLocked] = useState(false);
-    const [lockedActionError, setLockedActionError] = useState(null);
-    const [lockedActionLoading, setLockedActionLoading] = useState(false);
 
     const isUserDisabled = userStatus === 'disabled';
 
     const loadPreview = async () => {
         setStep('loading');
         setError(null);
-        setSkipLocked(false);
 
         try {
             const response = await onInitiateRegeneration({ userId });
             setPreviewData(response.data);
-            if (response.data?.hasLockedCredentials && response.data?.lockedCredentials?.length > 0) {
-                setLockedCredentials(response.data.lockedCredentials);
-                setStep('locked');
-            } else {
-                setLockedCredentials([]);
-                setStep('preview');
-            }
+            setStep('preview');
         } catch (err) {
             setError(err);
             setStep('error');
@@ -81,18 +67,12 @@ const CredentialRegeneration = ({
                 userId,
                 previewToken: previewData.previewToken,
                 confirmed: true,
-                acknowledgedWarnings: acknowledged,
-                skipLocked
+                acknowledgedWarnings: acknowledged
             });
             setResult(response.data);
             setStep('success');
             onSuccess?.(response.data);
         } catch (err) {
-            if (err?.problemDetails?.type === '/problems/credentials-locked') {
-                setLockedCredentials(err.problemDetails.lockedCredentials || []);
-                setStep('locked');
-                return;
-            }
             setError(err);
             setStep('error');
         }
@@ -103,40 +83,15 @@ const CredentialRegeneration = ({
         setPreviewData(null);
         setError(null);
         setAcknowledged(false);
-        setLockedCredentials([]);
-        setSkipLocked(false);
         onCancel?.();
-    };
-
-    const handleSkipLocked = () => {
-        setSkipLocked(true);
-        setStep('preview');
-    };
-
-    const handleUnlockSelected = async (items) => {
-        if (!onUnlockCredential) return;
-        setLockedActionError(null);
-        setLockedActionLoading(true);
-        try {
-            for (const item of items) {
-                await onUnlockCredential({ userId: item.userId || userId, systemId: item.systemId });
-            }
-            await loadPreview();
-        } catch (err) {
-            setLockedActionError(err);
-        } finally {
-            setLockedActionLoading(false);
-        }
     };
 
     const getErrorDisplay = () => {
         if (!error) return null;
 
-        // Handle RFC 9457 Problem Details
         if (error.problemDetails) {
-            const { type, title, detail, status } = error.problemDetails;
-            
-            // Disabled user error
+            const { type, title, detail } = error.problemDetails;
+
             if (type === '/problems/disabled-user' || type === '/problems/regeneration-blocked') {
                 return {
                     title: 'Regeneration Blocked',
@@ -146,7 +101,6 @@ const CredentialRegeneration = ({
                 };
             }
 
-            // No changes detected
             if (type === '/problems/no-changes-detected') {
                 return {
                     title: 'No Changes Detected',
@@ -156,7 +110,6 @@ const CredentialRegeneration = ({
                 };
             }
 
-            // Missing LDAP fields
             if (type === '/problems/credential-generation-failed') {
                 return {
                     title: 'Generation Failed',
@@ -166,7 +119,6 @@ const CredentialRegeneration = ({
                 };
             }
 
-            // Preview expired
             if (type === '/problems/preview-expired') {
                 return {
                     title: 'Session Expired',
@@ -176,7 +128,6 @@ const CredentialRegeneration = ({
                 };
             }
 
-            // Generic problem
             return {
                 title: title || 'Error',
                 message: detail || error.message || 'An error occurred.',
@@ -184,7 +135,6 @@ const CredentialRegeneration = ({
             };
         }
 
-        // Generic error
         return {
             title: 'Error',
             message: error.message || 'An unexpected error occurred.',
@@ -194,9 +144,7 @@ const CredentialRegeneration = ({
 
     const errorDisplay = getErrorDisplay();
 
-    // Idle State - Initial Trigger
     if (step === 'idle') {
-        // Show blocked state if user is disabled
         if (isUserDisabled) {
             return (
                 <div className="credential-regeneration">
@@ -220,14 +168,14 @@ const CredentialRegeneration = ({
                         </div>
                         <div className="regeneration-actions">
                             {onEnableUser && (
-                                <button 
+                                <button
                                     className="btn btn-primary"
                                     onClick={onEnableUser}
                                 >
                                     Enable User
                                 </button>
                             )}
-                            <button 
+                            <button
                                 className="btn btn-secondary"
                                 onClick={handleCancel}
                             >
@@ -239,7 +187,6 @@ const CredentialRegeneration = ({
             );
         }
 
-        // Normal idle state
         return (
             <div className="credential-regeneration">
                 <div className="regeneration-intro">
@@ -250,22 +197,21 @@ const CredentialRegeneration = ({
                     <div className="regeneration-info">
                         <p>
                             This will regenerate credentials based on current LDAP data and the active template.
-                            You'll see a comparison of old vs new credentials before confirming.
+                            You will see a comparison of old vs new credentials before confirming.
                         </p>
                         <ul className="regeneration-notes">
                             <li>Previous credentials will be preserved in history</li>
-                            <li>Locked credentials require unlock or explicit skip</li>
                             <li>Disabled users cannot have credentials regenerated</li>
                         </ul>
                     </div>
                     <div className="regeneration-actions">
-                        <button 
+                        <button
                             className="btn btn-primary"
                             onClick={handleInitiate}
                         >
                             Start Regeneration
                         </button>
-                        <button 
+                        <button
                             className="btn btn-secondary"
                             onClick={handleCancel}
                         >
@@ -277,21 +223,6 @@ const CredentialRegeneration = ({
         );
     }
 
-    if (step === 'locked') {
-        return (
-            <RegenerationBlockedModal
-                isOpen
-                lockedCredentials={lockedCredentials}
-                onCancel={handleCancel}
-                onSkipLocked={handleSkipLocked}
-                onUnlockSelected={handleUnlockSelected}
-                isProcessing={lockedActionLoading}
-                error={lockedActionError}
-            />
-        );
-    }
-
-    // Loading State
     if (step === 'loading') {
         return (
             <div className="credential-regeneration">
@@ -303,7 +234,6 @@ const CredentialRegeneration = ({
         );
     }
 
-    // Preview State - Show Comparison
     if (step === 'preview' && previewData) {
         return (
             <div className="credential-regeneration">
@@ -313,17 +243,7 @@ const CredentialRegeneration = ({
                         Compare current credentials with newly generated ones
                     </p>
 
-                    {skipLocked && (
-                        <div className="warning-box blocked-warning">
-                            <div className="warning-icon">🔒</div>
-                            <div className="warning-content">
-                                <strong>Locked credentials will be skipped.</strong>
-                                <p>Unlocked credentials will regenerate; locked ones remain unchanged.</p>
-                            </div>
-                        </div>
-                    )}
-
-                    <CredentialComparison 
+                    <CredentialComparison
                         comparisons={previewData.comparisons}
                         changeType={previewData.changeType}
                         changedLdapFields={previewData.changedLdapFields}
@@ -335,8 +255,8 @@ const CredentialRegeneration = ({
                             <div className="warning-content">
                                 <h4>Important Notice</h4>
                                 <p>
-                                    This will overwrite existing active credentials. 
-                                    Previous credentials will be preserved in history with reason "regeneration".
+                                    This will overwrite existing active credentials.
+                                    Previous credentials will be preserved in history with reason &quot;regeneration&quot;.
                                 </p>
                             </div>
                         </div>
@@ -355,14 +275,14 @@ const CredentialRegeneration = ({
                         </div>
 
                         <div className="regeneration-actions">
-                            <button 
+                            <button
                                 className="btn btn-primary btn-confirm"
                                 onClick={handleConfirm}
                                 disabled={!acknowledged}
                             >
                                 Confirm Regeneration
                             </button>
-                            <button 
+                            <button
                                 className="btn btn-secondary"
                                 onClick={handleCancel}
                             >
@@ -375,7 +295,6 @@ const CredentialRegeneration = ({
         );
     }
 
-    // Confirming State
     if (step === 'confirming') {
         return (
             <div className="credential-regeneration">
@@ -387,14 +306,13 @@ const CredentialRegeneration = ({
         );
     }
 
-    // Success State
     if (step === 'success' && result) {
         return (
             <div className="credential-regeneration">
                 <div className="regeneration-success">
                     <div className="success-icon">✓</div>
                     <h3>Credentials Regenerated Successfully</h3>
-                    
+
                     <div className="success-details">
                         <div className="detail-row">
                             <span className="detail-label">Change Type:</span>
@@ -414,18 +332,10 @@ const CredentialRegeneration = ({
                                 </span>
                             </div>
                         )}
-                        {result.skippedCredentials.length > 0 && (
-                            <div className="detail-row">
-                                <span className="detail-label">Skipped (Locked):</span>
-                                <span className="detail-value">
-                                    {result.skippedCredentials.length} credentials
-                                </span>
-                            </div>
-                        )}
                     </div>
 
                     <div className="regeneration-actions">
-                        <button 
+                        <button
                             className="btn btn-primary"
                             onClick={handleCancel}
                         >
@@ -437,10 +347,9 @@ const CredentialRegeneration = ({
         );
     }
 
-    // Error State
     if (step === 'error' && errorDisplay) {
         const errorClass = `error-${errorDisplay.type}`;
-        
+
         return (
             <div className="credential-regeneration">
                 <div className={`regeneration-error ${errorClass}`}>
@@ -452,19 +361,19 @@ const CredentialRegeneration = ({
                     </div>
                     <h3>{errorDisplay.title}</h3>
                     <p className="error-message">{errorDisplay.message}</p>
-                    
+
                     {errorDisplay.resolution && (
                         <div className="error-resolution">
                             <strong>Resolution:</strong> {errorDisplay.resolution}
                         </div>
                     )}
-                    
+
                     {errorDisplay.suggestion && (
                         <div className="error-suggestion">
                             <strong>Suggestion:</strong> {errorDisplay.suggestion}
                         </div>
                     )}
-                    
+
                     {errorDisplay.missingFields && (
                         <div className="error-missing-fields">
                             <strong>Missing Fields:</strong>
@@ -475,21 +384,21 @@ const CredentialRegeneration = ({
                             </ul>
                         </div>
                     )}
-                    
+
                     {errorDisplay.action && (
                         <p className="error-action">{errorDisplay.action}</p>
                     )}
 
                     <div className="regeneration-actions">
                         {errorDisplay.type === 'warning' || errorDisplay.type === 'preview-expired' ? (
-                            <button 
+                            <button
                                 className="btn btn-primary"
                                 onClick={handleInitiate}
                             >
                                 Try Again
                             </button>
                         ) : null}
-                        <button 
+                        <button
                             className="btn btn-secondary"
                             onClick={handleCancel}
                         >

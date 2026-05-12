@@ -1,13 +1,11 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { useLockedCredentials } from "../credentials/hooks/useCredentials.js";
 import { fetchUsers } from "./users-api.js";
 import { WorkspacePanel } from "../../shared/workspace/WorkspacePanel.jsx";
 import "../../shared/workspace/workspace.css";
 
 const EMPTY_USERS = [];
-const EMPTY_LOCKED = [];
 
 export default function UsersHomePage() {
   const usersQuery = useQuery({
@@ -16,9 +14,7 @@ export default function UsersHomePage() {
     retry: false
   });
 
-  const lockedQuery = useLockedCredentials();
   const users = usersQuery.data?.users ?? EMPTY_USERS;
-  const lockedCredentials = lockedQuery.data?.data ?? EMPTY_LOCKED;
 
   const overview = useMemo(() => {
     const disabledUsers = users.filter((entry) => String(entry.status).toLowerCase() === "disabled");
@@ -26,10 +22,9 @@ export default function UsersHomePage() {
 
     return {
       disabledUsers,
-      activeUsers,
-      lockedCredentials
+      activeUsers
     };
-  }, [lockedCredentials, users]);
+  }, [users]);
 
   return (
     <div className="users-home-grid">
@@ -78,17 +73,6 @@ export default function UsersHomePage() {
           </Link>
         </div>
       </WorkspacePanel>
-
-      <WorkspacePanel
-        variant="detail"
-        title="Locked Credentials"
-        meta={`${overview.lockedCredentials.length} locked right now`}
-        actions={(
-          <Link className="workspace-inline-button" to="/users/locked">
-            Review Queue
-          </Link>
-        )}
-      />
     </div>
   );
 }

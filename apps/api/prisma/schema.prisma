@@ -74,7 +74,6 @@ model User {
   imapProfile  UserImapProfile?
   generatedCredentials UserCredential[] @relation("GeneratedBy")
   credentialVersions CredentialVersion[]
-  lockedCredentials LockedCredential[]
   createdMaintenanceWindows MaintenanceWindow[]
   assignmentTechnicians DepartmentAssignmentTechnician[]
   assignedMaintenanceWindows MaintenanceWindow[] @relation("AssignedTo")
@@ -185,7 +184,6 @@ model SystemConfig {
 
   credentials UserCredential[]
   normalizationRules NormalizationRule[]
-  lockedCredentials LockedCredential[]
 
   @@index([systemId], map: "idx_system_configs_system_id")
   @@map("system_configs")
@@ -360,26 +358,6 @@ model CredentialVersion {
   @@index([credentialId, createdAt], map: "idx_credential_versions_credential_id_created_at")
   @@index([credentialId], map: "idx_credential_versions_credential_id")
   @@map("credential_versions")
-}
-
-model LockedCredential {
-  id          String   @id @default(uuid()) @db.Char(36) @map("id")
-  userId      String   @map("user_id") @db.Char(36)
-  systemId    String   @map("system_id") @db.VarChar(191)
-  isLocked    Boolean  @default(true) @map("is_locked")
-  lockedBy    String   @map("locked_by") @db.Char(36)
-  lockedAt    DateTime @default(now()) @map("locked_at")
-  lockReason  String?  @map("lock_reason") @db.VarChar(255)
-  unlockedBy  String?  @map("unlocked_by") @db.Char(36)
-  unlockedAt  DateTime? @map("unlocked_at")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  user        User     @relation(fields: [userId], references: [id])
-  system      SystemConfig @relation(fields: [systemId], references: [systemId])
-
-  @@unique([userId, systemId], name: "unique_user_system_lock")
-  @@map("locked_credentials")
 }
 
 model MaintenanceCycleConfig {

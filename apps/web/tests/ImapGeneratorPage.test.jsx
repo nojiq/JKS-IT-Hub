@@ -63,7 +63,6 @@ const renderApp = (initialEntry = '/users/imap-generator') => {
                         { path: 'directory', element: <div>Directory Content</div> },
                         { path: 'imap-generator', element: <ImapGeneratorPage /> },
                         { path: 'credential-generator', element: <ImapGeneratorPage /> },
-                        { path: 'locked', element: <div>Locked Credentials Content</div> },
                         { path: 'history', element: <div>History Content</div> }
                     ]
                 }

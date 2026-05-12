@@ -21,7 +21,6 @@ vi.mock("../src/features/users/users-api.js", () => ({
 vi.mock("../src/features/credentials/hooks/useCredentials.js", () => ({
   useInitiateRegeneration: () => ({ mutateAsync: vi.fn() }),
   useConfirmRegeneration: () => ({ mutateAsync: vi.fn() }),
-  useUnlockCredential: () => ({ mutateAsync: vi.fn() }),
   useUserCredentials: () => ({
     data: { data: [] },
     isLoading: false,

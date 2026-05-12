@@ -9,8 +9,6 @@ import {
     confirmRegenerationSchema,
     overridePreviewSchema,
     confirmOverrideSchema,
-    lockCredentialSchema,
-    unlockCredentialSchema,
     historyQuerySchema,
     compareVersionsSchema,
     versionIdSchema
@@ -22,7 +20,7 @@ import {
 } from "./imap/schema.js";
 import { previewActualPasswordSchema } from "./actualPasswordSchema.js";
 import { generateActualDeterministicPassword } from "./generator.js";
-import { CredentialLockedError, CredentialsLockedError, DisabledUserError, NoChangesDetectedError } from "./service.js";
+import { DisabledUserError, NoChangesDetectedError } from "./service.js";
 import { hasItRole } from "../../shared/auth/rbac.js";
 import { requireItRole } from "../../shared/auth/middleware.js";
 
@@ -515,7 +513,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         }
 
         const { userId } = request.params;
-        const { previewToken, confirmed, skipLocked, force } = validation.data;
+        const { previewToken, confirmed } = validation.data;
 
         // Validate explicit confirmation
         if (!confirmed) {
@@ -854,7 +852,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         }
 
         const { userId } = request.params;
-        const { previewToken, confirmed, skipLocked, force } = validation.data;
+        const { previewToken, confirmed, acknowledgedWarnings } = validation.data;
 
         // Validate explicit confirmation
         if (!confirmed) {
@@ -903,10 +901,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
             }
 
             // Execute the regeneration
-            const result = await credentialService.confirmRegeneration(actor.id, previewSession, {
-                skipLocked: skipLocked === true,
-                force: force === true
-            });
+            const result = await credentialService.confirmRegeneration(actor.id, previewSession);
 
             // Clean up preview session
             await credentialService.deletePreviewSession(previewToken);
@@ -922,9 +917,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                         changeType: result.changeType,
                         regeneratedSystems: result.regeneratedCredentials.map(c => c.system),
                         preservedHistory: result.preservedHistory,
-                        skippedCredentials: result.skippedCredentials,
-                        templateVersion: result.templateVersion,
-                        forced: result.forced === true
+                        templateVersion: result.templateVersion
                     }
                 });
             }
@@ -935,9 +928,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                     changeType: result.changeType,
                     regeneratedCredentials: result.regeneratedCredentials,
                     preservedHistory: result.preservedHistory,
-                    skippedCredentials: result.skippedCredentials,
                     templateVersion: result.templateVersion,
-                    forced: result.forced === true,
                     performedBy: result.performedBy,
                     performedAt: result.performedAt
                 }
@@ -957,18 +948,6 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                     suggestion: "Enable the user before regenerating credentials"
                 }));
                 await logBlockedCredentialOperation(actor.id, "regenerate", userId);
-                return;
-            }
-
-            if (error instanceof CredentialsLockedError) {
-                sendProblem(reply, createProblemDetails({
-                    type: '/problems/credentials-locked',
-                    status: 422,
-                    title: "Credentials Cannot Be Regenerated",
-                    detail: "Some credentials are locked and cannot be regenerated",
-                    lockedCredentials: error.lockedCredentials,
-                    suggestion: "Unlock the credentials or skip locked credentials to proceed"
-                }));
                 return;
             }
 
@@ -1342,20 +1321,6 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                 return;
             }
 
-            if (error instanceof CredentialLockedError) {
-                sendProblem(reply, createProblemDetails({
-                    type: '/problems/credential-locked',
-                    status: 409,
-                    title: "Credential Locked",
-                    detail: "This credential is locked and must be unlocked before override.",
-                    userId: error.userId,
-                    system: error.systemId,
-                    lockDetails: error.lockDetails,
-                    suggestion: "Unlock the credential first, then retry override."
-                }));
-                return;
-            }
-
             if (error.code === 'UNSUPPORTED_OVERRIDE_MODE') {
                 sendProblem(reply, createProblemDetails({
                     status: 400,
@@ -1516,20 +1481,6 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
                 return;
             }
 
-            if (error instanceof CredentialLockedError) {
-                sendProblem(reply, createProblemDetails({
-                    type: '/problems/credential-locked',
-                    status: 409,
-                    title: "Credential Locked",
-                    detail: "This credential is locked and must be unlocked before override.",
-                    userId: error.userId,
-                    system: error.systemId,
-                    lockDetails: error.lockDetails,
-                    suggestion: "Unlock the credential first, then retry override."
-                }));
-                return;
-            }
-
             // Handle user not found error
             if (error.code === 'USER_NOT_FOUND') {
                 sendProblem(reply, createProblemDetails({
@@ -1681,229 +1632,6 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
             ...validation.data
         }, actor.id);
         reply.send({ data: result });
-    });
-
-    // Lock/Unlock Routes (Story 2.9)
-    // Mounted at /api/v1/credentials (or credential-templates)
-
-    // GET /api/v1/credentials/locked - List all locked credentials
-    app.get("/locked", async (request, reply) => {
-        const actor = await requireAuthenticated(request, reply, { config, userRepo });
-        if (!actor) return;
-
-        if (!hasItRole(actor)) {
-            sendProblem(reply, createProblemDetails({
-                status: 403,
-                title: "Forbidden",
-                type: "/problems/insufficient-permissions",
-                detail: "Only IT roles can view locked credentials"
-            }));
-            return;
-        }
-
-        try {
-            const page = parseInt(request.query.page) || 1;
-            const limit = parseInt(request.query.limit) || 20;
-            const { systemId, userId, startDate, endDate } = request.query || {};
-
-            const result = await credentialService.getLockedCredentials({
-                page,
-                limit,
-                systemId,
-                userId,
-                startDate,
-                endDate
-            });
-            reply.send({
-                data: result.data,
-                meta: result.meta
-            });
-        } catch (error) {
-            console.error('List locked credentials error:', error);
-            sendProblem(reply, createProblemDetails({
-                status: 500,
-                title: "Failed to List Locked Credentials",
-                detail: error.message
-            }));
-        }
-    });
-
-    // POST /api/v1/credentials/:userId/:systemId/lock - Lock credential
-    app.post("/:userId/:systemId/lock", async (request, reply) => {
-        const actor = await requireAuthenticated(request, reply, { config, userRepo });
-        if (!actor) return;
-
-        if (!hasItRole(actor)) {
-            sendProblem(reply, createProblemDetails({
-                status: 403,
-                title: "Forbidden",
-                type: "/problems/insufficient-permissions",
-                detail: "Only IT roles can lock credentials"
-            }));
-            return;
-        }
-
-        const { userId, systemId } = request.params;
-        const validation = lockCredentialSchema.safeParse(request.body || {});
-
-        if (!validation.success) {
-            sendProblem(reply, createProblemDetails({
-                status: 400,
-                title: "Invalid Input",
-                detail: validation.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ')
-            }));
-            return;
-        }
-
-        try {
-            const result = await credentialService.lockCredential(userId, systemId, validation.data.reason, actor.id);
-            reply.send({ data: result });
-        } catch (error) {
-            if (error.code === 'CREDENTIAL_NOT_FOUND') {
-                sendProblem(reply, createProblemDetails({
-                    type: '/problems/credential-not-found',
-                    status: 404,
-                    title: "Credential Not Found",
-                    detail: error.message,
-                    userId: error.userId,
-                    systemId: error.systemId
-                }));
-                return;
-            }
-            if (error.code === 'CREDENTIAL_ALREADY_LOCKED') {
-                sendProblem(reply, createProblemDetails({
-                    type: '/problems/credential-already-locked',
-                    status: 409,
-                    title: "Credential Already Locked",
-                    detail: error.message,
-                    userId: error.userId,
-                    systemId: error.systemId,
-                    suggestion: "Unlock the credential before attempting to lock again."
-                }));
-                return;
-            }
-            console.error('Lock credential error:', error);
-            sendProblem(reply, createProblemDetails({
-                status: 500,
-                title: "Lock Failed",
-                detail: error.message
-            }));
-        }
-    });
-
-    // POST /api/v1/credentials/:userId/:systemId/unlock - Unlock credential
-    app.post("/:userId/:systemId/unlock", async (request, reply) => {
-        const actor = await requireAuthenticated(request, reply, { config, userRepo });
-        if (!actor) return;
-
-        if (!hasItRole(actor)) {
-            sendProblem(reply, createProblemDetails({
-                status: 403,
-                title: "Forbidden",
-                type: "/problems/insufficient-permissions",
-                detail: "Only IT roles can unlock credentials"
-            }));
-            return;
-        }
-
-        const { userId, systemId } = request.params;
-
-        try {
-            const result = await credentialService.unlockCredential(userId, systemId, actor.id);
-            reply.send({ data: result });
-        } catch (error) {
-            if (error.code === 'CREDENTIAL_NOT_LOCKED') {
-                sendProblem(reply, createProblemDetails({
-                    type: '/problems/credential-not-locked',
-                    status: 409,
-                    title: "Credential Not Locked",
-                    detail: error.message,
-                    userId: error.userId,
-                    systemId: error.systemId,
-                    suggestion: "The credential is already unlocked."
-                }));
-                return;
-            }
-            console.error('Unlock credential error:', error);
-            sendProblem(reply, createProblemDetails({
-                status: 500,
-                title: "Unlock Failed",
-                detail: error.message
-            }));
-        }
-    });
-
-    // GET /api/v1/credentials/:userId/:systemId/lock-status - Check status
-    app.get("/:userId/:systemId/lock-status", async (request, reply) => {
-        const actor = await requireAuthenticated(request, reply, { config, userRepo });
-        if (!actor) return;
-
-        // Allowed for IT and maybe owner? Requirement says IT.
-        if (!hasItRole(actor)) {
-            sendProblem(reply, createProblemDetails({
-                status: 403,
-                title: "Forbidden",
-                type: "/problems/insufficient-permissions",
-                detail: "Only IT roles can view lock status"
-            }));
-            return;
-        }
-
-        const { userId, systemId } = request.params;
-        try {
-            const status = await credentialService.getLockStatus(userId, systemId);
-            reply.send({ data: status });
-        } catch (error) {
-            console.error('Get lock status error:', error);
-            sendProblem(reply, createProblemDetails({
-                status: 500,
-                title: "Failed to Get Status",
-                detail: error.message
-            }));
-        }
-    });
-
-    // GET /api/v1/credentials/users/:userId/locked - List locked for user
-    app.get("/users/:userId/locked", async (request, reply) => {
-        const actor = await requireAuthenticated(request, reply, { config, userRepo });
-        if (!actor) return;
-
-        if (!hasItRole(actor)) {
-            sendProblem(reply, createProblemDetails({
-                status: 403,
-                title: "Forbidden",
-                type: "/problems/insufficient-permissions",
-                detail: "Only IT roles can view locked credentials"
-            }));
-            return;
-        }
-
-        const { userId } = request.params;
-        try {
-            const page = parseInt(request.query.page) || 1;
-            const limit = parseInt(request.query.limit) || 20;
-            const { systemId, startDate, endDate } = request.query || {};
-
-            const result = await credentialService.getLockedCredentials({
-                userId,
-                page,
-                limit,
-                systemId,
-                startDate,
-                endDate
-            });
-            reply.send({
-                data: result.data,
-                meta: result.meta
-            });
-        } catch (error) {
-            console.error('List user locked credentials error:', error);
-            sendProblem(reply, createProblemDetails({
-                status: 500,
-                title: "Failed to List Locked Credentials",
-                detail: error.message
-            }));
-        }
     });
 
 }

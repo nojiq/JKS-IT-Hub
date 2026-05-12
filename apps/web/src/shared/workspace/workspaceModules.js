@@ -63,7 +63,6 @@ export const workspaceGroups = [
           { label: "Overview", to: "/users" },
           { label: "Directory", to: "/users/directory" },
           { label: "Credential Generator", to: "/users/credential-generator" },
-          { label: "Locked Credentials", to: "/users/locked" },
           { label: "History", to: "/users/history" }
         ]
       },

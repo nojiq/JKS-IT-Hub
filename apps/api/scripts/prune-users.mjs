@@ -91,7 +91,6 @@ const main = async () => {
     credentialsByOwner: await prisma.userCredential.count({ where: { userId: { in: deleteIds } } }),
     credentialsByGenerator: await prisma.userCredential.count({ where: { generatedBy: { in: deleteIds } } }),
     credentialVersionsByCreator: await prisma.credentialVersion.count({ where: { createdBy: { in: deleteIds } } }),
-    lockedCredentials: await prisma.lockedCredential.count({ where: { userId: { in: deleteIds } } }),
     deptAssignmentTechnicians: await prisma.departmentAssignmentTechnician.count({ where: { userId: { in: deleteIds } } }),
     maintenanceWindowsToDelete: windowIdsToDelete.length,
     maintenanceCompletionsForThoseWindows: completionIdsForWindows.length,
@@ -156,7 +155,6 @@ const main = async () => {
     await prisma.credentialVersion.deleteMany({ where: { createdBy: { in: ids } } });
     await prisma.userCredential.deleteMany({ where: { generatedBy: { in: ids } } });
     await prisma.userCredential.deleteMany({ where: { userId: { in: ids } } });
-    await prisma.lockedCredential.deleteMany({ where: { userId: { in: ids } } });
   }
 
   // Requests by deleted users

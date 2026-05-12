@@ -105,12 +105,12 @@ export const previewRegeneration = async (userId) => {
     return handleResponse(response);
 };
 
-export const confirmRegeneration = async (userId, { previewToken, confirmed, acknowledgedWarnings, skipLocked, force }) => {
+export const confirmRegeneration = async (userId, { previewToken, confirmed, acknowledgedWarnings }) => {
     const response = await fetch(`${API_BASE}/credential-templates/users/${userId}/regenerate/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ previewToken, confirmed, acknowledgedWarnings, skipLocked, force })
+        body: JSON.stringify({ previewToken, confirmed, acknowledgedWarnings })
     });
     return handleResponse(response);
 };
@@ -179,48 +179,6 @@ export const confirmOverride = async (userId, system, previewToken, confirmed = 
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ previewToken, confirmed })
-    });
-    return handleResponse(response);
-};
-
-// Credential Lock/Unlock API (Story 2.9)
-
-export const lockCredential = async (userId, systemId, reason) => {
-    const response = await fetch(`${CREDENTIALS_BASE}/${userId}/${systemId}/lock`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ reason })
-    });
-    return handleResponse(response);
-};
-
-export const unlockCredential = async (userId, systemId) => {
-    const response = await fetch(`${CREDENTIALS_BASE}/${userId}/${systemId}/unlock`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'
-    });
-    return handleResponse(response);
-};
-
-export const getLockStatus = async (userId, systemId) => {
-    const response = await fetch(`${CREDENTIALS_BASE}/${userId}/${systemId}/lock-status`, {
-        credentials: 'include'
-    });
-    return handleResponse(response);
-};
-
-export const getLockedCredentials = async (filters = {}) => {
-    const response = await fetch(`${CREDENTIALS_BASE}/locked${buildQueryString(filters)}`, {
-        credentials: 'include'
-    });
-    return handleResponse(response);
-};
-
-export const getUserLockedCredentials = async (userId, filters = {}) => {
-    const response = await fetch(`${CREDENTIALS_BASE}/users/${userId}/locked${buildQueryString(filters)}`, {
-        credentials: 'include'
     });
     return handleResponse(response);
 };

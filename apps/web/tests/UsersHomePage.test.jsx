@@ -40,10 +40,6 @@ vi.mock('../src/features/users/users-api.js', () => ({
     fetchUsers: vi.fn()
 }));
 
-vi.mock('../src/features/credentials/hooks/useCredentials.js', () => ({
-    useLockedCredentials: vi.fn()
-}));
-
 vi.mock('../src/features/notifications/hooks/useNotifications.js', () => ({
     useNotifications: vi.fn(() => ({
         notifications: [],
@@ -68,17 +64,12 @@ vi.mock('../src/features/users/users-list-page.jsx', () => ({
     default: () => <div>Directory Content</div>
 }));
 
-vi.mock('../src/features/credentials/components/LockedCredentialsList.jsx', () => ({
-    default: () => <div>Locked Credentials Content</div>
-}));
-
 vi.mock('../src/features/credentials/history', () => ({
     CredentialHistory: () => <div>History Content</div>
 }));
 
 import { fetchSession } from '../src/features/users/auth-api';
 import { fetchUsers } from '../src/features/users/users-api.js';
-import { useLockedCredentials } from '../src/features/credentials/hooks/useCredentials.js';
 import { router as appRouter } from '../src/routes/router.jsx';
 
 const adminUser = {
@@ -133,14 +124,6 @@ describe('Users module overview route', () => {
             fields: ['mail', 'department'],
             meta: { total: 1 }
         });
-
-        useLockedCredentials.mockReturnValue({
-            data: {
-                data: [{ userId: 'user-1', systemId: 'imap' }]
-            },
-            isLoading: false,
-            error: null
-        });
     });
 
     it('opens /users on the users module landing page', async () => {
@@ -151,7 +134,6 @@ describe('Users module overview route', () => {
         expect(screen.getByRole('link', { name: 'Open Directory' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Recent Access Actions' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Password Generation' })).toBeInTheDocument();
-        expect(screen.getAllByRole('heading', { name: 'Locked Credentials' }).length).toBeGreaterThanOrEqual(1);
         expect(document.querySelector('.users-subnav')).not.toBeInTheDocument();
     });
 

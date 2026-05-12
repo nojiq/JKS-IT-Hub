@@ -6,7 +6,6 @@ process.env.DATABASE_URL ??= "mysql://test:test@127.0.0.1:3306/it_hub_test";
 
 const { default: credentialRoutes } = await import("../../apps/api/src/features/credentials/routes.js");
 const {
-  CredentialsLockedError,
   DisabledUserError,
   NoChangesDetectedError
 } = await import("../../apps/api/src/features/credentials/service.js");
@@ -73,11 +72,7 @@ const buildApp = async () => {
             skipped: false,
             skipReason: null
           }
-        ],
-        hasLockedCredentials: userId === "locked-user-id",
-        lockedCredentials: userId === "locked-user-id"
-          ? [{ userId, systemId: "email", reason: "policy_lock" }]
-          : []
+        ]
       };
     },
     storeRegenerationPreview: async (userId, preview) => {
@@ -99,31 +94,15 @@ const buildApp = async () => {
       previewSessions.delete(token);
       return true;
     },
-    confirmRegeneration: async (performedByUserId, previewSession, options = {}) => {
-      if (previewSession.userId === "locked-user-id" && options.skipLocked !== true) {
-        throw new CredentialsLockedError([
-          {
-            userId: "locked-user-id",
-            systemId: "email",
-            reason: "credential_locked"
-          }
-        ]);
-      }
-
-      return {
-        userId: previewSession.userId,
-        changeType: previewSession.changeType,
-        regeneratedCredentials: [{ system: "email", username: "new@example.com" }],
-        preservedHistory: [{ system: "email", previousUsername: "old@example.com" }],
-        skippedCredentials: options.skipLocked === true
-          ? [{ system: "email", reason: "credential_locked" }]
-          : [],
-        templateVersion: previewSession.newTemplateVersion,
-        forced: options.force === true,
-        performedBy: performedByUserId,
-        performedAt: "2026-02-10T00:00:00.000Z"
-      };
-    }
+    confirmRegeneration: async (performedByUserId, previewSession) => ({
+      userId: previewSession.userId,
+      changeType: previewSession.changeType,
+      regeneratedCredentials: [{ system: "email", username: "new@example.com" }],
+      preservedHistory: [{ system: "email", previousUsername: "old@example.com" }],
+      templateVersion: previewSession.newTemplateVersion,
+      performedBy: performedByUserId,
+      performedAt: "2026-02-10T00:00:00.000Z"
+    })
   };
 
   const auditRepo = {
@@ -270,36 +249,6 @@ test("Credential regeneration routes: success + guardrails", async (t) => {
     await app.close();
   });
 
-  await t.test("POST /users/:id/regenerate/confirm returns 422 when credentials are locked", async () => {
-    const { app, authHeader } = await buildApp();
-
-    const init = await app.inject({
-      method: "POST",
-      url: "/api/v1/credentials/users/locked-user-id/regenerate",
-      headers: authHeader,
-      payload: {}
-    });
-    const { previewToken } = init.json().data;
-
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/v1/credentials/users/locked-user-id/regenerate/confirm",
-      headers: authHeader,
-      payload: {
-        previewToken,
-        confirmed: true,
-        acknowledgedWarnings: true,
-        skipLocked: false
-      }
-    });
-
-    assert.equal(response.statusCode, 422);
-    const body = response.json();
-    assert.equal(body.type, "/problems/credentials-locked");
-
-    await app.close();
-  });
-
   await t.test("POST /users/:id/regenerate/confirm returns 201 and clears preview", async () => {
     const { app, authHeader, deletedTokens, auditEntries } = await buildApp();
 
@@ -318,8 +267,7 @@ test("Credential regeneration routes: success + guardrails", async (t) => {
       payload: {
         previewToken,
         confirmed: true,
-        acknowledgedWarnings: true,
-        skipLocked: true
+        acknowledgedWarnings: true
       }
     });
 

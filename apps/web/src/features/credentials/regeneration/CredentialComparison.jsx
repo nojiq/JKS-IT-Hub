@@ -3,10 +3,9 @@ import './CredentialComparison.css';
 
 /**
  * CredentialComparison Component
- * 
- * Displays a side-by-side comparison of old vs new credentials
- * with change highlighting and locked credential indicators.
- * 
+ *
+ * Displays a side-by-side comparison of old vs new credentials with change highlighting.
+ *
  * Story 2.4 - AC1, AC2, AC4
  */
 const CredentialComparison = ({ comparisons, changeType, changedLdapFields }) => {
@@ -47,7 +46,6 @@ const CredentialComparison = ({ comparisons, changeType, changedLdapFields }) =>
 
     return (
         <div className="credential-comparison">
-            {/* Change Summary Banner */}
             <div className={`change-summary-banner ${getChangeTypeClass()}`}>
                 <div className="change-summary-header">
                     <span className="change-type-badge">{getChangeTypeLabel()}</span>
@@ -62,7 +60,6 @@ const CredentialComparison = ({ comparisons, changeType, changedLdapFields }) =>
                 )}
             </div>
 
-            {/* Comparison Table */}
             <div className="comparison-table-container">
                 <table className="comparison-table">
                     <thead>
@@ -75,10 +72,10 @@ const CredentialComparison = ({ comparisons, changeType, changedLdapFields }) =>
                         </tr>
                     </thead>
                     <tbody>
-                        {comparisons.map((comparison, index) => (
-                            <tr 
-                                key={comparison.system} 
-                                className={`comparison-row ${hasChanges(comparison) ? 'has-changes' : ''} ${comparison.skipped ? 'skipped' : ''}`}
+                        {comparisons.map((comparison) => (
+                            <tr
+                                key={comparison.system}
+                                className={`comparison-row ${hasChanges(comparison) ? 'has-changes' : ''}`}
                             >
                                 <td className="system-cell">
                                     <span className="system-name">{comparison.system}</span>
@@ -100,16 +97,14 @@ const CredentialComparison = ({ comparisons, changeType, changedLdapFields }) =>
                                     )}
                                 </td>
                                 <td className="arrow-cell">
-                                    {comparison.skipped ? (
-                                        <span className="skip-icon">⏸</span>
-                                    ) : hasChanges(comparison) ? (
+                                    {hasChanges(comparison) ? (
                                         <span className="change-arrow">→</span>
                                     ) : (
                                         <span className="no-change">=</span>
                                     )}
                                 </td>
                                 <td className="new-cell">
-                                    {comparison.new && !comparison.skipped ? (
+                                    {comparison.new ? (
                                         <div className="credential-data">
                                             <div className="credential-field">
                                                 <span className="field-label">Username:</span>
@@ -124,26 +119,18 @@ const CredentialComparison = ({ comparisons, changeType, changedLdapFields }) =>
                                                 </span>
                                             </div>
                                         </div>
-                                    ) : comparison.skipped ? (
-                                        <span className="skipped-text">Skipped</span>
                                     ) : (
                                         <span className="no-data">—</span>
                                     )}
                                 </td>
                                 <td className="status-cell">
-                                    {comparison.skipped ? (
-                                        <div className="status-badge skipped">
-                                            <span className="lock-icon">🔒</span>
-                                            <span className="status-text">Locked</span>
-                                            <span className="skip-reason">{comparison.skipReason}</span>
-                                        </div>
-                                    ) : hasChanges(comparison) ? (
+                                    {hasChanges(comparison) ? (
                                         <div className="status-badge changes">
                                             <span className="change-indicator">●</span>
                                             <span className="status-text">
-                                                {comparison.changes.includes('new_system') ? 'New' : 
-                                                 comparison.changes.includes('removed_system') ? 'Removed' :
-                                                 comparison.changes.join(', ')}
+                                                {comparison.changes.includes('new_system') ? 'New' :
+                                                    comparison.changes.includes('removed_system') ? 'Removed' :
+                                                        comparison.changes.join(', ')}
                                             </span>
                                         </div>
                                     ) : (
@@ -158,15 +145,10 @@ const CredentialComparison = ({ comparisons, changeType, changedLdapFields }) =>
                 </table>
             </div>
 
-            {/* Legend */}
             <div className="comparison-legend">
                 <div className="legend-item">
                     <span className="legend-color changed"></span>
                     <span className="legend-text">Changed values</span>
-                </div>
-                <div className="legend-item">
-                    <span className="legend-icon">🔒</span>
-                    <span className="legend-text">Locked (skipped)</span>
                 </div>
                 <div className="legend-item">
                     <span className="legend-color new"></span>

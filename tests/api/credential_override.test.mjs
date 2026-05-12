@@ -2,9 +2,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import credentialRoutes from "../../apps/api/src/features/credentials/routes.js";
-import { CredentialLockedError } from "../../apps/api/src/features/credentials/service.js";
 import { signSessionToken } from "../../apps/api/src/shared/auth/jwt.js";
+
+process.env.DATABASE_URL ??= "mysql://test:test@127.0.0.1:3306/it_hub_test";
+
+const { default: credentialRoutes } = await import("../../apps/api/src/features/credentials/routes.js");
 
 const require = createRequire(new URL("../../apps/api/package.json", import.meta.url));
 const Fastify = require("fastify");
@@ -108,59 +110,6 @@ const buildApp = async ({ previewError = null, confirmError = null } = {}) => {
         authHeader: { cookie: `${config.cookie.name}=${token}` }
     };
 };
-
-test("Credential Override API - preview returns locked problem details", async () => {
-    const { app, authHeader } = await buildApp({
-        previewError: new CredentialLockedError("user-1", "email", {
-            lockedAt: "2026-02-09T12:00:00.000Z",
-            lockReason: "Freeze"
-        })
-    });
-
-    const response = await app.inject({
-        method: "POST",
-        url: "/api/v1/credentials/users/user-1/email/override/preview",
-        headers: authHeader,
-        payload: {
-            username: "new.user",
-            reason: "Manual override requested by IT"
-        }
-    });
-
-    assert.equal(response.statusCode, 409);
-    const body = response.json();
-    assert.equal(body.type, "/problems/credential-locked");
-    assert.equal(body.title, "Credential Locked");
-    assert.equal(body.system, "email");
-    assert.equal(body.suggestion, "Unlock the credential first, then retry override.");
-    await app.close();
-});
-
-test("Credential Override API - confirm returns locked problem details", async () => {
-    const { app, authHeader } = await buildApp({
-        confirmError: new CredentialLockedError("user-1", "email", {
-            lockedAt: "2026-02-09T12:00:00.000Z",
-            lockReason: "Freeze"
-        })
-    });
-
-    const response = await app.inject({
-        method: "POST",
-        url: "/api/v1/credentials/users/user-1/email/override/confirm",
-        headers: authHeader,
-        payload: {
-            previewToken: "valid-preview-token",
-            confirmed: true
-        }
-    });
-
-    assert.equal(response.statusCode, 409);
-    const body = response.json();
-    assert.equal(body.type, "/problems/credential-locked");
-    assert.equal(body.title, "Credential Locked");
-    assert.equal(body.system, "email");
-    await app.close();
-});
 
 test("Credential Override API - confirm success does not double-delete preview in route layer", async () => {
     const { app, authHeader, deletedTokens } = await buildApp();

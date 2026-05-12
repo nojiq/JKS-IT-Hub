@@ -6,7 +6,7 @@ import { fetchUserDetail, fetchUserHistory, updateUserProfileFields, updateUserR
 import { ROLE_LABELS } from "./roleLabels.js";
 import { assertCanAssignRole, getAssignableRoles, ROLE_RANK } from "../../shared/auth/roleAssignment.js";
 import { CredentialRegeneration } from "../credentials/regeneration";
-import { useInitiateRegeneration, useConfirmRegeneration, useUnlockCredential } from "../credentials/hooks/useCredentials.js";
+import { useInitiateRegeneration, useConfirmRegeneration } from "../credentials/hooks/useCredentials.js";
 import { useUserCredentials } from "../credentials/hooks/useCredentials.js";
 import CredentialList from "../credentials/components/CredentialList.jsx";
 import DisabledUserBanner from "../credentials/components/DisabledUserBanner.jsx";
@@ -136,7 +136,6 @@ export default function UserDetailPage() {
   const credentialsQuery = useUserCredentials(id);
   const initiateRegeneration = useInitiateRegeneration();
   const confirmRegeneration = useConfirmRegeneration();
-  const unlockCredential = useUnlockCredential();
   const sessionUser = sessionQuery.data?.user ?? sessionQuery.data ?? null;
   const canManageCredentials = sessionUser?.role && ['dev', 'it', 'admin', 'head_it'].includes(sessionUser.role);
   const canEditProfileFields = sessionUser?.role && ['dev', 'it', 'admin', 'head_it'].includes(sessionUser.role);
@@ -553,7 +552,7 @@ export default function UserDetailPage() {
         <WorkspacePanel
           variant="detail"
           title="Credentials"
-          meta="Generated credentials, exports, locks, and regeneration controls."
+          meta="Generated credentials, exports, and regeneration controls."
           actions={canManageCredentials ? (
             <div className="user-detail-credentials-header-toolbar" role="toolbar" aria-label="Credential shortcuts">
               {credentialsQuery.data?.data?.length > 0 ? (
@@ -563,9 +562,6 @@ export default function UserDetailPage() {
               ) : null}
                 <Link className="workspace-inline-link" to={`/users/credential-generator?mode=imap&userId=${id}`}>
                 Open Credential Generator
-              </Link>
-              <Link className="workspace-inline-link" to="/users/locked">
-                Locked Credentials
               </Link>
               <button
                 className="workspace-inline-button"
@@ -610,10 +606,6 @@ export default function UserDetailPage() {
               ) : credentialsQuery.data?.data?.length > 0 ? (
                 <CredentialList
                   credentials={credentialsQuery.data.data}
-                  userId={id}
-                  userName={user.username}
-                  userEmail={user.ldapFields?.mail}
-                  canManageLocks={canManageCredentials}
                 />
               ) : (
                 <p className="credentials-empty">No active credentials for this user.</p>
@@ -664,7 +656,6 @@ export default function UserDetailPage() {
               userStatus={user.status}
               onInitiateRegeneration={initiateRegeneration.mutateAsync}
               onConfirmRegeneration={confirmRegeneration.mutateAsync}
-              onUnlockCredential={unlockCredential.mutateAsync}
               onEnableUser={canEnableUsers ? handleEnableUser : undefined}
               onCancel={() => setShowRegeneration(false)}
               onSuccess={() => {

@@ -104,7 +104,6 @@ IT staff can regenerate credentials when LDAP data or templates change. The syst
 3. **Requires Confirmation**: Explicit confirmation required before overwriting
 4. **Preserves History**: Previous credentials are saved in `credential_versions` with reason "regeneration"
 5. **Enforces Guardrails**: Disabled users cannot have credentials regenerated
-6. **Respects Locks**: Locked credentials are flagged and require unlock or explicit skip
 
 ### API Endpoints
 
@@ -123,15 +122,14 @@ Initiate credential regeneration and return comparison preview.
     "changedLdapFields": ["mail", "cn"],
     "oldTemplateVersion": 2,
     "newTemplateVersion": 3,
-    "hasLockedCredentials": false,
-    "lockedCredentials": [],
     "comparisons": [
       {
         "system": "email",
         "old": { "username": "old@company.com", "password": "oldpass" },
         "new": { "username": "new@company.com", "password": "newpass" },
         "changes": ["username", "password"],
-        "skipped": false
+        "skipped": false,
+        "skipReason": null
       }
     ],
     "previewToken": "regen_...",
@@ -144,7 +142,6 @@ Initiate credential regeneration and return comparison preview.
 - `403` - User disabled (RFC 9457: `/problems/regeneration-blocked`)
 - `400` - No changes detected (RFC 9457: `/problems/no-changes-detected`)
 - `422` - Missing LDAP fields (RFC 9457: `/problems/credential-generation-failed`)
-- `422` - Locked credentials present (RFC 9457: `/problems/credentials-locked`)
 
 #### POST /api/v1/users/:userId/credentials/regenerate/confirm
 
@@ -157,8 +154,7 @@ Confirm and execute credential regeneration.
 {
   "previewToken": "regen_...",
   "confirmed": true,
-  "skipLocked": true,
-  "force": false
+  "acknowledgedWarnings": true
 }
 ```
 
@@ -174,7 +170,6 @@ Confirm and execute credential regeneration.
     "preservedHistory": [
       { "system": "email", "previousUsername": "old@company.com" }
     ],
-    "skippedCredentials": [],
     "templateVersion": 3,
     "performedBy": "admin-uuid",
     "performedAt": "2026-02-02T10:30:00Z"
@@ -185,69 +180,6 @@ Confirm and execute credential regeneration.
 **Errors**:
 - `400` - Confirmation required or user mismatch
 - `410` - Preview session expired (RFC 9457: `/problems/preview-expired`)
-- `422` - Locked credentials present (RFC 9457: `/problems/credentials-locked`)
-
-## Credential Locking
-
-Story 2.9: Credential Lock/Unlock
-
-Locking prevents credentials from being regenerated until explicitly unlocked. Locks can include an optional reason and are fully audit logged.
-
-### API Endpoints
-
-#### POST /api/v1/credentials/:userId/:systemId/lock
-
-Lock a credential with an optional reason.
-
-**Auth**: IT Role required
-
-**Body**:
-```json
-{
-  "reason": "Protected admin account - do not regenerate"
-}
-```
-
-**Errors**:
-- `404` - Credential not found (RFC 9457: `/problems/credential-not-found`)
-- `409` - Already locked (RFC 9457: `/problems/credential-already-locked`)
-
-#### POST /api/v1/credentials/:userId/:systemId/unlock
-
-Unlock a credential.
-
-**Auth**: IT Role required
-
-**Errors**:
-- `409` - Not locked (RFC 9457: `/problems/credential-not-locked`)
-
-#### GET /api/v1/credentials/:userId/:systemId/lock-status
-
-Check lock status and details.
-
-**Response**:
-```json
-{
-  "data": {
-    "isLocked": true,
-    "lockDetails": {
-      "lockedBy": "uuid",
-      "lockedByName": "John Smith",
-      "lockedAt": "2026-02-03T10:30:00Z",
-      "lockReason": "Protected admin account",
-      "daysLocked": 5
-    }
-  }
-}
-```
-
-#### GET /api/v1/credentials/locked
-
-List all locked credentials (IT only).
-
-#### GET /api/v1/credentials/users/:userId/locked
-
-List locked credentials for a single user (IT only).
 
 ## User Guide: Regenerating Credentials
 
@@ -273,7 +205,6 @@ Regenerate credentials when:
 - **Disabled users cannot be regenerated** - re-enable the user first
 - **Session expires in 5 minutes** - start over if expired
 - **All actions are audit logged** for compliance
-- **Locked credentials require unlock or explicit skip** before regeneration
 
 ### Troubleshooting
 
@@ -283,13 +214,11 @@ Regenerate credentials when:
 | "Regeneration Blocked" | Re-enable the user if disabled |
 | "Session Expired" | Start the regeneration process again |
 | Missing LDAP fields | Ensure user has all required LDAP attributes |
-| "Credentials Cannot Be Regenerated" | Unlock credentials or use Skip Locked in the regeneration modal |
-| "Credential Already Locked" | The credential is already protected; unlock first if changes are required |
 
 ## Security
 
 - RBAC: Template CRUD (`/api/v1/credential-templates`) is restricted to `it` role only.
-- RBAC: Broader credential operations (generation/regeneration/history/locks) allow `it`, `admin`, and `head_it` as documented per endpoint.
+- RBAC: Broader credential operations (generation/regeneration/history) allow `it`, `admin`, and `head_it` as documented per endpoint.
 - Audit Logging: All create, update, and regeneration actions are logged.
 - Disabled User Guardrail: Regeneration is blocked for disabled users (FR19).
 - Explicit Confirmation: Users must explicitly acknowledge before overwriting.

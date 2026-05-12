@@ -1,7 +1,6 @@
 import * as repo from "./repo.js";
 import * as systemConfigRepo from "../system-configs/repo.js";
 import * as userRepo from "../users/repo.js";
-import { createAuditLog } from "../audit/repo.js";
 import { prisma } from "../../shared/db/prisma.js";
 import {
     generateCredentials,
@@ -45,46 +44,6 @@ export class CredentialNotFoundError extends Error {
         this.code = 'CREDENTIAL_NOT_FOUND';
         this.userId = userId;
         this.systemId = systemId;
-    }
-}
-
-export class CredentialAlreadyLockedError extends Error {
-    constructor(userId, systemId) {
-        super(`Credential for user ${userId} on system ${systemId} is already locked`);
-        this.name = 'CredentialAlreadyLockedError';
-        this.code = 'CREDENTIAL_ALREADY_LOCKED';
-        this.userId = userId;
-        this.systemId = systemId;
-    }
-}
-
-export class CredentialNotLockedError extends Error {
-    constructor(userId, systemId) {
-        super(`Credential for user ${userId} on system ${systemId} is not locked`);
-        this.name = 'CredentialNotLockedError';
-        this.code = 'CREDENTIAL_NOT_LOCKED';
-        this.userId = userId;
-        this.systemId = systemId;
-    }
-}
-
-export class CredentialsLockedError extends Error {
-    constructor(lockedCredentials = []) {
-        super('Some credentials are locked and cannot be regenerated');
-        this.name = 'CredentialsLockedError';
-        this.code = 'CREDENTIALS_LOCKED';
-        this.lockedCredentials = lockedCredentials;
-    }
-}
-
-export class CredentialLockedError extends Error {
-    constructor(userId, systemId, lockDetails = null) {
-        super(`Credential for user ${userId} on system ${systemId} is locked`);
-        this.name = 'CredentialLockedError';
-        this.code = 'CREDENTIAL_LOCKED';
-        this.userId = userId;
-        this.systemId = systemId;
-        this.lockDetails = lockDetails;
     }
 }
 
@@ -580,7 +539,7 @@ export const detectChanges = (user, existingCredentials, template) => {
  * @param {Object} changes - Change detection result
  * @returns {Array} - Comparison array
  */
-export const buildCredentialComparison = (oldCredentials, newCredentials, changes, lockedMap = new Map()) => {
+export const buildCredentialComparison = (oldCredentials, newCredentials, changes) => {
     const comparisons = [];
     const oldBySystem = new Map(oldCredentials.map(c => [c.systemId || c.system, c]));
     const newBySystem = new Map(newCredentials.map(c => [c.system || c.systemId, c]));
@@ -596,17 +555,15 @@ export const buildCredentialComparison = (oldCredentials, newCredentials, change
             system,
             old: old ? {
                 username: old.username,
-                password: old.password,
-                isLocked: old.isLocked || false  // Future: Story 2.9
+                password: old.password
             } : null,
             new: new_ ? {
                 username: new_.username,
-                password: new_.password,
-                isLocked: new_.isLocked || false  // Future: Story 2.9
+                password: new_.password
             } : null,
             changes: [],
-            skipped: lockedMap.has(system) && lockedMap.get(system).isLocked,
-            skipReason: (lockedMap.has(system) && lockedMap.get(system).isLocked) ? "credential_locked" : null
+            skipped: false,
+            skipReason: null
         };
 
         // Detect specific changes
@@ -656,14 +613,6 @@ export const previewCredentialRegeneration = async (userId, systemId = null) => 
 
     // Get existing credentials
     const existingCredentials = await repo.getUserCredentials(userId);
-
-    // Get locked credentials to check for skips (Story 2.9)
-    const lockedCredentials = await repo.getLockedCredentials({ userId });
-    const lockedMap = new Map(lockedCredentials.data.map(l => [l.systemId, l]));
-    const lockedByMap = await getLockedByMap(lockedCredentials.data);
-    const lockedCredentialSummaries = lockedCredentials.data.map(lock =>
-        buildLockedCredentialSummary(lock, lockedByMap)
-    );
 
     // Detect baseline metadata changes (template version + known LDAP source pointers).
     const changes = detectChanges(user, existingCredentials, template);
@@ -736,7 +685,7 @@ export const previewCredentialRegeneration = async (userId, systemId = null) => 
     }
 
     // Build comparison
-    const comparisons = buildCredentialComparison(existingCredentials, newCredentials, changes, lockedMap);
+    const comparisons = buildCredentialComparison(existingCredentials, newCredentials, changes);
 
     // Treat credential output diffs as LDAP-driven changes when template version did not change.
     const credentialOutputChanged = comparisons.some((comparison) => comparison.changes.length > 0);
@@ -766,8 +715,6 @@ export const previewCredentialRegeneration = async (userId, systemId = null) => 
         oldTemplateVersion: changes.oldTemplateVersion,
         newTemplateVersion: changes.newTemplateVersion,
         comparisons,
-        hasLockedCredentials: lockedCredentialSummaries.length > 0,
-        lockedCredentials: lockedCredentialSummaries,
         newCredentials,
         existingCredentials: existingCredentials.map(c => ({
             id: c.id,
@@ -812,11 +759,10 @@ export const storeRegenerationPreview = async (userId, preview) => {
  * @param {Object} previewSession - Stored preview session
  * @returns {Object} - Regeneration result
  */
-export const confirmRegeneration = async (performedByUserId, previewSession, options = {}) => {
+export const confirmRegeneration = async (performedByUserId, previewSession) => {
     return prisma.$transaction(async (tx) => {
         const {
             userId,
-            newCredentials,
             existingCredentialIds,
             changeType,
             comparisons
@@ -832,36 +778,11 @@ export const confirmRegeneration = async (performedByUserId, previewSession, opt
             throw new DisabledUserError(userId);
         }
 
-        const { skipLocked = false, force = false } = options;
-        const lockedSnapshot = await repo.getLockedCredentials({ userId }, tx);
-        const lockedByMap = await getLockedByMap(lockedSnapshot.data);
-        const lockedCredentialSummaries = lockedSnapshot.data.map(lock =>
-            buildLockedCredentialSummary(lock, lockedByMap)
-        );
-        const lockedMap = new Map(lockedSnapshot.data.map(lock => [lock.systemId, lock]));
-
-        if (lockedCredentialSummaries.length > 0 && !force && !skipLocked) {
-            throw new CredentialsLockedError(lockedCredentialSummaries);
-        }
-
         const regeneratedCredentials = [];
         const preservedHistory = [];
-        const skippedCredentials = [];
 
         // Process each comparison
         for (const comparison of comparisons) {
-            const isLockedNow = lockedMap.has(comparison.system);
-            if (isLockedNow && !force) {
-                const locked = lockedMap.get(comparison.system);
-                skippedCredentials.push({
-                    system: comparison.system,
-                    reason: "credential_locked",
-                    lockedAt: toIsoString(locked?.lockedAt),
-                    lockReason: locked?.lockReason || null
-                });
-                continue;
-            }
-
             const newCred = previewSession.newCredentials.find(c => c.system === comparison.system);
 
             if (!newCred) {
@@ -932,9 +853,7 @@ export const confirmRegeneration = async (performedByUserId, previewSession, opt
             changeType,
             regeneratedCredentials,
             preservedHistory,
-            skippedCredentials,
             templateVersion: previewSession.newTemplateVersion,
-            forced: force === true,
             performedBy: performedByUserId,
             performedAt: new Date().toISOString()
         };
@@ -1170,22 +1089,6 @@ export const revealCredentialPassword = async (versionId, actorUserId) => {
  * @param {Object} overrideData - Override data containing username, password, reason
  * @returns {Object} - Preview result with comparison
  */
-const assertCredentialUnlocked = async (repoApi, userId, systemId, tx = undefined) => {
-    if (typeof repoApi.getLockRecord !== "function") {
-        return;
-    }
-
-    const lockRecord = await repoApi.getLockRecord(userId, systemId, tx);
-    if (!lockRecord?.isLocked) {
-        return;
-    }
-
-    throw new CredentialLockedError(userId, systemId, {
-        lockedAt: toIsoString(lockRecord.lockedAt),
-        lockReason: lockRecord.lockReason || null
-    });
-};
-
 export const previewCredentialOverride = async (userId, system, overrideData, deps = {}) => {
     const repoApi = deps.repo ?? repo;
     const userRepoApi = deps.userRepo ?? userRepo;
@@ -1202,9 +1105,6 @@ export const previewCredentialOverride = async (userId, system, overrideData, de
     if (userRepoApi.isUserDisabled(user)) {
         throw new DisabledUserError(userId);
     }
-
-    // 2. Block override when credential is locked.
-    await assertCredentialUnlocked(repoApi, userId, system);
 
     // 2. Get active credential for this system
     const credential = await repoApi.getUserCredentialBySystem(userId, system);
@@ -1402,8 +1302,6 @@ export const confirmCredentialOverride = async (performedByUserId, previewSessio
             throw error;
         }
 
-        await assertCredentialUnlocked(repoApi, userId, system, tx);
-
         // 2. Create history record for current credential before deactivating
         await repoApi.createCredentialVersion({
             credentialId: currentCredential.id,
@@ -1475,150 +1373,4 @@ export const confirmCredentialOverride = async (performedByUserId, previewSessio
             }
         };
     });
-};
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-const toIsoString = (value) => {
-    if (!value) return null;
-    if (value instanceof Date) return value.toISOString();
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString();
-};
-
-const getLockedByMap = async (locks) => {
-    const lockedByIds = [...new Set(locks.map(lock => lock.lockedBy).filter(Boolean))];
-    if (lockedByIds.length === 0) {
-        return new Map();
-    }
-    const users = await userRepo.findUsersByIds(lockedByIds);
-    return new Map(users.map(user => [user.id, user]));
-};
-
-const buildLockedCredentialSummary = (lock, lockedByMap) => ({
-    userId: lock.userId,
-    systemId: lock.systemId,
-    systemName: lock.system?.description || lock.systemId,
-    lockedBy: lockedByMap.get(lock.lockedBy)?.username || lock.lockedBy,
-    lockedAt: toIsoString(lock.lockedAt),
-    lockReason: lock.lockReason || null
-});
-
-const calculateDaysLocked = (lockedAt) => {
-    if (!lockedAt) return 0;
-    const lockedAtMs = lockedAt instanceof Date ? lockedAt.getTime() : new Date(lockedAt).getTime();
-    if (Number.isNaN(lockedAtMs)) return 0;
-    return Math.max(0, Math.floor((Date.now() - lockedAtMs) / MS_PER_DAY));
-};
-
-// Credential Lock Services (Story 2.9)
-
-export const lockCredential = async (userId, systemId, reason, performedBy) => {
-    const credential = await repo.getUserCredentialBySystem(userId, systemId);
-    if (!credential) {
-        throw new CredentialNotFoundError(userId, systemId);
-    }
-
-    const existingLock = await repo.getLockRecord(userId, systemId);
-    if (existingLock?.isLocked) {
-        throw new CredentialAlreadyLockedError(userId, systemId);
-    }
-
-    const lock = await repo.upsertLockRecord({
-        userId,
-        systemId,
-        isLocked: true,
-        lockedBy: performedBy,
-        lockedAt: new Date(),
-        lockReason: reason || null,
-        unlockedBy: null,
-        unlockedAt: null
-    });
-
-    await createAuditLog({
-        action: 'credential.lock',
-        actorUserId: performedBy,
-        entityType: 'credential',
-        entityId: credential.id,
-        metadata: { userId, systemId, reason: reason || null }
-    });
-
-    return lock;
-};
-
-export const unlockCredential = async (userId, systemId, performedBy) => {
-    const lock = await repo.getLockRecord(userId, systemId);
-    if (!lock || !lock.isLocked) {
-        throw new CredentialNotLockedError(userId, systemId);
-    }
-
-    const updated = await repo.updateLockRecord(userId, systemId, {
-        isLocked: false,
-        unlockedBy: performedBy,
-        unlockedAt: new Date()
-    });
-
-    await createAuditLog({
-        action: 'credential.unlock',
-        actorUserId: performedBy,
-        entityType: 'credential',
-        entityId: `${userId}:${systemId}`, // We might not have credential ID easily here without lookup
-        metadata: {
-            userId,
-            systemId,
-            wasLockedBy: lock.lockedBy,
-            wasLockedAt: lock.lockedAt
-        }
-    });
-
-    return updated;
-};
-
-export const isCredentialLocked = async (userId, systemId) => {
-    const lock = await repo.getLockRecord(userId, systemId);
-    return lock ? lock.isLocked : false;
-};
-
-export const getLockedCredentials = async (filters = {}) => {
-    const result = await repo.getLockedCredentials(filters);
-    const lockedByMap = await getLockedByMap(result.data);
-
-    const data = result.data.map(lock => ({
-        id: lock.id,
-        userId: lock.userId,
-        userName: lock.user?.username || null,
-        userEmail: lock.user?.ldapAttributes?.mail || null,
-        systemId: lock.systemId,
-        systemName: lock.system?.description || lock.systemId,
-        lockedBy: lock.lockedBy,
-        lockedByName: lockedByMap.get(lock.lockedBy)?.username || null,
-        lockedAt: toIsoString(lock.lockedAt),
-        lockReason: lock.lockReason || null
-    }));
-
-    return {
-        data,
-        meta: result.meta
-    };
-};
-
-export const getLockStatus = async (userId, systemId) => {
-    const lock = await repo.getLockRecord(userId, systemId);
-    if (!lock || !lock.isLocked) {
-        return { isLocked: false, lockDetails: null };
-    }
-
-    const lockedByMap = await getLockedByMap([lock]);
-    const lockedByName = lockedByMap.get(lock.lockedBy)?.username || null;
-
-    return {
-        isLocked: true,
-        lockDetails: {
-            lockedBy: lock.lockedBy,
-            lockedByName,
-            lockedAt: toIsoString(lock.lockedAt),
-            lockReason: lock.lockReason || null,
-            daysLocked: calculateDaysLocked(lock.lockedAt)
-        }
-    };
 };

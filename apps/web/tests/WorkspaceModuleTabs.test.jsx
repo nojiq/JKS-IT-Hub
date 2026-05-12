@@ -24,7 +24,6 @@ const requestsItems = [
 const usersItems = [
     { label: 'Overview', to: '/users' },
     { label: 'Directory', to: '/users/directory' },
-    { label: 'Locked Credentials', to: '/users/locked' },
     { label: 'History', to: '/users/history' }
 ];
 
@@ -86,7 +85,6 @@ describe('WorkspaceModuleTabs', () => {
         ['/requests/approvals', requestsItems, 'Approvals'],
         ['/users', usersItems, 'Overview'],
         ['/users/directory', usersItems, 'Directory'],
-        ['/users/locked', usersItems, 'Locked Credentials'],
         ['/users/history', usersItems, 'History'],
         ['/onboarding', onboardingItems, 'Overview'],
         ['/onboarding/new-joiner', onboardingItems, 'New Joiner'],

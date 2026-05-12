@@ -3,25 +3,26 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import UserDetailPage from '../src/features/users/user-detail-page.jsx';
 
-vi.mock('@tanstack/react-query', async () => {
-    const actual = await vi.importActual('@tanstack/react-query');
-    return {
-        ...actual,
-        useQuery: vi.fn(),
-        useMutation: vi.fn(),
-        useQueryClient: vi.fn()
-    };
-});
+vi.mock('@tanstack/react-query', () => ({
+    useQuery: vi.fn(),
+    useMutation: vi.fn(),
+    useQueryClient: vi.fn(() => ({
+        invalidateQueries: vi.fn()
+    }))
+}));
 
 vi.mock('../src/features/credentials/hooks/useCredentials.js', () => ({
     useUserCredentials: vi.fn(),
     useInitiateRegeneration: vi.fn(),
-    useConfirmRegeneration: vi.fn(),
-    useUnlockCredential: vi.fn()
+    useConfirmRegeneration: vi.fn()
 }));
 
 vi.mock('../src/features/credentials/generation/CredentialGenerator.jsx', () => ({
     default: () => <div>Credential Generator Stub</div>
+}));
+
+vi.mock('../src/features/credentials/regeneration', () => ({
+    CredentialRegeneration: () => <div>Credential Regeneration Stub</div>
 }));
 
 vi.mock('../src/features/credentials/components/CredentialList.jsx', () => ({
@@ -40,7 +41,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     useConfirmRegeneration,
     useInitiateRegeneration,
-    useUnlockCredential,
     useUserCredentials
 } from '../src/features/credentials/hooks/useCredentials.js';
 
@@ -51,6 +51,30 @@ const createQueryResult = (overrides = {}) => ({
     refetch: vi.fn(),
     ...overrides
 });
+
+/** Stable query payloads so `user` identity does not change every render (avoids effect loops). */
+const sessionPayload = Object.freeze({
+    user: Object.freeze({
+        id: 'admin-1',
+        username: 'admin.user',
+        role: 'admin',
+        status: 'active'
+    })
+});
+
+const userDetailPayload = Object.freeze({
+    user: Object.freeze({
+        id: 'user-1',
+        username: 'jane.doe',
+        role: 'requester',
+        status: 'active',
+        ldapSyncedAt: '2026-04-16T01:00:00.000Z',
+        ldapFields: Object.freeze({ mail: 'jane@example.com', department: 'Finance' })
+    }),
+    fields: Object.freeze(['mail', 'department'])
+});
+
+const historyPayload = Object.freeze([]);
 
 const renderPage = () => {
     const router = createMemoryRouter(
@@ -71,7 +95,6 @@ describe('UserDetailPage', () => {
         useUserCredentials.mockReturnValue(createQueryResult({ data: { data: [] } }));
         useInitiateRegeneration.mockReturnValue({ mutateAsync: vi.fn() });
         useConfirmRegeneration.mockReturnValue({ mutateAsync: vi.fn() });
-        useUnlockCredential.mockReturnValue({ mutateAsync: vi.fn() });
     });
 
     it('renders shared loading state while session check pending', () => {
@@ -93,28 +116,18 @@ describe('UserDetailPage', () => {
         useQuery.mockImplementation(({ queryKey }) => {
             if (queryKey[0] === 'session') {
                 return createQueryResult({
-                    data: { user: { id: 'admin-1', username: 'admin.user', role: 'admin', status: 'active' } }
+                    data: sessionPayload
                 });
             }
 
             if (queryKey[0] === 'users' && queryKey[2] !== 'history') {
                 return createQueryResult({
-                    data: {
-                        user: {
-                            id: 'user-1',
-                            username: 'jane.doe',
-                            role: 'requester',
-                            status: 'active',
-                            ldapSyncedAt: '2026-04-16T01:00:00.000Z',
-                            ldapFields: { mail: 'jane@example.com', department: 'Finance' }
-                        },
-                        fields: ['mail', 'department']
-                    }
+                    data: userDetailPayload
                 });
             }
 
             if (queryKey[0] === 'users' && queryKey[2] === 'history') {
-                return createQueryResult({ data: [] });
+                return createQueryResult({ data: historyPayload });
             }
 
             return createQueryResult();
