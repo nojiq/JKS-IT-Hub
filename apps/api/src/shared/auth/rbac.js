@@ -3,6 +3,7 @@
  */
 
 export const ROLES = {
+    DEV: 'dev',
     IT: 'it',
     ADMIN: 'admin',
     HEAD_IT: 'head_it',
@@ -10,9 +11,9 @@ export const ROLES = {
 };
 
 export const ROLE_GROUPS = {
-    IT_STAFF: [ROLES.IT, ROLES.ADMIN, ROLES.HEAD_IT],
-    ADMIN_STAFF: [ROLES.ADMIN, ROLES.HEAD_IT],
-    ALL: [ROLES.IT, ROLES.ADMIN, ROLES.HEAD_IT, ROLES.REQUESTER]
+    IT_STAFF: [ROLES.DEV, ROLES.IT, ROLES.ADMIN, ROLES.HEAD_IT],
+    ADMIN_STAFF: [ROLES.DEV, ROLES.ADMIN, ROLES.HEAD_IT],
+    ALL: [ROLES.DEV, ROLES.IT, ROLES.ADMIN, ROLES.HEAD_IT, ROLES.REQUESTER]
 };
 
 /**
@@ -31,6 +32,15 @@ export const hasItRole = (user) => {
  */
 export const hasAdminRole = (user) => {
     return user && ROLE_GROUPS.ADMIN_STAFF.includes(user.role);
+};
+
+/**
+ * Developer role: full product access including modules gated off from other staff.
+ * @param {Object} user
+ * @returns {boolean}
+ */
+export const hasDevRole = (user) => {
+    return Boolean(user && user.role === ROLES.DEV);
 };
 
 /**

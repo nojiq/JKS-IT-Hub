@@ -59,14 +59,14 @@ vi.mock('../src/features/onboarding/pages/NewJoinerPage.jsx', () => ({
 import { fetchSession } from '../src/features/users/auth-api';
 import { router as appRouter } from '../src/routes/router.jsx';
 
-const adminUser = {
-    id: 'user-1',
-    username: 'alice.it',
-    role: 'admin',
+const devUser = {
+    id: 'user-dev',
+    username: 'dev.user',
+    role: 'dev',
     status: 'active'
 };
 
-const renderApp = ({ initialEntry = '/onboarding', user = adminUser } = {}) => {
+const renderApp = ({ initialEntry = '/onboarding', user = devUser } = {}) => {
     const queryClient = new QueryClient({
         defaultOptions: {
             queries: { retry: false, gcTime: 0 }
@@ -94,40 +94,28 @@ describe('Onboarding navigation', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         fetchSession.mockResolvedValue({
-            user: adminUser
+            user: devUser
         });
     });
 
-    it('renders shared onboarding module tabs and keeps overview active at the root route', async () => {
+    it('renders onboarding shell for developer users', async () => {
         renderApp();
 
         expect(await screen.findByRole('heading', { name: 'Onboarding' })).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Onboarding' })).toBeInTheDocument();
-        expect(screen.getByText('Prepare access, defaults, and credential packs for new joiners.')).toBeInTheDocument();
-        expect(screen.getByRole('navigation', { name: 'Onboarding sections' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page');
-        expect(screen.getByRole('link', { name: 'New Joiner' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Defaults' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Catalog' })).toBeInTheDocument();
-        expect(document.querySelector('.onboarding-subnav')).not.toBeInTheDocument();
         expect(screen.getByText('Overview Content')).toBeInTheDocument();
     });
 
-    it('keeps new joiner active inside shared module tabs', async () => {
+    it('renders new joiner route for developer users', async () => {
         renderApp({ initialEntry: '/onboarding/new-joiner' });
 
         expect(await screen.findByText('New Joiner Content')).toBeInTheDocument();
-        expect(screen.getByRole('navigation', { name: 'Onboarding sections' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'New Joiner' })).toHaveAttribute('aria-current', 'page');
-        expect(screen.getByRole('link', { name: 'Defaults' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Catalog' })).toBeInTheDocument();
-        expect(screen.getByText('New Joiner Content')).toBeInTheDocument();
     });
 
     it.each([
         ['it'],
-        ['head_it']
-    ])('allows %s users to open the onboarding module', async (role) => {
+        ['head_it'],
+        ['admin']
+    ])('redirects %s users away from onboarding', async (role) => {
         renderApp({
             user: {
                 id: `user-${role}`,
@@ -137,8 +125,8 @@ describe('Onboarding navigation', () => {
             }
         });
 
-        expect(await screen.findByRole('heading', { name: 'Onboarding' })).toBeInTheDocument();
-        expect(screen.getByRole('navigation', { name: 'Onboarding sections' })).toBeInTheDocument();
+        expect(await screen.findByText('Dashboard Content')).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Onboarding' })).not.toBeInTheDocument();
     });
 
     it('redirects unauthorized users to / and does not render the onboarding shell', async () => {

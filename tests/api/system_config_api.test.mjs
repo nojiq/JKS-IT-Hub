@@ -37,11 +37,11 @@ before(async () => {
     config = getAuthConfig();
     app = await build();
     
-    // Create a test IT user and login
+    // Create a test developer user and login (system configuration is developer-gated)
     testUser = await prisma.user.create({
         data: {
             username: `api-test-${randomUUID()}`,
-            role: "it"
+            role: "dev"
         }
     });
 

@@ -9,6 +9,7 @@ test("Requests Workflow Enforcement", async (t) => {
     let requesterItUser;
     let otherAdminUser;
     let otherItUser;
+    let devApproverUser;
     let requestIdSubmitted;
     let requestIdItReviewed;
 
@@ -30,6 +31,9 @@ test("Requests Workflow Enforcement", async (t) => {
             });
             otherItUser = await prisma.user.create({
                 data: { username: `other-it-${randomUUID()}`, role: "it", status: "active" }
+            });
+            devApproverUser = await prisma.user.create({
+                data: { username: `dev-approver-${randomUUID()}`, role: "dev", status: "active" }
             });
 
             // Create request by Admin (to test self-approval)
@@ -146,10 +150,9 @@ test("Requests Workflow Enforcement", async (t) => {
 
     // Test 3: Status Transition Enforcement
     await t.test("approveRequest - Should block approval from SUBMITTED", async () => {
-        // Try to approve a SUBMITTED request (requestIdSubmitted)
-        // Even if user is valid admin (otherAdminUser)
+        // Try to approve a SUBMITTED request (requestIdSubmitted) as developer (valid actor, wrong status)
         await assert.rejects(
-            async () => service.approveRequest(requestIdSubmitted, otherAdminUser),
+            async () => service.approveRequest(requestIdSubmitted, devApproverUser),
             (err) => {
                 assert.match(err.message, /Cannot approve request in status: SUBMITTED. Request must be IT reviewed first./);
                 assert.equal(err.name, "ValidationError");
@@ -179,7 +182,7 @@ test("Requests Workflow Enforcement", async (t) => {
         const ids = [requestIdItReviewed, requestIdSubmitted].filter(Boolean);
 
         // Build list of all user IDs
-        const userIds = [requesterAdminUser?.id, requesterItUser?.id, otherAdminUser?.id, otherItUser?.id].filter(Boolean);
+        const userIds = [requesterAdminUser?.id, requesterItUser?.id, otherAdminUser?.id, otherItUser?.id, devApproverUser?.id].filter(Boolean);
 
         // Delete from deepest dependencies to shallowest
         // 1. Delete all audit logs for these users' actions

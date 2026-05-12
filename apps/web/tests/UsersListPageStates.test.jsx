@@ -120,7 +120,6 @@ describe('UsersListPage states', () => {
         renderPage();
 
         expect(screen.getByText('User Directory')).toBeInTheDocument();
-        expect(screen.getByText('Review synced LDAP records, confirm account status, and open credential actions from the directory.')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Sync LDAP' })).toBeInTheDocument();
         expect(screen.queryByText('LDAP Synchronization')).not.toBeInTheDocument();
         expect(screen.queryByText('Run directory sync here before reviewing user records or credential data.')).not.toBeInTheDocument();

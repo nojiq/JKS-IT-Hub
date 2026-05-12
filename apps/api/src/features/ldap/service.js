@@ -33,6 +33,59 @@ const buildUserFilter = (template, username) => {
     .replaceAll("%s", escaped);
 };
 
+/**
+ * LDAP login identifier: plain username uses the configured filter only;
+ * values containing `@` are also matched against mail and userPrincipalName.
+ */
+export const buildLoginUserFilter = (template, login) => {
+  const primary = buildUserFilter(template, login);
+  if (!login.includes("@")) {
+    return primary;
+  }
+  const escaped = escapeLdapFilter(login);
+  return `(|(mail=${escaped})(userPrincipalName=${escaped})${primary})`;
+};
+
+const normalizeLdapAttributeValue = (value) => {
+  if (Array.isArray(value)) {
+    const first = value.find((item) => item !== undefined && item !== null);
+    return normalizeLdapAttributeValue(first);
+  }
+  if (value && typeof value === "object" && Buffer.isBuffer(value)) {
+    return value.toString("utf8").trim() || null;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || null;
+  }
+  if (value != null && typeof value !== "object") {
+    const s = String(value).trim();
+    return s || null;
+  }
+  return null;
+};
+
+/**
+ * Pick the app username from an LDAP entry (aligns with sync username attribute when set).
+ */
+export const extractCanonicalLdapUsername = (ldapUser, preferredAttribute) => {
+  const entry = ldapUser?.attributes;
+  if (!entry || typeof entry !== "object") {
+    return null;
+  }
+  const fromPreferred = preferredAttribute
+    ? normalizeLdapAttributeValue(entry[preferredAttribute])
+    : null;
+  if (fromPreferred) {
+    return fromPreferred;
+  }
+  return (
+    normalizeLdapAttributeValue(entry.uid) ??
+    normalizeLdapAttributeValue(entry.sAMAccountName) ??
+    null
+  );
+};
+
 const buildTlsOptions = ({ tlsCaPath, rejectUnauthorized }) => {
   const options = {};
   if (tlsCaPath) {
@@ -76,17 +129,28 @@ const safeUnbind = async (client) => {
   }
 };
 
-export const authenticateLdapUser = async (config, { username, password }) => {
+export const authenticateLdapUser = async (config, { username, password, usernameAttribute }) => {
   const { client, tlsOptions } = createLdapClient(config);
 
   try {
     await bindServiceAccount(client, config, tlsOptions);
 
-    const filter = buildUserFilter(config.userFilter, username);
+    const filter = buildLoginUserFilter(config.userFilter, username);
+    const searchAttributes = new Set([
+      "dn",
+      "cn",
+      "mail",
+      "uid",
+      "sAMAccountName",
+      "userPrincipalName"
+    ]);
+    if (usernameAttribute) {
+      searchAttributes.add(usernameAttribute);
+    }
     const { searchEntries } = await client.search(config.baseDn, {
       scope: "sub",
       filter,
-      attributes: ["dn", "cn", "mail", "uid"]
+      attributes: [...searchAttributes]
     });
 
     const entry = searchEntries[0];

@@ -40,6 +40,29 @@ import {
     fetchUsersForOnboarding
 } from '../src/features/onboarding/onboarding-api.js';
 
+const createMatchMedia = ({ isMobile = false, isTablet = false, isDesktop = true } = {}) =>
+    vi.fn().mockImplementation((query) => {
+        let matches = false;
+        if (query === '(max-width: 767px)') {
+            matches = isMobile;
+        } else if (query === '(min-width: 768px) and (max-width: 1023px)') {
+            matches = isTablet;
+        } else if (query === '(min-width: 1024px)') {
+            matches = isDesktop;
+        }
+
+        return {
+            matches,
+            media: query,
+            onchange: null,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            dispatchEvent: vi.fn()
+        };
+    });
+
 const renderApp = async (initialPath = '/onboarding') => {
     const queryClient = new QueryClient({
         defaultOptions: {
@@ -80,12 +103,14 @@ const renderApp = async (initialPath = '/onboarding') => {
 describe('OnboardingHomePage route', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        window.localStorage.clear();
+        window.matchMedia = createMatchMedia();
 
         fetchSession.mockResolvedValue({
             user: {
                 id: 'user-1',
-                username: 'alice.it',
-                role: 'admin',
+                username: 'alice.dev',
+                role: 'dev',
                 status: 'active'
             }
         });
@@ -135,10 +160,10 @@ describe('OnboardingHomePage route', () => {
         await renderApp('/onboarding');
 
         expect(await screen.findByRole('heading', { name: 'Onboarding' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Overview' })).toHaveClass('is-active');
-        expect(screen.getByRole('link', { name: 'New Joiner' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Defaults' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Catalog' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Onboarding' })).toHaveClass('is-active');
+        expect(screen.getByRole('link', { name: /open setup flow/i })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /review reusable defaults/i })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /open app catalog/i })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Start New Joiner' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'In Progress' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Ready for Credential Generation' })).toBeInTheDocument();

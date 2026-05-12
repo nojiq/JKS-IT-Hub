@@ -1,5 +1,7 @@
-const IT_ROLES = ["it", "admin", "head_it"];
-const ADMIN_ROLES = ["admin", "head_it"];
+import { ADMIN_NAV_ROLES, DEV_ONLY_ROLES, IT_STAFF_ROLES } from "../auth/workspaceRoles.js";
+
+const IT_ROLES = IT_STAFF_ROLES;
+const ADMIN_ROLES = ADMIN_NAV_ROLES;
 
 export const workspaceGroups = [
   {
@@ -12,6 +14,7 @@ export const workspaceGroups = [
         label: "Requests",
         icon: "requests",
         to: "/requests",
+        roles: DEV_ONLY_ROLES,
         launcherPriority: 1,
         launcherDescription: "Review purchase requests, move approvals forward, and resolve blocked items.",
         launcherActionLabel: "Open Requests",
@@ -28,7 +31,7 @@ export const workspaceGroups = [
             }
           },
           { label: "Review Queue", to: "/requests/review" },
-          { label: "Approvals", to: "/requests/approvals", roles: ADMIN_ROLES }
+          { label: "Approvals", to: "/requests/approvals", roles: DEV_ONLY_ROLES }
         ]
       },
       {
@@ -36,7 +39,7 @@ export const workspaceGroups = [
         label: "Onboarding",
         icon: "onboarding",
         to: "/onboarding",
-        roles: IT_ROLES,
+        roles: DEV_ONLY_ROLES,
         launcherPriority: 2,
         launcherDescription: "Prepare access, assign defaults, and generate credentials for new joiners.",
         launcherActionLabel: "Open Onboarding",
@@ -69,7 +72,7 @@ export const workspaceGroups = [
         label: "Maintenance",
         icon: "maintenance",
         to: "/maintenance",
-        roles: IT_ROLES,
+        roles: DEV_ONLY_ROLES,
         launcherPriority: 4,
         launcherDescription: "Schedule preventive work, assign tasks, and close overdue actions.",
         launcherActionLabel: "Open Maintenance",
@@ -89,8 +92,8 @@ export const workspaceGroups = [
     id: "administration",
     label: "Administration",
     items: [
-      { id: "systems", label: "Systems", icon: "systems", to: "/systems", roles: IT_ROLES },
-      { id: "approvals", label: "Approvals", icon: "approvals", to: "/requests/approvals", roles: ADMIN_ROLES },
+      { id: "systems", label: "Systems", icon: "systems", to: "/systems", roles: DEV_ONLY_ROLES },
+      { id: "approvals", label: "Approvals", icon: "approvals", to: "/requests/approvals", roles: DEV_ONLY_ROLES },
       { id: "audit", label: "Audit", icon: "audit", to: "/audit-logs", roles: ADMIN_ROLES }
     ]
   }

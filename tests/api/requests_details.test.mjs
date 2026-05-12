@@ -18,8 +18,8 @@ async function build() {
 }
 
 let app;
-let requester1, requester2, itUser, adminUser;
-let req1Token, req2Token, itToken, adminToken;
+let requester1, requester2, itUser, adminUser, devUser;
+let req1Token, req2Token, itToken, adminToken, devToken;
 let config;
 let request1Id, request2Id;
 
@@ -42,6 +42,9 @@ test("Requests Details API", async (t) => {
         adminUser = await prisma.user.create({
             data: { username: `admin-${randomUUID()}`, role: "admin", status: "active" }
         });
+        devUser = await prisma.user.create({
+            data: { username: `dev-${randomUUID()}`, role: "dev", status: "active" }
+        });
 
         // Tokens
         const generateToken = async (user) => {
@@ -55,6 +58,7 @@ test("Requests Details API", async (t) => {
         req2Token = await generateToken(requester2);
         itToken = await generateToken(itUser);
         adminToken = await generateToken(adminUser);
+        devToken = await generateToken(devUser);
 
         // Create Requests
         // Request 1: Fully populated with review and approval
@@ -127,21 +131,31 @@ test("Requests Details API", async (t) => {
         assert.equal(response.statusCode, 403);
     });
 
-    await t.test("GET /api/v1/requests/:id - IT User can see any request", async () => {
+    await t.test("GET /api/v1/requests/:id - IT User cannot see another user's request", async () => {
         const response = await app.inject({
             method: "GET",
             url: `/api/v1/requests/${request1Id}`,
             headers: { cookie: `it-hub-session=${itToken}` }
         });
 
-        assert.equal(response.statusCode, 200);
+        assert.equal(response.statusCode, 403);
     });
 
-    await t.test("GET /api/v1/requests/:id - Admin User can see any request", async () => {
+    await t.test("GET /api/v1/requests/:id - Admin User cannot see another user's request", async () => {
         const response = await app.inject({
             method: "GET",
             url: `/api/v1/requests/${request2Id}`,
             headers: { cookie: `it-hub-session=${adminToken}` }
+        });
+
+        assert.equal(response.statusCode, 403);
+    });
+
+    await t.test("GET /api/v1/requests/:id - Developer can see any request", async () => {
+        const response = await app.inject({
+            method: "GET",
+            url: `/api/v1/requests/${request2Id}`,
+            headers: { cookie: `it-hub-session=${devToken}` }
         });
 
         assert.equal(response.statusCode, 200);
@@ -160,7 +174,7 @@ test("Requests Details API", async (t) => {
         if (requester1) await prisma.user.delete({ where: { id: requester1.id } });
         if (requester2) await prisma.user.delete({ where: { id: requester2.id } });
         if (itUser) await prisma.user.delete({ where: { id: itUser.id } });
-        if (adminUser) await prisma.user.delete({ where: { id: adminUser.id } });
+        if (devUser) await prisma.user.delete({ where: { id: devUser.id } });
 
         await prisma.$disconnect();
         await app.close();

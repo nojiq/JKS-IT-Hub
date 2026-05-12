@@ -1,6 +1,6 @@
 import * as repo from './repo.js';
 import { createAuditLog } from '../audit/repo.js'; // Fallback as shared/audit/logger.js missing
-import { hasItRole, hasAdminRole } from '../../shared/auth/rbac.js';
+import { hasDevRole } from '../../shared/auth/rbac.js';
 import {
     notifyNewRequest,
     notifyITReviewComplete,
@@ -82,8 +82,7 @@ export async function getMyRequests(actorUser, filters = {}, pagination = {}) {
 }
 
 export async function getAllRequests(filters = {}, pagination = {}, actorUser) {
-    // Only IT/Admin/Head can view all
-    if (!hasItRole(actorUser) && !hasAdminRole(actorUser)) { // Check both groups just in case
+    if (!hasDevRole(actorUser)) {
         const error = new Error("Unauthorized access");
         error.name = 'Forbidden';
         throw error;
@@ -100,8 +99,7 @@ export async function getRequestDetails(requestId, actorUser) {
 
     // RBAC: If not requester, must be IT/Admin/Head
     if (request.requesterId !== actorUser.id) {
-        const isItOrAdmin = hasItRole(actorUser) || hasAdminRole(actorUser);
-        if (!isItOrAdmin) {
+        if (!hasDevRole(actorUser)) {
             const error = new Error("You do not have permission to view this request");
             error.name = 'Forbidden';
             throw error;
@@ -213,9 +211,9 @@ export async function itReviewRequest(requestId, reviewData, actorUser) {
     // SELF-REVIEW CHECK: Check this BEFORE RBAC for better error message
     await ensureNotSelfReview(existingRequest, actorUser, requestId, 'it_review');
 
-    // RBAC: Only IT/Admin/Head can review (after self-review check)
-    if (!hasItRole(actorUser) && !hasAdminRole(actorUser)) {
-        const error = new Error("Only IT staff can review requests");
+    // RBAC: Only developer role can review (after self-review check)
+    if (!hasDevRole(actorUser)) {
+        const error = new Error("Only the developer role can review requests");
         error.name = 'Forbidden';
         throw error;
     }
@@ -262,8 +260,8 @@ export async function itReviewRequest(requestId, reviewData, actorUser) {
 
 export async function markAlreadyPurchased(requestId, reason, actorUser) {
     // RBAC check
-    if (!hasItRole(actorUser) && !hasAdminRole(actorUser)) {
-        const error = new Error("Only IT staff can mark requests as already purchased");
+    if (!hasDevRole(actorUser)) {
+        const error = new Error("Only the developer role can mark requests as already purchased");
         error.name = 'Forbidden';
         throw error;
     }
@@ -316,8 +314,8 @@ export async function markAlreadyPurchased(requestId, reason, actorUser) {
 
 export async function rejectRequest(requestId, rejectionReason, actorUser) {
     // RBAC check
-    if (!hasItRole(actorUser) && !hasAdminRole(actorUser)) {
-        const error = new Error("Only IT staff can reject requests");
+    if (!hasDevRole(actorUser)) {
+        const error = new Error("Only the developer role can reject requests");
         error.name = 'Forbidden';
         throw error;
     }
@@ -399,9 +397,9 @@ export async function approveRequest(requestId, actorUser) {
         throw error;
     }
 
-    // RBAC: Must be admin or head_it (after self-approval check)
-    if (!hasAdminRole(actorUser)) {
-        const error = new Error("Only Admin or Head of IT can approve requests");
+    // RBAC: Must be developer role (after self-approval check)
+    if (!hasDevRole(actorUser)) {
+        const error = new Error("Only the developer role can approve requests");
         error.name = 'Forbidden';
         throw error;
     }

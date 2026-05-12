@@ -85,7 +85,7 @@ describe('HomePage', () => {
             return createQueryResult();
         });
 
-        const { container } = renderPage({ role: 'admin', username: 'admin.user', status: 'active' });
+        const { container } = renderPage({ role: 'dev', username: 'dev.user', status: 'active' });
 
         expect(screen.getByRole('heading', { name: 'Operations' })).toBeInTheDocument();
         expect(screen.queryByText('Unread Notifications')).not.toBeInTheDocument();
@@ -135,8 +135,8 @@ describe('HomePage', () => {
         renderPage({ role: 'it', username: 'it.user', status: 'active' });
 
         expect(screen.getByRole('heading', { name: 'Operations' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: /open requests/i })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: /open onboarding/i })).toBeInTheDocument();
-        expect(screen.getByText('Start a new joiner setup or manage defaults.')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /open users & credentials/i })).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /open requests/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /open onboarding/i })).not.toBeInTheDocument();
     });
 });

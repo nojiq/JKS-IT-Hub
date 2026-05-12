@@ -1,7 +1,7 @@
 import { getSessionFromRequest } from "./session.js";
 import { createProblemDetails, sendProblem } from "../errors/problemDetails.js";
 
-const IT_ROLES = new Set(["dev", "it", "admin", "head_it"]);
+const DEV_ROLES = new Set(["dev"]);
 
 const isUserDisabled = (user, userRepo) => {
   if (userRepo?.isUserDisabled) {
@@ -10,7 +10,7 @@ const isUserDisabled = (user, userRepo) => {
   return user?.status === "disabled";
 };
 
-export const requireItUser = async (
+export const requireDevUser = async (
   request,
   reply,
   { config, userRepo, forbiddenDetail = "You do not have permission to perform this action." } = {}
@@ -67,7 +67,7 @@ export const requireItUser = async (
     return null;
   }
 
-  if (!IT_ROLES.has(user.role)) {
+  if (!DEV_ROLES.has(user.role)) {
     sendProblem(
       reply,
       createProblemDetails({

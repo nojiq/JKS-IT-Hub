@@ -19,8 +19,8 @@ async function build() {
 }
 
 let app;
-let adminUser, itUser, requesterUser;
-let adminToken, itToken, requesterToken;
+let adminUser, devUser, itUser, requesterUser;
+let adminToken, devToken, itToken, requesterToken;
 let config;
 let requestId;
 
@@ -33,6 +33,10 @@ test("Requests Approval API Endpoints", async (t) => {
         // Create Admin User
         adminUser = await prisma.user.create({
             data: { username: `admin-api-${randomUUID()}`, role: "admin", status: "active" }
+        });
+
+        devUser = await prisma.user.create({
+            data: { username: `dev-api-${randomUUID()}`, role: "dev", status: "active" }
         });
 
         // Create IT User
@@ -49,6 +53,11 @@ test("Requests Approval API Endpoints", async (t) => {
         adminToken = await signSessionToken({
             subject: adminUser.id,
             payload: { username: adminUser.username, role: adminUser.role }
+        }, config.jwt);
+
+        devToken = await signSessionToken({
+            subject: devUser.id,
+            payload: { username: devUser.username, role: devUser.role }
         }, config.jwt);
 
         itToken = await signSessionToken({
@@ -80,13 +89,25 @@ test("Requests Approval API Endpoints", async (t) => {
         const response = await app.inject({
             method: "POST",
             url: `/api/v1/requests/${requestId}/approve`,
-            headers: { cookie: `it-hub-session=${adminToken}` }
+            headers: { cookie: `it-hub-session=${devToken}` }
         });
 
         assert.equal(response.statusCode, 200);
         const body = JSON.parse(response.body);
         assert.equal(body.data.status, "APPROVED");
-        assert.equal(body.data.approvedById, adminUser.id);
+        assert.equal(body.data.approvedById, devUser.id);
+    });
+
+    await t.test("POST /api/v1/requests/:id/approve - Forbidden (Admin User)", async () => {
+        await prisma.itemRequest.update({ where: { id: requestId }, data: { status: "IT_REVIEWED" } });
+
+        const response = await app.inject({
+            method: "POST",
+            url: `/api/v1/requests/${requestId}/approve`,
+            headers: { cookie: `it-hub-session=${adminToken}` }
+        });
+
+        assert.equal(response.statusCode, 403);
     });
 
     await t.test("POST /api/v1/requests/:id/approve - Forbidden (IT User)", async () => {
@@ -119,7 +140,7 @@ test("Requests Approval API Endpoints", async (t) => {
         const response = await app.inject({
             method: "POST",
             url: `/api/v1/requests/${requestId}/approve`,
-            headers: { cookie: `it-hub-session=${adminToken}` }
+            headers: { cookie: `it-hub-session=${devToken}` }
         });
 
         assert.equal(response.statusCode, 400);
@@ -129,7 +150,7 @@ test("Requests Approval API Endpoints", async (t) => {
         const response = await app.inject({
             method: "POST",
             url: `/api/v1/requests/${randomUUID()}/approve`,
-            headers: { cookie: `it-hub-session=${adminToken}` }
+            headers: { cookie: `it-hub-session=${devToken}` }
         });
 
         assert.equal(response.statusCode, 404);
@@ -139,6 +160,7 @@ test("Requests Approval API Endpoints", async (t) => {
     await t.test("Cleanup", async () => {
         if (requestId) await prisma.itemRequest.delete({ where: { id: requestId } });
         if (adminUser) await prisma.user.delete({ where: { id: adminUser.id } });
+        if (devUser) await prisma.user.delete({ where: { id: devUser.id } });
         if (itUser) await prisma.user.delete({ where: { id: itUser.id } });
         if (requesterUser) await prisma.user.delete({ where: { id: requesterUser.id } });
         await prisma.$disconnect();

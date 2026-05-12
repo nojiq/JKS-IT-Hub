@@ -37,8 +37,8 @@ import OnboardingHomePage from "../features/onboarding/pages/OnboardingHomePage.
 import { NewJoinerPage } from "../features/onboarding/pages/NewJoinerPage.jsx";
 import { RequestsLayout } from "../features/requests/pages/RequestsLayout.jsx";
 import RequestsHomePage from "../features/requests/pages/RequestsHomePage.jsx";
-
-const ADMIN_ROLES = ["admin", "head_it"];
+import { RequestsAccessGate } from "../features/requests/pages/RequestsAccessGate.jsx";
+import { DEV_ONLY_ROLES } from "../shared/auth/workspaceRoles.js";
 
 const RequireRoles = ({ roles, children }) => {
   const { user } = useOutletContext() ?? {};
@@ -68,7 +68,14 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: "audit-logs", element: <AuditLogPage /> },
-      { path: "systems", element: <SystemManagementPage /> },
+      {
+        path: "systems",
+        element: (
+          <RequireRoles roles={DEV_ONLY_ROLES}>
+            <SystemManagementPage />
+          </RequireRoles>
+        )
+      },
       {
         path: "maintenance",
         element: <MaintenanceLayout />,
@@ -85,20 +92,25 @@ export const router = createBrowserRouter([
       },
       {
         path: "requests",
-        element: <RequestsLayout />,
+        element: <RequestsAccessGate />,
         children: [
-          { index: true, element: <RequestsHomePage /> },
-          { path: "new", element: <SubmitRequestPage /> },
-          { path: "my-requests", element: <MyRequestsPage /> },
-          { path: ":id", element: <MyRequestsPage /> },
-          { path: "review", element: <ReviewRequestsPage /> },
           {
-            path: "approvals",
-            element: (
-              <RequireRoles roles={ADMIN_ROLES}>
-                <AdminApprovalPage />
-              </RequireRoles>
-            )
+            element: <RequestsLayout />,
+            children: [
+              { index: true, element: <RequestsHomePage /> },
+              { path: "new", element: <SubmitRequestPage /> },
+              { path: "my-requests", element: <MyRequestsPage /> },
+              { path: ":id", element: <MyRequestsPage /> },
+              { path: "review", element: <ReviewRequestsPage /> },
+              {
+                path: "approvals",
+                element: (
+                  <RequireRoles roles={DEV_ONLY_ROLES}>
+                    <AdminApprovalPage />
+                  </RequireRoles>
+                )
+              }
+            ]
           }
         ]
       },

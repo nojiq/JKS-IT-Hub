@@ -82,7 +82,7 @@ test("Requests Submission API", async (t) => {
         itUser = await prisma.user.create({
             data: {
                 username: `it-submit-${randomUUID()}`,
-                role: "it",
+                role: "dev",
                 status: "active"
             }
         });
@@ -179,7 +179,7 @@ test("Requests Submission API", async (t) => {
         assert.ok(invoiceUploadedAuditLog, "invoice_uploaded audit log should exist");
     });
 
-    await t.test("GET /api/v1/requests - IT user can see newly submitted request", async () => {
+    await t.test("GET /api/v1/requests - developer can see newly submitted request", async () => {
         const response = await app.inject({
             method: "GET",
             url: "/api/v1/requests?status=SUBMITTED&page=1&perPage=20",

@@ -19,8 +19,8 @@ async function build() {
 }
 
 let app;
-let itUser, adminUser, headItUser, requesterUser;
-let itToken, adminToken, headItToken, requesterToken;
+let itUser, adminUser, headItUser, devUser, requesterUser;
+let itToken, adminToken, headItToken, devToken, requesterToken;
 let config;
 let requestId;
 
@@ -51,6 +51,14 @@ before(async () => {
         }
     });
 
+    devUser = await prisma.user.create({
+        data: {
+            username: `dev-review-${randomUUID()}`,
+            role: "dev",
+            status: "active"
+        }
+    });
+
     // Create Requester User
     requesterUser = await prisma.user.create({
         data: {
@@ -74,6 +82,11 @@ before(async () => {
         payload: { username: headItUser.username, role: headItUser.role }
     }, config.jwt);
 
+    devToken = await signSessionToken({
+        subject: devUser.id,
+        payload: { username: devUser.username, role: devUser.role }
+    }, config.jwt);
+
     requesterToken = await signSessionToken({
         subject: requesterUser.id,
         payload: { username: requesterUser.username, role: requesterUser.role }
@@ -95,7 +108,7 @@ before(async () => {
 });
 
 after(async () => {
-    const userIds = [itUser?.id, adminUser?.id, headItUser?.id, requesterUser?.id].filter(Boolean);
+    const userIds = [itUser?.id, adminUser?.id, headItUser?.id, devUser?.id, requesterUser?.id].filter(Boolean);
     if (requestId) {
         await prisma.inAppNotification.deleteMany({ where: { referenceId: requestId } });
         await prisma.emailNotification.deleteMany({ where: { referenceId: requestId } });
@@ -118,7 +131,7 @@ test("IT Review API Endpoints", async (t) => {
         const response = await app.inject({
             method: "POST",
             url: `/api/v1/requests/${requestId}/it-review`,
-            headers: { cookie: `it-hub-session=${itToken}` },
+            headers: { cookie: `it-hub-session=${devToken}` },
             payload: {
                 itReview: "Reviewed via API"
             }
@@ -136,7 +149,7 @@ test("IT Review API Endpoints", async (t) => {
         const response = await app.inject({
             method: "POST",
             url: `/api/v1/requests/${requestId}/already-purchased`,
-            headers: { cookie: `it-hub-session=${itToken}` },
+            headers: { cookie: `it-hub-session=${devToken}` },
             payload: {
                 reason: "Already have it"
             }
@@ -153,7 +166,7 @@ test("IT Review API Endpoints", async (t) => {
         const response = await app.inject({
             method: "POST",
             url: `/api/v1/requests/${requestId}/already-purchased`,
-            headers: { cookie: `it-hub-session=${itToken}` },
+            headers: { cookie: `it-hub-session=${devToken}` },
             payload: {}
         });
 
@@ -167,7 +180,7 @@ test("IT Review API Endpoints", async (t) => {
         const response = await app.inject({
             method: "POST",
             url: `/api/v1/requests/${requestId}/reject`,
-            headers: { cookie: `it-hub-session=${itToken}` },
+            headers: { cookie: `it-hub-session=${devToken}` },
             payload: {
                 rejectionReason: "Denied"
             }
@@ -203,7 +216,20 @@ test("IT Review API Endpoints", async (t) => {
         assert.equal(response.statusCode, 401);
     });
 
-    await t.test("Access Control: Admin can review requests", async () => {
+    await t.test("Access Control: IT user cannot it-review", async () => {
+        await prisma.itemRequest.update({ where: { id: requestId }, data: { status: "SUBMITTED" } });
+
+        const response = await app.inject({
+            method: "POST",
+            url: `/api/v1/requests/${requestId}/it-review`,
+            headers: { cookie: `it-hub-session=${itToken}` },
+            payload: { itReview: "Should fail" }
+        });
+
+        assert.equal(response.statusCode, 403);
+    });
+
+    await t.test("Access Control: Admin cannot it-review requests", async () => {
         await prisma.itemRequest.update({ where: { id: requestId }, data: { status: "SUBMITTED" } });
 
         const response = await app.inject({
@@ -213,12 +239,10 @@ test("IT Review API Endpoints", async (t) => {
             payload: { itReview: "Admin review" }
         });
 
-        assert.equal(response.statusCode, 200);
-        const body = JSON.parse(response.body);
-        assert.equal(body.data.status, "IT_REVIEWED");
+        assert.equal(response.statusCode, 403);
     });
 
-    await t.test("Access Control: Head IT can mark already purchased", async () => {
+    await t.test("Access Control: Head IT cannot mark already purchased", async () => {
         await prisma.itemRequest.update({ where: { id: requestId }, data: { status: "SUBMITTED" } });
 
         const response = await app.inject({
@@ -228,16 +252,14 @@ test("IT Review API Endpoints", async (t) => {
             payload: { reason: "Stocked by IT" }
         });
 
-        assert.equal(response.statusCode, 200);
-        const body = JSON.parse(response.body);
-        assert.equal(body.data.status, "ALREADY_PURCHASED");
+        assert.equal(response.statusCode, 403);
     });
 
     await t.test("Validation: Missing reason for rejection", async () => {
         const response = await app.inject({
             method: "POST",
             url: `/api/v1/requests/${requestId}/reject`,
-            headers: { cookie: `it-hub-session=${itToken}` },
+            headers: { cookie: `it-hub-session=${devToken}` },
             payload: {} // Missing rejectionReason
         });
 
@@ -250,7 +272,7 @@ test("IT Review API Endpoints", async (t) => {
         const response = await app.inject({
             method: "POST",
             url: `/api/v1/requests/${requestId}/reject`,
-            headers: { cookie: `it-hub-session=${itToken}` },
+            headers: { cookie: `it-hub-session=${devToken}` },
             payload: { rejectionReason: "Late rejection" }
         });
 

@@ -5,10 +5,10 @@ import { fetchAllRequests } from "../requests/api/requestsApi.js";
 import { WorkspacePageHeader } from "../../shared/workspace/WorkspacePageHeader.jsx";
 import { ModuleLauncherCard } from "../../shared/workspace/ModuleLauncherCard.jsx";
 import { resolveLauncherModules } from "../../shared/workspace/workspaceModules.js";
+import { DEV_ROLE } from "../../shared/auth/workspaceRoles.js";
 import { fetchUsers } from "./users-api.js";
 import "../../shared/workspace/workspace.css";
 
-const ADMIN_ROLES = ["admin", "head_it"];
 const EMPTY_USERS = [];
 const EMPTY_REQUESTS = [];
 const EMPTY_WINDOWS = [];
@@ -28,7 +28,7 @@ export default function HomePage() {
     return null;
   }
 
-  const isAdminUser = ADMIN_ROLES.includes(user.role);
+  const isDevUser = user.role === DEV_ROLE;
   const launcherModules = resolveLauncherModules(user);
 
   const usersQuery = useQuery({
@@ -40,19 +40,21 @@ export default function HomePage() {
   const requestsReviewQuery = useQuery({
     queryKey: ["requests", "review-home", { status: "SUBMITTED", page: "1", perPage: "5" }],
     queryFn: () => fetchAllRequests({ status: "SUBMITTED", page: "1", perPage: "5" }),
+    enabled: isDevUser,
     retry: false
   });
 
   const requestsApprovalQuery = useQuery({
     queryKey: ["requests", "approval-home", { status: "IT_REVIEWED", page: "1", perPage: "5" }],
     queryFn: () => fetchAllRequests({ status: "IT_REVIEWED", page: "1", perPage: "5" }),
-    enabled: isAdminUser,
+    enabled: isDevUser,
     retry: false
   });
 
   const maintenanceQuery = useQuery({
     queryKey: ["maintenance", "windows", "module-launcher"],
     queryFn: () => fetchWindows({ page: "1", perPage: "20", status: ["SCHEDULED", "UPCOMING", "OVERDUE"] }),
+    enabled: isDevUser,
     retry: false
   });
 

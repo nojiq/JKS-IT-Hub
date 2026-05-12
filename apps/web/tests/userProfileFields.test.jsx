@@ -137,7 +137,7 @@ describe("User profile fields", () => {
   it("shows an edit button for IT users and saves dynamic profile field values", async () => {
     renderUserDetail();
 
-    const editButton = await screen.findByRole("button", { name: "Edit profile fields" });
+    const editButton = await screen.findByRole("button", { name: /edit identity/i });
     expect(editButton).toBeInTheDocument();
     expect(screen.getAllByText("Source: Manual").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Source: LDAP").length).toBeGreaterThan(0);
@@ -150,7 +150,7 @@ describe("User profile fields", () => {
     fireEvent.change(nameInput, { target: { value: "" } });
     fireEvent.change(nameInput, { target: { value: "Abdullah Updated" } });
 
-    fireEvent.click(screen.getByRole("button", { name: "Save profile fields" }));
+    fireEvent.click(screen.getByRole("button", { name: /save identity changes/i }));
 
     await waitFor(() => {
       expect(updateUserProfileFields).toHaveBeenCalledWith("user-1", {
@@ -169,7 +169,7 @@ describe("User profile fields", () => {
     renderUserDetail();
 
     await screen.findByRole("heading", { name: "abdullah.fauzi" });
-    expect(screen.queryByRole("button", { name: "Edit profile fields" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /edit identity/i })).not.toBeInTheDocument();
     expect(screen.getByText("********")).toBeInTheDocument();
     expect(screen.queryByText("Secret123!")).not.toBeInTheDocument();
   });

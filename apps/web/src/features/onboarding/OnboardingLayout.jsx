@@ -2,12 +2,13 @@ import { Navigate, Outlet, useOutletContext } from "react-router-dom";
 import { WorkspacePageHeader } from "../../shared/workspace/WorkspacePageHeader";
 import "./onboarding.css";
 
-const IT_ROLES = ["it", "admin", "head_it"];
+import { DEV_ONLY_ROLES } from "../../shared/auth/workspaceRoles.js";
 
+const ONBOARDING_ROLES = DEV_ONLY_ROLES;
 export function OnboardingLayout() {
   const { user } = useOutletContext() ?? {};
 
-  if (!user || !IT_ROLES.includes(user.role)) {
+  if (!user || !ONBOARDING_ROLES.includes(user.role)) {
     return <Navigate replace to="/" />;
   }
 

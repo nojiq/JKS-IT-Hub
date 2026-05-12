@@ -8,7 +8,7 @@ import { __setTransporter } from '../../apps/api/src/features/notifications/emai
 describe('Requests Notifications Integration', () => {
     let requester;
     let itStaff;
-    let adminStaff;
+    let devStaff;
     let mockTransporter;
 
     beforeEach(async () => {
@@ -21,7 +21,7 @@ describe('Requests Notifications Integration', () => {
         // Cleanup
         await prisma.emailNotification.deleteMany();
         await prisma.itemRequest.deleteMany();
-        await prisma.user.deleteMany({ where: { username: { in: ['requester_notif', 'it_notif', 'admin_notif', 'requester_notif2'] } } });
+        await prisma.user.deleteMany({ where: { username: { in: ['requester_notif', 'it_notif', 'dev_notif', 'requester_notif2'] } } });
 
         // Create users
         requester = await prisma.user.create({
@@ -30,8 +30,8 @@ describe('Requests Notifications Integration', () => {
         itStaff = await prisma.user.create({
             data: { username: 'it_notif', role: 'it', status: 'active', ldapAttributes: { mail: 'it@example.com' } }
         });
-        adminStaff = await prisma.user.create({
-            data: { username: 'admin_notif', role: 'admin', status: 'active', ldapAttributes: { mail: 'admin@example.com' } }
+        devStaff = await prisma.user.create({
+            data: { username: 'dev_notif', role: 'dev', status: 'active', ldapAttributes: { mail: 'dev@example.com' } }
         });
     });
 
@@ -41,7 +41,7 @@ describe('Requests Notifications Integration', () => {
 
         await prisma.emailNotification.deleteMany();
         await prisma.itemRequest.deleteMany();
-        await prisma.user.deleteMany({ where: { username: { in: ['requester_notif', 'it_notif', 'admin_notif', 'requester_notif2'] } } });
+        await prisma.user.deleteMany({ where: { username: { in: ['requester_notif', 'it_notif', 'dev_notif', 'requester_notif2'] } } });
     });
 
     it('should create notification for IT staff when request is submitted', async () => {
@@ -69,7 +69,7 @@ describe('Requests Notifications Integration', () => {
 
         await prisma.emailNotification.deleteMany({ where: { referenceId: request.id } });
 
-        request = await requestService.itReviewRequest(request.id, { itReview: 'Looks good' }, itStaff);
+        request = await requestService.itReviewRequest(request.id, { itReview: 'Looks good' }, devStaff);
 
         await new Promise(r => setTimeout(r, 50));
 
@@ -86,22 +86,22 @@ describe('Requests Notifications Integration', () => {
         const adminNotif = await prisma.emailNotification.findFirst({
             where: {
                 referenceId: request.id,
-                recipientEmail: { contains: 'admin@example.com' },
+                recipientEmail: { contains: 'dev@example.com' },
                 templateType: 'pending_approval'
             }
         });
-        assert.ok(adminNotif, 'Should notify admin for pending approval');
+        assert.ok(adminNotif, 'Should notify developer for pending approval');
     });
 
     it('should notify requester when request is approved', async () => {
         const reqData = { itemName: 'Approve Notify Item', description: 'Desc', priority: 'MEDIUM', justification: 'Justification' };
         let request = await requestService.submitRequest(reqData, requester);
-        request = await requestService.itReviewRequest(request.id, { itReview: 'OK' }, itStaff);
+        request = await requestService.itReviewRequest(request.id, { itReview: 'OK' }, devStaff);
 
         await new Promise(r => setTimeout(r, 50));
         await prisma.emailNotification.deleteMany({ where: { referenceId: request.id } });
 
-        request = await requestService.approveRequest(request.id, adminStaff);
+        request = await requestService.approveRequest(request.id, devStaff);
 
         await new Promise(r => setTimeout(r, 50));
 
@@ -124,7 +124,7 @@ describe('Requests Notifications Integration', () => {
         await new Promise(r => setTimeout(r, 50));
         await prisma.emailNotification.deleteMany({ where: { referenceId: request.id } });
 
-        request = await requestService.rejectRequest(request.id, 'No budget', itStaff);
+        request = await requestService.rejectRequest(request.id, 'No budget', devStaff);
 
         await new Promise(r => setTimeout(r, 50));
 

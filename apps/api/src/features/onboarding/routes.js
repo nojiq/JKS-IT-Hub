@@ -1,5 +1,5 @@
 import { requireAuthenticated } from "../../shared/auth/requireAuthenticated.js";
-import { hasItRole } from "../../shared/auth/rbac.js";
+import { hasDevRole } from "../../shared/auth/rbac.js";
 import { createProblemDetails, sendProblem } from "../../shared/errors/problemDetails.js";
 import {
   confirmOnboardingSchema,
@@ -14,8 +14,8 @@ import {
 } from "./schema.js";
 import { OnboardingNotFoundError, OnboardingValidationError } from "./errors.js";
 
-const ensureItRole = (actor, reply) => {
-  if (hasItRole(actor)) {
+const ensureDevRole = (actor, reply) => {
+  if (hasDevRole(actor)) {
     return true;
   }
 
@@ -24,7 +24,7 @@ const ensureItRole = (actor, reply) => {
     createProblemDetails({
       status: 403,
       title: "Forbidden",
-      detail: "Only IT roles can manage onboarding"
+      detail: "Only the developer role can manage onboarding"
     })
   );
   return false;
@@ -99,7 +99,7 @@ export default async function onboardingRoutes(app, { config, userRepo, onboardi
   app.get("/catalog-items", async (request, reply) => {
     const actor = await requireAuthenticated(request, reply, { config, userRepo });
     if (!actor) return;
-    if (!ensureItRole(actor, reply)) return;
+    if (!ensureDevRole(actor, reply)) return;
 
     try {
       const items = await onboardingService.listCatalogItems();
@@ -112,7 +112,7 @@ export default async function onboardingRoutes(app, { config, userRepo, onboardi
   app.post("/catalog-items", async (request, reply) => {
     const actor = await requireAuthenticated(request, reply, { config, userRepo });
     if (!actor) return;
-    if (!ensureItRole(actor, reply)) return;
+    if (!ensureDevRole(actor, reply)) return;
 
     const validation = createCatalogItemSchema.safeParse(request.body);
     if (!validation.success) {
@@ -147,7 +147,7 @@ export default async function onboardingRoutes(app, { config, userRepo, onboardi
   app.put("/catalog-items/:id", async (request, reply) => {
     const actor = await requireAuthenticated(request, reply, { config, userRepo });
     if (!actor) return;
-    if (!ensureItRole(actor, reply)) return;
+    if (!ensureDevRole(actor, reply)) return;
 
     const validation = updateCatalogItemSchema.safeParse(request.body);
     if (!validation.success) {
@@ -173,7 +173,7 @@ export default async function onboardingRoutes(app, { config, userRepo, onboardi
   app.delete("/catalog-items/:id", async (request, reply) => {
     const actor = await requireAuthenticated(request, reply, { config, userRepo });
     if (!actor) return;
-    if (!ensureItRole(actor, reply)) return;
+    if (!ensureDevRole(actor, reply)) return;
 
     try {
       const result = await onboardingService.deleteCatalogItem(request.params.id);
@@ -186,7 +186,7 @@ export default async function onboardingRoutes(app, { config, userRepo, onboardi
   app.get("/department-bundles", async (request, reply) => {
     const actor = await requireAuthenticated(request, reply, { config, userRepo });
     if (!actor) return;
-    if (!ensureItRole(actor, reply)) return;
+    if (!ensureDevRole(actor, reply)) return;
 
     try {
       const bundles = await onboardingService.listDepartmentBundles();
@@ -199,7 +199,7 @@ export default async function onboardingRoutes(app, { config, userRepo, onboardi
   app.post("/department-bundles", async (request, reply) => {
     const actor = await requireAuthenticated(request, reply, { config, userRepo });
     if (!actor) return;
-    if (!ensureItRole(actor, reply)) return;
+    if (!ensureDevRole(actor, reply)) return;
 
     const validation = createDepartmentBundleSchema.safeParse(request.body);
     if (!validation.success) {
@@ -225,7 +225,7 @@ export default async function onboardingRoutes(app, { config, userRepo, onboardi
   app.put("/department-bundles/:id", async (request, reply) => {
     const actor = await requireAuthenticated(request, reply, { config, userRepo });
     if (!actor) return;
-    if (!ensureItRole(actor, reply)) return;
+    if (!ensureDevRole(actor, reply)) return;
 
     const validation = updateDepartmentBundleSchema.safeParse(request.body);
     if (!validation.success) {
@@ -251,7 +251,7 @@ export default async function onboardingRoutes(app, { config, userRepo, onboardi
   app.delete("/department-bundles/:id", async (request, reply) => {
     const actor = await requireAuthenticated(request, reply, { config, userRepo });
     if (!actor) return;
-    if (!ensureItRole(actor, reply)) return;
+    if (!ensureDevRole(actor, reply)) return;
 
     try {
       const result = await onboardingService.deleteDepartmentBundle(request.params.id);
@@ -264,7 +264,7 @@ export default async function onboardingRoutes(app, { config, userRepo, onboardi
   app.get("/departments", async (request, reply) => {
     const actor = await requireAuthenticated(request, reply, { config, userRepo });
     if (!actor) return;
-    if (!ensureItRole(actor, reply)) return;
+    if (!ensureDevRole(actor, reply)) return;
 
     try {
       const departments = await onboardingService.listManagedDepartments();
@@ -277,7 +277,7 @@ export default async function onboardingRoutes(app, { config, userRepo, onboardi
   app.get("/directory-users", async (request, reply) => {
     const actor = await requireAuthenticated(request, reply, { config, userRepo });
     if (!actor) return;
-    if (!ensureItRole(actor, reply)) return;
+    if (!ensureDevRole(actor, reply)) return;
 
     const validation = listDirectoryUsersSchema.safeParse(request.query ?? {});
     if (!validation.success) {
@@ -303,7 +303,7 @@ export default async function onboardingRoutes(app, { config, userRepo, onboardi
   app.get("/drafts/:id", async (request, reply) => {
     const actor = await requireAuthenticated(request, reply, { config, userRepo });
     if (!actor) return;
-    if (!ensureItRole(actor, reply)) return;
+    if (!ensureDevRole(actor, reply)) return;
 
     try {
       const draft = await onboardingService.getOnboardingDraft(request.params.id);
@@ -316,7 +316,7 @@ export default async function onboardingRoutes(app, { config, userRepo, onboardi
   app.get("/drafts", async (request, reply) => {
     const actor = await requireAuthenticated(request, reply, { config, userRepo });
     if (!actor) return;
-    if (!ensureItRole(actor, reply)) return;
+    if (!ensureDevRole(actor, reply)) return;
 
     const validation = listOnboardingDraftsSchema.safeParse(request.query ?? {});
     if (!validation.success) {
@@ -342,7 +342,7 @@ export default async function onboardingRoutes(app, { config, userRepo, onboardi
   app.post("/drafts/:id/link", async (request, reply) => {
     const actor = await requireAuthenticated(request, reply, { config, userRepo });
     if (!actor) return;
-    if (!ensureItRole(actor, reply)) return;
+    if (!ensureDevRole(actor, reply)) return;
 
     const validation = linkOnboardingDraftSchema.safeParse(request.body);
     if (!validation.success) {
@@ -368,7 +368,7 @@ export default async function onboardingRoutes(app, { config, userRepo, onboardi
   app.post("/drafts/:id/link-and-promote", async (request, reply) => {
     const actor = await requireAuthenticated(request, reply, { config, userRepo });
     if (!actor) return;
-    if (!ensureItRole(actor, reply)) return;
+    if (!ensureDevRole(actor, reply)) return;
 
     const validation = linkOnboardingDraftSchema.safeParse(request.body);
     if (!validation.success) {
@@ -398,7 +398,7 @@ export default async function onboardingRoutes(app, { config, userRepo, onboardi
   app.post("/preview", async (request, reply) => {
     const actor = await requireAuthenticated(request, reply, { config, userRepo });
     if (!actor) return;
-    if (!ensureItRole(actor, reply)) return;
+    if (!ensureDevRole(actor, reply)) return;
 
     const validation = previewOnboardingSchema.safeParse(request.body);
     if (!validation.success) {
@@ -424,7 +424,7 @@ export default async function onboardingRoutes(app, { config, userRepo, onboardi
   app.post("/confirm", async (request, reply) => {
     const actor = await requireAuthenticated(request, reply, { config, userRepo });
     if (!actor) return;
-    if (!ensureItRole(actor, reply)) return;
+    if (!ensureDevRole(actor, reply)) return;
 
     const validation = confirmOnboardingSchema.safeParse(request.body);
     if (!validation.success) {

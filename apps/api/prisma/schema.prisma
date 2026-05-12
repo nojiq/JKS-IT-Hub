@@ -19,6 +19,7 @@ enum UserRole {
   admin
   head_it
   requester
+  dev
 
   @@map("user_role")
 }

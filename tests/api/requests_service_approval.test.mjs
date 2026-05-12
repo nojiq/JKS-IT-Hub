@@ -10,6 +10,7 @@ test("Requests Approval - Service Layer", async (t) => {
     let requesterUser;
     let adminUser;
     let itUser;
+    let devUser;
     let otherUser;
     let requestId;
 
@@ -24,6 +25,9 @@ test("Requests Approval - Service Layer", async (t) => {
         });
         itUser = await prisma.user.create({
             data: { username: `it-app-${randomUUID()}`, role: "it", status: "active" }
+        });
+        devUser = await prisma.user.create({
+            data: { username: `dev-app-${randomUUID()}`, role: "dev", status: "active" }
         });
         otherUser = await prisma.user.create({
             data: { username: `other-app-${randomUUID()}`, role: "requester", status: "active" }
@@ -43,9 +47,13 @@ test("Requests Approval - Service Layer", async (t) => {
     });
 
     await t.test("approveRequest - Validation", async () => {
-        // 1. Fail if user is not Admin/Head IT (IT user cannot approve)
+        // 1. Fail if user is not developer (IT and admin cannot approve)
         await assert.rejects(
             async () => service.approveRequest(requestId, itUser),
+            { name: "Forbidden" }
+        );
+        await assert.rejects(
+            async () => service.approveRequest(requestId, adminUser),
             { name: "Forbidden" }
         );
 
@@ -55,10 +63,10 @@ test("Requests Approval - Service Layer", async (t) => {
             { name: "NotFound" }
         );
 
-        // 3. Fail if status invalid (Reset to SUBMITTED)
+        // 3. Fail if status invalid (Reset to SUBMITTED) — developer still blocked by status gate after RBAC
         await prisma.itemRequest.update({ where: { id: requestId }, data: { status: "SUBMITTED" } });
         await assert.rejects(
-            async () => service.approveRequest(requestId, adminUser),
+            async () => service.approveRequest(requestId, devUser),
             { name: "ValidationError" }
         );
 
@@ -67,9 +75,9 @@ test("Requests Approval - Service Layer", async (t) => {
     });
 
     await t.test("approveRequest - Success", async () => {
-        const result = await service.approveRequest(requestId, adminUser);
+        const result = await service.approveRequest(requestId, devUser);
         assert.equal(result.status, "APPROVED");
-        assert.equal(result.approvedById, adminUser.id);
+        assert.equal(result.approvedById, devUser.id);
         assert.ok(result.approvedAt);
 
         // Verify audit log exists
@@ -77,7 +85,7 @@ test("Requests Approval - Service Layer", async (t) => {
             where: { entityId: requestId, action: "request_approved" }
         });
         assert.ok(log, "Audit log should be created");
-        assert.equal(log.actorUserId, adminUser.id);
+        assert.equal(log.actorUserId, devUser.id);
     });
 
     // Cleanup
@@ -86,6 +94,7 @@ test("Requests Approval - Service Layer", async (t) => {
         if (requesterUser) await prisma.user.delete({ where: { id: requesterUser.id } });
         if (adminUser) await prisma.user.delete({ where: { id: adminUser.id } });
         if (itUser) await prisma.user.delete({ where: { id: itUser.id } });
+        if (devUser) await prisma.user.delete({ where: { id: devUser.id } });
         if (otherUser) await prisma.user.delete({ where: { id: otherUser.id } });
         await prisma.$disconnect();
     });

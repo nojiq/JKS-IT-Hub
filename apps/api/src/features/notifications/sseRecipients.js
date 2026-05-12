@@ -1,6 +1,6 @@
 import { getConnectedUserIdsByRoles } from './sseHandler.js';
 
-const IT_RELATED_ROLES = ['it', 'admin', 'head_it'];
+const IT_RELATED_ROLES = ['dev', 'it', 'admin', 'head_it'];
 
 const dedupe = (values) => [...new Set(values.filter(Boolean))];
 

@@ -63,10 +63,10 @@ import {
 } from '../src/features/maintenance/hooks/useMaintenance.js';
 import { router as appRouter } from '../src/routes/router.jsx';
 
-const adminUser = {
-    id: 'user-1',
-    username: 'alice.admin',
-    role: 'admin',
+const devUser = {
+    id: 'user-dev',
+    username: 'dev.user',
+    role: 'dev',
     status: 'active'
 };
 
@@ -76,7 +76,7 @@ const createQueryClient = () => new QueryClient({
     }
 });
 
-const renderMaintenanceApp = ({ initialEntry = '/maintenance', user = adminUser } = {}) => {
+const renderMaintenanceApp = ({ initialEntry = '/maintenance', user = devUser } = {}) => {
     workspaceSession.setUser(user);
 
     const router = createMemoryRouter(appRouter.routes, {
@@ -136,50 +136,39 @@ describe('Maintenance module overview route', () => {
         });
     });
 
-    it('opens /maintenance on an overview page with shared module tabs', async () => {
+    it('opens /maintenance for developer users with overview panels', async () => {
         renderMaintenanceApp();
 
         expect(await screen.findByRole('heading', { name: 'Maintenance' })).toBeInTheDocument();
-        expect(screen.getByRole('navigation', { name: 'Maintenance sections' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page');
-        expect(screen.getByRole('link', { name: 'Schedule' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'My Tasks' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'History' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Config' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Rules' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Checklists' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Upcoming Windows' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'My Tasks' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Overdue' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'History' })).toBeInTheDocument();
-        expect(document.querySelector('.maintenance-subnav')).not.toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Open schedule' })).toBeInTheDocument();
     });
 
-    it('keeps history active inside shared module tabs', async () => {
+    it('keeps history subroute reachable for developer users', async () => {
         renderMaintenanceApp({ initialEntry: '/maintenance/history' });
 
         expect(await screen.findByText('History View')).toBeInTheDocument();
-        expect(screen.getByRole('navigation', { name: 'Maintenance sections' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'History' })).toHaveAttribute('aria-current', 'page');
-        expect(screen.getByRole('link', { name: 'Rules' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Checklists' })).toBeInTheDocument();
     });
 
     it.each([
         ['it'],
-        ['head_it']
-    ])('allows %s users to open the maintenance module', async (role) => {
+        ['head_it'],
+        ['admin']
+    ])('redirects %s users away from the maintenance module', async (role) => {
         renderMaintenanceApp({
             user: {
-                ...adminUser,
+                ...devUser,
                 id: `user-${role}`,
                 username: `${role}.user`,
                 role
             }
         });
 
-        expect(await screen.findByRole('heading', { name: 'Maintenance' })).toBeInTheDocument();
-        expect(screen.getByRole('navigation', { name: 'Maintenance sections' })).toBeInTheDocument();
+        expect(await screen.findByText('Dashboard Content')).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Maintenance' })).not.toBeInTheDocument();
     });
 
     it('redirects unauthorized users to / and does not render the maintenance shell', async () => {

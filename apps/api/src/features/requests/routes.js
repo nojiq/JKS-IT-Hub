@@ -1,6 +1,5 @@
 import { requireAuthenticated } from "../../shared/auth/requireAuthenticated.js";
-import { requireItUser } from "../../shared/auth/requireItUser.js";
-import { requireAdminOrHead } from "../../shared/auth/requireAdminOrHead.js";
+import { requireDevUser } from "../../shared/auth/requireDevUser.js";
 import { createProblemDetails, sendProblem } from "../../shared/errors/problemDetails.js";
 import { validateInvoiceFile } from "../../shared/uploads/validation.js";
 import * as service from './service.js';
@@ -269,7 +268,7 @@ export default async function (app, { config, userRepo, auditRepo }) {
 
     // IT Review
     app.post("/:id/it-review", async (request, reply) => {
-        const actor = await requireItUser(request, reply, { config, userRepo });
+        const actor = await requireDevUser(request, reply, { config, userRepo });
         if (!actor) return;
 
         try {
@@ -317,7 +316,7 @@ export default async function (app, { config, userRepo, auditRepo }) {
 
     // Admin Approval
     app.post("/:id/approve", async (request, reply) => {
-        const actor = await requireAdminOrHead(request, reply, { config, userRepo });
+        const actor = await requireDevUser(request, reply, { config, userRepo });
         if (!actor) return;
 
         try {

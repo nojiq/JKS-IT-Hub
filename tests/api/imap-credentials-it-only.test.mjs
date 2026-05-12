@@ -23,9 +23,11 @@ let itUser;
 let headItUser;
 let adminUser;
 let nonItUser;
+let devUser;
 let itToken;
 let headItToken;
 let adminToken;
+let devToken;
 let nonItToken;
 let config;
 
@@ -56,6 +58,14 @@ before(async () => {
         data: {
             username: `admin-user-${randomUUID()}`,
             role: "admin",
+            status: "active"
+        }
+    });
+
+    devUser = await prisma.user.create({
+        data: {
+            username: `dev-user-${randomUUID()}`,
+            role: "dev",
             status: "active"
         }
     });
@@ -94,6 +104,14 @@ before(async () => {
         }
     }, config.jwt);
 
+    devToken = await signSessionToken({
+        subject: devUser.id,
+        payload: {
+            username: devUser.username,
+            role: devUser.role
+        }
+    }, config.jwt);
+
     nonItToken = await signSessionToken({
         subject: nonItUser.id,
         payload: {
@@ -117,7 +135,7 @@ test("IMAP Credentials - IT-Only Access", async (t) => {
         const response = await app.inject({
             method: "POST",
             url: "/api/v1/system-configs",
-            headers: { cookie: `it-hub-session=${itToken}` },
+            headers: { cookie: `it-hub-session=${devToken}` },
             payload: {
                 systemId: systemId,
                 usernameLdapField: "mail",

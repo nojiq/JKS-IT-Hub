@@ -53,7 +53,7 @@ const createTestApp = async ({ userRepo, onboardingService } = {}) => {
 };
 
 test("GET /api/v1/onboarding/catalog-items lists catalog items for IT", async () => {
-    const actor = { id: randomUUID(), username: "it_user", role: "it", status: "active" };
+    const actor = { id: randomUUID(), username: "it_user", role: "dev", status: "active" };
     const app = await createTestApp({
         userRepo: {
             findUserByUsername: async (username) => (username === actor.username ? actor : null)
@@ -74,7 +74,7 @@ test("GET /api/v1/onboarding/catalog-items lists catalog items for IT", async ()
 });
 
 test("POST /api/v1/onboarding/department-bundles creates a department bundle", async () => {
-    const actor = { id: randomUUID(), username: "it_user", role: "it", status: "active" };
+    const actor = { id: randomUUID(), username: "it_user", role: "dev", status: "active" };
     const app = await createTestApp({
         userRepo: {
             findUserByUsername: async (username) => (username === actor.username ? actor : null)
@@ -100,7 +100,7 @@ test("POST /api/v1/onboarding/department-bundles creates a department bundle", a
 });
 
 test("POST /api/v1/onboarding/preview returns setup sheet preview", async () => {
-    const actor = { id: randomUUID(), username: "it_user", role: "it", status: "active" };
+    const actor = { id: randomUUID(), username: "it_user", role: "dev", status: "active" };
     const app = await createTestApp({
         userRepo: {
             findUserByUsername: async (username) => (username === actor.username ? actor : null)
@@ -146,7 +146,7 @@ test("POST /api/v1/onboarding/preview returns setup sheet preview", async () => 
 });
 
 test("POST /api/v1/onboarding/confirm requires explicit confirmation", async () => {
-    const actor = { id: randomUUID(), username: "it_user", role: "it", status: "active" };
+    const actor = { id: randomUUID(), username: "it_user", role: "dev", status: "active" };
     const app = await createTestApp({
         userRepo: {
             findUserByUsername: async (username) => (username === actor.username ? actor : null)
@@ -170,7 +170,7 @@ test("POST /api/v1/onboarding/confirm requires explicit confirmation", async () 
 });
 
 test("GET /api/v1/onboarding/drafts lists saved manual drafts", async () => {
-    const actor = { id: randomUUID(), username: "it_user", role: "it", status: "active" };
+    const actor = { id: randomUUID(), username: "it_user", role: "dev", status: "active" };
     const app = await createTestApp({
         userRepo: {
             findUserByUsername: async (username) => (username === actor.username ? actor : null)
@@ -199,7 +199,7 @@ test("GET /api/v1/onboarding/drafts lists saved manual drafts", async () => {
 });
 
 test("POST /api/v1/onboarding/drafts/:id/link-and-promote links a draft and promotes credentials", async () => {
-    const actor = { id: randomUUID(), username: "it_user", role: "it", status: "active" };
+    const actor = { id: randomUUID(), username: "it_user", role: "dev", status: "active" };
     const app = await createTestApp({
         userRepo: {
             findUserByUsername: async (username) => (username === actor.username ? actor : null)

@@ -9,7 +9,7 @@ import { prisma } from '../../shared/db/prisma.js';
 import { randomUUID } from 'node:crypto';
 import { deleteFile, ensureUploadDir, saveFile } from '../../shared/uploads/storage.js';
 
-const ALLOWED_ROLES = ['it', 'admin', 'head_it'];
+const ALLOWED_ROLES = ['dev'];
 const SIGNATURE_DATA_URL_PREFIX = 'data:image/png;base64,';
 const MAX_SIGNATURE_SIZE_BYTES = 300 * 1024;
 export const MAINTENANCE_CONFIG_REQUIRED_FIELDS = Object.freeze([
@@ -887,7 +887,7 @@ export const validateSignOffEligibility = async (windowId, userId, userRole) => 
 
     // Check assignment
     const isAssigned = window.assignedToId === userId;
-    const hasPrivilegedRole = ['it', 'admin', 'head_it'].includes(userRole);
+    const hasPrivilegedRole = ['dev'].includes(userRole);
 
     if (!isAssigned && !hasPrivilegedRole) {
         return {
@@ -1079,7 +1079,7 @@ export const getCompletionHistory = async (userId, filters, actorUser) => {
     ensureAuthenticated(actorUser);
 
     // Users can only see their own history unless admin/head_it
-    if (userId !== actorUser.id && !['admin', 'head_it'].includes(actorUser.role)) {
+    if (userId !== actorUser.id && !['dev', 'admin', 'head_it'].includes(actorUser.role)) {
         const error = new Error('Unauthorized access to completion history');
         error.statusCode = 403;
         throw error;

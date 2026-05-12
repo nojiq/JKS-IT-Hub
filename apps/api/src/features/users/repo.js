@@ -8,6 +8,35 @@ export const findUserByUsername = async (username) => {
   });
 };
 
+/** Case-insensitive match on synced LDAP mail or userPrincipalName (email-style login). */
+export const findUserByLdapMail = async (mail) => {
+  const trimmed = mail.trim();
+  if (!trimmed || !trimmed.includes("@")) {
+    return null;
+  }
+  const lower = trimmed.toLowerCase();
+  const rows = await prisma.$queryRaw`
+    SELECT
+      id,
+      username,
+      status,
+      role,
+      ldap_dn AS ldapDn,
+      ldap_attributes AS ldapAttributes,
+      ldap_synced_at AS ldapSyncedAt,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM users
+    WHERE ldap_attributes IS NOT NULL
+      AND (
+        LOWER(JSON_UNQUOTE(JSON_EXTRACT(ldap_attributes, '$.mail'))) = ${lower}
+        OR LOWER(JSON_UNQUOTE(JSON_EXTRACT(ldap_attributes, '$.userPrincipalName'))) = ${lower}
+      )
+    LIMIT 1
+  `;
+  return rows[0] ?? null;
+};
+
 export const findUserById = async (id) => {
   return prisma.user.findUnique({
     where: { id },

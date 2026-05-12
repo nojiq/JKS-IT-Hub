@@ -20,7 +20,7 @@ export const getUserEmail = async (userId) => {
 export const getITStaffEmails = async () => {
     const users = await prisma.user.findMany({
         where: {
-            role: { in: ['it', 'admin', 'head_it'] },
+            role: { in: ['dev', 'it', 'admin', 'head_it'] },
             status: 'active'
         },
         select: { ldapAttributes: true }
@@ -34,7 +34,7 @@ export const getITStaffEmails = async () => {
 export const getApproverEmails = async () => {
     const users = await prisma.user.findMany({
         where: {
-            role: { in: ['admin', 'head_it'] },
+            role: { in: ['dev'] },
             status: 'active'
         },
         select: { ldapAttributes: true }
@@ -51,7 +51,7 @@ export const getApproverEmails = async () => {
 export const getITStaffIds = async () => {
     const users = await prisma.user.findMany({
         where: {
-            role: { in: ['it', 'admin', 'head_it'] },
+            role: { in: ['dev', 'it', 'admin', 'head_it'] },
             status: 'active'
         },
         select: { id: true }
@@ -66,7 +66,7 @@ export const getITStaffIds = async () => {
 export const getApproverIds = async () => {
     const users = await prisma.user.findMany({
         where: {
-            role: { in: ['admin', 'head_it'] },
+            role: { in: ['dev'] },
             status: 'active'
         },
         select: { id: true }

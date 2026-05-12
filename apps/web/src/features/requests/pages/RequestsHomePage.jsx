@@ -4,17 +4,19 @@ import { fetchAllRequests } from "../api/requestsApi.js";
 import { WorkspacePanel } from "../../../shared/workspace/WorkspacePanel";
 import "./RequestsHomePage.css";
 
-const ADMIN_ROLES = ["admin", "head_it"];
+import { DEV_ROLE } from "../../../shared/auth/workspaceRoles.js";
 
 const getTotal = (payload) => Number(payload?.meta?.total ?? payload?.data?.length ?? 0);
 
 export default function RequestsHomePage() {
   const { user } = useOutletContext() ?? {};
-  const showApprovals = ADMIN_ROLES.includes(user?.role);
+  const isDevUser = user?.role === DEV_ROLE;
+  const showApprovals = isDevUser;
 
   const needsReviewQuery = useQuery({
     queryKey: ["requests", "overview", { status: "SUBMITTED", page: "1", perPage: "5" }],
     queryFn: () => fetchAllRequests({ status: "SUBMITTED", page: "1", perPage: "5" }),
+    enabled: isDevUser,
     retry: false
   });
 
@@ -28,12 +30,14 @@ export default function RequestsHomePage() {
   const blockedQuery = useQuery({
     queryKey: ["requests", "overview", { status: "REJECTED", page: "1", perPage: "5" }],
     queryFn: () => fetchAllRequests({ status: "REJECTED", page: "1", perPage: "5" }),
+    enabled: isDevUser,
     retry: false
   });
 
   const completedQuery = useQuery({
     queryKey: ["requests", "overview", { status: "APPROVED", page: "1", perPage: "5" }],
     queryFn: () => fetchAllRequests({ status: "APPROVED", page: "1", perPage: "5" }),
+    enabled: isDevUser,
     retry: false
   });
 
@@ -50,7 +54,7 @@ export default function RequestsHomePage() {
       value: getTotal(approvalsQuery.data),
       description: showApprovals
         ? "Requests already reviewed by IT and ready for approval."
-        : "Approval routing is visible to admins and IT managers.",
+        : "Approval routing is limited to the developer role.",
       actionLabel: showApprovals ? "Open approvals" : "Open review queue",
       actionTo: showApprovals ? "/requests/approvals" : "/requests/review"
     },

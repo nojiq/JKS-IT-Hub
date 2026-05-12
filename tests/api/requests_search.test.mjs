@@ -30,9 +30,9 @@ test("Requests Search API", async (t) => {
         config = getAuthConfig();
         app = await build();
 
-        // Create IT User
+        // Create developer user (list-all requests is developer-gated)
         itUser = await prisma.user.create({
-            data: { username: `it-search-${randomUUID()}`, role: "it", status: "active" }
+            data: { username: `it-search-${randomUUID()}`, role: "dev", status: "active" }
         });
 
         // Create Requesters

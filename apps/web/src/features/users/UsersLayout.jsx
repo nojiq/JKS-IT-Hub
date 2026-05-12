@@ -2,8 +2,9 @@ import { Navigate, Outlet, useOutletContext } from "react-router-dom";
 import { WorkspacePageHeader } from "../../shared/workspace/WorkspacePageHeader.jsx";
 import "../../shared/workspace/workspace.css";
 
-const IT_ROLES = ["it", "admin", "head_it"];
+import { IT_STAFF_ROLES } from "../../shared/auth/workspaceRoles.js";
 
+const IT_ROLES = IT_STAFF_ROLES;
 export function UsersLayout() {
   const { user } = useOutletContext() ?? {};
 

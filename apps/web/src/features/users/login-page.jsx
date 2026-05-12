@@ -36,12 +36,11 @@ export default function LoginPage() {
       </header>
       <form className="auth-form" onSubmit={handleSubmit}>
         <label className="auth-field">
-          <span>Username</span>
+          <span>Username or email</span>
           <input
             autoComplete="username"
             name="username"
             onChange={(event) => setUsername(event.target.value)}
-            placeholder="admin@enterprise.local"
             required
             type="text"
             value={username}
@@ -53,7 +52,6 @@ export default function LoginPage() {
             autoComplete="current-password"
             name="password"
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="********"
             required
             type="password"
             value={password}

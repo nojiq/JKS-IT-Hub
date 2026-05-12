@@ -36,16 +36,13 @@ export default function UsersHomePage() {
       <WorkspacePanel
         variant="detail"
         title="User Directory"
-        meta={`${usersQuery.data?.meta?.total ?? users.length ?? 0} users in the latest directory slice`}
+        meta={`${usersQuery.data?.meta?.total ?? users.length ?? 0} users`}
         actions={(
           <Link className="workspace-inline-button" to="/users/directory">
             Open Directory
           </Link>
         )}
       >
-        <p className="users-home-copy">
-          Review synced identities, confirm disabled accounts, and drill into credential actions from the directory.
-        </p>
         <div className="users-home-metrics">
           <div className="users-home-metric">
             <strong>{overview.activeUsers.length}</strong>
@@ -61,12 +58,8 @@ export default function UsersHomePage() {
       <WorkspacePanel
         variant="detail"
         title="Recent Access Actions"
-        meta="Use the detail page and history views to inspect recent account work."
+        meta="See recent account changes in history."
       >
-        <p className="users-home-copy">
-          Access changes stay attached to each user record. Open the directory to inspect the latest status changes,
-          recently linked onboarding drafts, and follow-up credential tasks.
-        </p>
         <div className="onboarding-actions">
           <Link className="workspace-inline-link" to="/users/history">
             Open history workspace
@@ -77,11 +70,8 @@ export default function UsersHomePage() {
       <WorkspacePanel
         variant="detail"
         title="Password Generation"
-        meta="Credential tools stay attached to individual user records."
+        meta="Set or reset passwords on each user's page."
       >
-        <p className="users-home-copy">
-          Generate, override, regenerate, export, and review credentials from a single user workspace instead of a separate page.
-        </p>
         <div className="onboarding-actions">
           <Link className="workspace-inline-link" to="/users/directory">
             Choose a user to manage credentials
@@ -92,17 +82,13 @@ export default function UsersHomePage() {
       <WorkspacePanel
         variant="detail"
         title="Locked Credentials"
-        meta={`${overview.lockedCredentials.length} protected credential${overview.lockedCredentials.length === 1 ? "" : "s"} in the current queue`}
+        meta={`${overview.lockedCredentials.length} locked right now`}
         actions={(
           <Link className="workspace-inline-button" to="/users/locked">
             Review Queue
           </Link>
         )}
-      >
-        <p className="users-home-copy">
-          Review protected credentials, understand why they were frozen, and unlock them without leaving the module.
-        </p>
-      </WorkspacePanel>
+      />
     </div>
   );
 }

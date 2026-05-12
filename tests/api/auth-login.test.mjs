@@ -94,6 +94,43 @@ test("POST /auth/login returns session cookie on success", async () => {
   await app.close();
 });
 
+test("POST /auth/login resolves email to synced username before LDAP", async () => {
+  let ldapUsername;
+  const ldapService = {
+    authenticate: async (_cfg, cred) => {
+      ldapUsername = cred.username;
+      return {
+        dn: "uid=jane,dc=example,dc=com",
+        attributes: { uid: "jane" }
+      };
+    }
+  };
+  const memory = createInMemoryUserRepo();
+  const userRepo = {
+    ...memory,
+    findUserByLdapMail: async (email) => {
+      if (email.toLowerCase() === "jane@example.com") {
+        return { username: "jane" };
+      }
+      return null;
+    }
+  };
+  const app = await createTestApp({ ldapService, userRepo });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/auth/login",
+    payload: { username: "Jane@Example.com", password: "secret" }
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(ldapUsername, "jane");
+  const body = response.json();
+  assert.equal(body.data.user.username, "jane");
+
+  await app.close();
+});
+
 test("POST /auth/login rejects invalid LDAP credentials", async () => {
   const ldapService = {
     authenticate: async () => {

@@ -70,7 +70,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
     };
 
     const ensureImapGeneratorAccess = (actor, reply, detail = "Only IT roles can access the IMAP generator") => {
-        if (['it', 'admin', 'head_it'].includes(actor.role)) {
+        if (hasItRole(actor)) {
             return true;
         }
 
@@ -194,7 +194,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
@@ -379,7 +379,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
@@ -413,7 +413,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
@@ -494,7 +494,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
@@ -639,7 +639,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
@@ -754,7 +754,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
@@ -833,7 +833,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
@@ -988,7 +988,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
@@ -1054,7 +1054,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
@@ -1120,7 +1120,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
@@ -1201,7 +1201,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
@@ -1272,7 +1272,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
@@ -1405,7 +1405,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!['it', 'admin', 'head_it'].includes(actor.role)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",

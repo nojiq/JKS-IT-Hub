@@ -28,6 +28,7 @@ apps/api/uploads/*
 apps/api/test-uploads/
 
 # Local AI / agent workflow artifacts
+.superpowers/
 .worktrees/
 .agent/
 .claude/

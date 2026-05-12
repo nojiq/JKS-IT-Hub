@@ -78,8 +78,8 @@ describe('WorkspaceLayout', () => {
         fetchSession.mockResolvedValue({
             user: {
                 id: 'user-1',
-                username: 'alice.it',
-                role: 'it',
+                username: 'alice.dev',
+                role: 'dev',
                 status: 'active'
             }
         });

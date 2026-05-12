@@ -1,6 +1,6 @@
 import { createProblemDetails, sendProblem } from "../errors/problemDetails.js";
 
-const IMAP_ACCESS_ROLES = new Set(["it", "admin", "head_it"]);
+const IMAP_ACCESS_ROLES = new Set(["dev", "it", "admin", "head_it"]);
 
 export const requireItRole = async (
     request,
@@ -8,7 +8,7 @@ export const requireItRole = async (
     {
         auditRepo,
         forbiddenDetail = "Privileged role required to access IMAP credentials",
-        requiredRoleLabel = "it|admin|head_it",
+        requiredRoleLabel = "dev|it|admin|head_it",
         targetUserId,
         targetCredentialId
     } = {}

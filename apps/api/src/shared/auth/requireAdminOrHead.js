@@ -1,7 +1,7 @@
 import { getSessionFromRequest } from "./session.js";
 import { createProblemDetails, sendProblem } from "../errors/problemDetails.js";
 
-const ALLOWED_ROLES = new Set(["admin", "head_it"]);
+const ALLOWED_ROLES = new Set(["dev", "admin", "head_it"]);
 
 const isUserDisabled = (user, userRepo) => {
     if (userRepo?.isUserDisabled) {

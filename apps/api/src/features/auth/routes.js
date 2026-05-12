@@ -1,6 +1,9 @@
 
 import { z } from "zod";
-import { authenticateLdapUser } from "../ldap/service.js";
+import {
+    authenticateLdapUser,
+    extractCanonicalLdapUsername
+} from "../ldap/service.js";
 import { signSessionToken, parseDurationToSeconds } from "../../shared/auth/jwt.js";
 import { getSessionFromRequest } from "../../shared/auth/session.js";
 import { createProblemDetails, sendProblem } from "../../shared/errors/problemDetails.js";
@@ -42,21 +45,40 @@ export default async function authRoutes(app, { config, userRepo, ldapAuthFn, au
             sendProblem(reply, createProblemDetails({
                 status: 400,
                 title: "Invalid Request",
-                detail: "Username and password are required."
+                detail: "Username or email and password are required."
             }));
             return;
         }
 
-        const { username, password } = validation.data;
+        const { username: loginIdentifier, password } = validation.data;
+        const trimmedLogin = loginIdentifier.trim();
+        let ldapSearchName = trimmedLogin;
 
         try {
+            // Resolve email to directory username when we already have a synced profile
+            if (trimmedLogin.includes("@") && typeof userRepo.findUserByLdapMail === "function") {
+                const byMail = await userRepo.findUserByLdapMail(trimmedLogin);
+                if (byMail?.username) {
+                    ldapSearchName = byMail.username;
+                }
+            }
+
+            const usernameAttribute = config.ldapSync?.usernameAttribute;
+
             // 1. Authenticate against LDAP
-            const ldapUser = await authenticate(config.ldap, { username, password });
+            const ldapUser = await authenticate(config.ldap, {
+                username: ldapSearchName,
+                password,
+                usernameAttribute
+            });
+
+            const canonicalUsername =
+                extractCanonicalLdapUsername(ldapUser, usernameAttribute) ?? ldapSearchName;
 
             // 2. Find or create local user
             // Note: We use findOrCreateUser to ensure we have a local record with default role/status
             const user = await userRepo.findOrCreateUser({
-                username: username,
+                username: canonicalUsername,
                 // Default role is requester, default status is active (handled by repo/schema default)
             });
 
@@ -127,21 +149,21 @@ export default async function authRoutes(app, { config, userRepo, ldapAuthFn, au
                             action: "auth.login_failure",
                             actorUserId: null,
                             entityType: "auth",
-                            entityId: username,
+                            entityId: trimmedLogin,
                             metadata: {
                                 reason: "Invalid credentials",
                                 ip: getClientIp(request)
                             }
                         });
                     } catch (auditError) {
-                        logAuditFailure(request, "auth.login_failure", { username }, auditError);
+                        logAuditFailure(request, "auth.login_failure", { username: trimmedLogin }, auditError);
                     }
                 }
 
                 sendProblem(reply, createProblemDetails({
                     status: 401,
                     title: "Invalid Credentials",
-                    detail: "Invalid username or password."
+                    detail: "Invalid username, email, or password."
                 }));
                 return;
             }

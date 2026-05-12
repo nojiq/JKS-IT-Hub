@@ -60,7 +60,7 @@ describe('NormalizationRule API', () => {
         adminUser = await prisma.user.create({
             data: {
                 username: `admin-${randomUUID()}`,
-                role: 'admin',
+                role: 'dev',
                 status: 'active'
             }
         });
@@ -90,14 +90,14 @@ describe('NormalizationRule API', () => {
         await prisma.$disconnect();
     });
 
-    it('POST / normalization-rules - should create a rule (Admin only)', async () => {
+    it('POST / normalization-rules - should create a rule (developer only)', async () => {
         const userRepo = {
             findUserByUsername: async (username) => username === adminUser.username ? adminUser : null,
             findUserById: async (id) => id === adminUser.id ? adminUser : null,
             isUserDisabled: () => false
         };
         const app = await createTestApp(userRepo);
-        const cookie = await createSessionCookie(adminUser.id, 'admin', adminUser.username);
+        const cookie = await createSessionCookie(adminUser.id, 'dev', adminUser.username);
 
         const response = await app.inject({
             method: 'POST',
@@ -147,7 +147,7 @@ describe('NormalizationRule API', () => {
             isUserDisabled: () => false
         };
         const app = await createTestApp(userRepo);
-        const cookie = await createSessionCookie(adminUser.id, 'admin', adminUser.username);
+        const cookie = await createSessionCookie(adminUser.id, 'dev', adminUser.username);
 
         const response = await app.inject({
             method: 'GET',
@@ -168,7 +168,7 @@ describe('NormalizationRule API', () => {
             isUserDisabled: () => false
         };
         const app = await createTestApp(userRepo);
-        const cookie = await createSessionCookie(adminUser.id, 'admin', adminUser.username);
+        const cookie = await createSessionCookie(adminUser.id, 'dev', adminUser.username);
 
         // Create a rule for the preview test
         await normalizationRuleService.createNormalizationRule({
