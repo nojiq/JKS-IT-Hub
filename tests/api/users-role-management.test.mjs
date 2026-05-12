@@ -113,7 +113,7 @@ test("PATCH /users/:id/role updates role for legitimate admin", async () => {
     assert.equal(logs[0].actorUserId, adminUser.id);
 });
 
-test("PATCH /users/:id/role forbids non-admin users", async () => {
+test("PATCH /users/:id/role forbids IT from assigning disallowed roles (e.g. admin)", async () => {
     const itUser = { id: "it-1", username: "it", role: "it", status: "active" };
     const targetUser = { id: "user-1", username: "john", role: "requester", status: "active" };
 
@@ -131,6 +131,103 @@ test("PATCH /users/:id/role forbids non-admin users", async () => {
     });
 
     assert.equal(response.statusCode, 403);
+});
+
+test("PATCH /users/:id/role allows IT to assign requester to peer IT", async () => {
+    const itUser = { id: "it-1", username: "it", role: "it", status: "active" };
+    const targetUser = { id: "user-2", username: "jane", role: "it", status: "active" };
+
+    const userRepo = createMockUserRepo([itUser, targetUser]);
+    const auditRepo = createMockAuditRepo();
+    const app = await createTestApp({ userRepo, auditRepo });
+    const headers = await generateAuthHeader(itUser);
+
+    const response = await app.inject({
+        method: "PATCH",
+        url: `/users/${targetUser.id}/role`,
+        headers,
+        payload: { role: "requester" }
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.json().data.user.role, "requester");
+});
+
+test("PATCH /users/:id/role forbids IT from changing users above IT rank", async () => {
+    const itUser = { id: "it-1", username: "it", role: "it", status: "active" };
+    const adminUser = { id: "admin-1", username: "boss", role: "admin", status: "active" };
+
+    const userRepo = createMockUserRepo([itUser, adminUser]);
+    const auditRepo = createMockAuditRepo();
+    const app = await createTestApp({ userRepo, auditRepo });
+    const headers = await generateAuthHeader(itUser);
+
+    const response = await app.inject({
+        method: "PATCH",
+        url: `/users/${adminUser.id}/role`,
+        headers,
+        payload: { role: "requester" }
+    });
+
+    assert.equal(response.statusCode, 403);
+});
+
+test("PATCH /users/:id/role allows dev to grant admin", async () => {
+    const devUser = { id: "dev-1", username: "dev", role: "dev", status: "active" };
+    const targetUser = { id: "user-1", username: "john", role: "requester", status: "active" };
+
+    const userRepo = createMockUserRepo([devUser, targetUser]);
+    const auditRepo = createMockAuditRepo();
+    const app = await createTestApp({ userRepo, auditRepo });
+    const headers = await generateAuthHeader(devUser);
+
+    const response = await app.inject({
+        method: "PATCH",
+        url: `/users/${targetUser.id}/role`,
+        headers,
+        payload: { role: "admin" }
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.json().data.user.role, "admin");
+});
+
+test("PATCH /users/:id/role rejects dev role in body", async () => {
+    const devUser = { id: "dev-1", username: "dev", role: "dev", status: "active" };
+    const targetUser = { id: "user-1", username: "john", role: "requester", status: "active" };
+
+    const userRepo = createMockUserRepo([devUser, targetUser]);
+    const auditRepo = createMockAuditRepo();
+    const app = await createTestApp({ userRepo, auditRepo });
+    const headers = await generateAuthHeader(devUser);
+
+    const response = await app.inject({
+        method: "PATCH",
+        url: `/users/${targetUser.id}/role`,
+        headers,
+        payload: { role: "dev" }
+    });
+
+    assert.equal(response.statusCode, 400);
+});
+
+test("PATCH /users/:id/role forbids changing your own role", async () => {
+    const adminUser = { id: "admin-1", username: "admin", role: "admin", status: "active" };
+
+    const userRepo = createMockUserRepo([adminUser]);
+    const auditRepo = createMockAuditRepo();
+    const app = await createTestApp({ userRepo, auditRepo });
+    const headers = await generateAuthHeader(adminUser);
+
+    const response = await app.inject({
+        method: "PATCH",
+        url: `/users/${adminUser.id}/role`,
+        headers,
+        payload: { role: "it" }
+    });
+
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json().detail, "You cannot change your own role.");
 });
 
 test("PATCH /users/:id/role forbids invalid role", async () => {

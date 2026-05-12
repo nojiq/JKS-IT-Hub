@@ -65,3 +65,12 @@ export const updateUserProfileFields = async (userId, values) => {
   });
   return parsePayload(response);
 };
+
+export const updateUserRole = async (userId, role) => {
+  const response = await apiFetch(`/users/${userId}/role`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ role })
+  });
+  return parsePayload(response);
+};

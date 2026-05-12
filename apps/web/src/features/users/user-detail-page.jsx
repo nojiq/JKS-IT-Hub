@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { fetchSession } from "./auth-api.js";
-import { fetchUserDetail, fetchUserHistory, updateUserProfileFields, updateUserStatus } from "./users-api.js";
+import { fetchUserDetail, fetchUserHistory, updateUserProfileFields, updateUserRole, updateUserStatus } from "./users-api.js";
+import { ROLE_LABELS } from "./roleLabels.js";
+import { assertCanAssignRole, getAssignableRoles, ROLE_RANK } from "../../shared/auth/roleAssignment.js";
 import { CredentialRegeneration } from "../credentials/regeneration";
 import { useInitiateRegeneration, useConfirmRegeneration, useUnlockCredential } from "../credentials/hooks/useCredentials.js";
 import { useUserCredentials } from "../credentials/hooks/useCredentials.js";
@@ -72,8 +74,19 @@ const getProfileFieldFallback = (field, user) => {
   return null;
 };
 
-const buildProfileFieldDraft = (fields = []) => {
-  return Object.fromEntries(fields.map((field) => [field.key, field.value ?? ""]));
+const getEditableProfileValue = (field, user) => {
+  if (field.value !== null && field.value !== undefined && field.value !== "") {
+    return field.value;
+  }
+  const fallback = getProfileFieldFallback(field, user);
+  return fallback?.value ?? "";
+};
+
+const buildProfileFieldDraft = (fields = [], user) => {
+  if (!user) {
+    return {};
+  }
+  return Object.fromEntries(fields.map((field) => [field.key, getEditableProfileValue(field, user)]));
 };
 
 const profileFieldInputType = (type) => {
@@ -96,8 +109,9 @@ export default function UserDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [showRegeneration, setShowRegeneration] = useState(false);
-  const [isEditingProfileFields, setIsEditingProfileFields] = useState(false);
+  const [isEditingIdentity, setIsEditingIdentity] = useState(false);
   const [profileFieldDraft, setProfileFieldDraft] = useState({});
+  const [roleDraft, setRoleDraft] = useState("");
   const queryClient = useQueryClient();
 
   const sessionQuery = useQuery({
@@ -124,13 +138,46 @@ export default function UserDetailPage() {
   const confirmRegeneration = useConfirmRegeneration();
   const unlockCredential = useUnlockCredential();
   const sessionUser = sessionQuery.data?.user ?? sessionQuery.data ?? null;
-  const canManageCredentials = sessionUser?.role && ['it', 'admin', 'head_it'].includes(sessionUser.role);
-  const canEditProfileFields = sessionUser?.role && ['it', 'admin', 'head_it'].includes(sessionUser.role);
-  const canEnableUsers = sessionUser?.role && ['admin', 'head_it'].includes(sessionUser.role);
+  const canManageCredentials = sessionUser?.role && ['dev', 'it', 'admin', 'head_it'].includes(sessionUser.role);
+  const canEditProfileFields = sessionUser?.role && ['dev', 'it', 'admin', 'head_it'].includes(sessionUser.role);
+  const canEnableUsers = sessionUser?.role && ['dev', 'admin', 'head_it'].includes(sessionUser.role);
+
+  const canAssignRoleOnTarget = useMemo(() => {
+    if (!sessionUser || !userQuery.data?.user) return false;
+    const target = userQuery.data.user;
+    if (sessionUser.id === target.id) return false;
+    return getAssignableRoles(sessionUser.role).some((r) =>
+      assertCanAssignRole(sessionUser, target, r).ok
+    );
+  }, [sessionUser, userQuery.data]);
+
+  const roleSelectOptions = useMemo(() => {
+    if (!sessionUser || !userQuery.data?.user) return [];
+    const target = userQuery.data.user;
+    if (sessionUser.id === target.id) return [];
+    const opts = getAssignableRoles(sessionUser.role).filter((r) =>
+      assertCanAssignRole(sessionUser, target, r).ok
+    );
+    const set = new Set(opts);
+    set.add(target.role);
+    return [...set].sort((a, b) => ROLE_RANK[a] - ROLE_RANK[b]);
+  }, [sessionUser, userQuery.data]);
+
+  const canEditIdentity =
+    Boolean(canEditProfileFields) &&
+    Boolean((userQuery.data?.user?.profileFields?.length ?? 0) > 0 || canAssignRoleOnTarget);
+
   const updateProfileFieldsMutation = useMutation({
     mutationFn: ({ userId, values }) => updateUserProfileFields(userId, values),
     onSuccess: async () => {
-      setIsEditingProfileFields(false);
+      await userQuery.refetch();
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    }
+  });
+
+  const updateUserRoleMutation = useMutation({
+    mutationFn: ({ userId, role }) => updateUserRole(userId, role),
+    onSuccess: async () => {
       await userQuery.refetch();
       queryClient.invalidateQueries({ queryKey: ["users"] });
     }
@@ -173,24 +220,26 @@ export default function UserDetailPage() {
   }, [navigate, sessionQuery.data, sessionQuery.isLoading]);
 
   useEffect(() => {
-    if (user && !isEditingProfileFields) {
-      setProfileFieldDraft(buildProfileFieldDraft(profileFields));
+    if (user && !isEditingIdentity) {
+      setProfileFieldDraft(buildProfileFieldDraft(profileFields, user));
     }
-  }, [isEditingProfileFields, profileFields, user]);
+  }, [isEditingIdentity, profileFields, user]);
 
   const handleEnableUser = async () => {
     if (!canEnableUsers || updateUserStatusMutation.isPending) return;
     await updateUserStatusMutation.mutateAsync({ userId: id, status: "active" });
   };
 
-  const handleStartEditProfileFields = () => {
-    setProfileFieldDraft(buildProfileFieldDraft(profileFields));
-    setIsEditingProfileFields(true);
+  const handleStartEditIdentity = () => {
+    setProfileFieldDraft(buildProfileFieldDraft(profileFields, user));
+    setRoleDraft(user.role);
+    setIsEditingIdentity(true);
   };
 
-  const handleCancelEditProfileFields = () => {
-    setProfileFieldDraft(buildProfileFieldDraft(profileFields));
-    setIsEditingProfileFields(false);
+  const handleCancelEditIdentity = () => {
+    setProfileFieldDraft(buildProfileFieldDraft(profileFields, user));
+    setRoleDraft(user.role);
+    setIsEditingIdentity(false);
   };
 
   const handleProfileFieldChange = (key, value) => {
@@ -200,13 +249,36 @@ export default function UserDetailPage() {
     }));
   };
 
-  const handleSaveProfileFields = async (event) => {
+  const identitySavePending =
+    updateProfileFieldsMutation.isPending || updateUserRoleMutation.isPending;
+
+  const handleSaveIdentity = async (event) => {
     event.preventDefault();
-    if (!canEditProfileFields || updateProfileFieldsMutation.isPending) return;
-    await updateProfileFieldsMutation.mutateAsync({
-      userId: id,
-      values: profileFieldDraft
-    });
+    if (!canEditIdentity || identitySavePending || !user) return;
+
+    const roleChanged = canAssignRoleOnTarget && roleDraft !== user.role;
+    const hasProfileFields = profileFields.length > 0;
+
+    if (roleChanged) {
+      const decision = assertCanAssignRole(sessionUser, user, roleDraft);
+      if (!decision.ok) return;
+    }
+
+    try {
+      if (roleChanged) {
+        await updateUserRoleMutation.mutateAsync({ userId: id, role: roleDraft });
+      }
+      if (hasProfileFields) {
+        await updateProfileFieldsMutation.mutateAsync({
+          userId: id,
+          values: profileFieldDraft
+        });
+      }
+      setIsEditingIdentity(false);
+      await historyQuery.refetch();
+    } catch {
+      // Errors surface via mutation error state
+    }
   };
 
   if (sessionQuery.isLoading) {
@@ -276,7 +348,9 @@ export default function UserDetailPage() {
   }
 
   return (
-    <section className="workspace-page user-detail-page">
+    <section
+      className={`workspace-page user-detail-page${isEditingIdentity ? " user-detail-page--identity-editing" : ""}`}
+    >
       <WorkspacePageHeader
         eyebrow="Users & Credentials"
         title={user.username}
@@ -304,17 +378,25 @@ export default function UserDetailPage() {
         <WorkspacePanel
           variant="detail"
           title="Identity"
-          meta={isEditingProfileFields ? "Edit manual profile fields. LDAP rows remain read-only below." : "Manual profile fields and read-only LDAP snapshot from the latest sync."}
-          actions={canEditProfileFields && !isEditingProfileFields ? (
-            <button
-              className="workspace-inline-button"
-              type="button"
-              onClick={handleStartEditProfileFields}
-              aria-label="Edit profile fields"
-            >
-              Edit
-            </button>
-          ) : null}
+          meta={
+            isEditingIdentity
+              ? "Edit role and manual profile fields where permitted. LDAP rows remain read-only below."
+              : canAssignRoleOnTarget
+                ? "Manual profile fields, role, and read-only LDAP snapshot from the latest sync."
+                : "Manual profile fields and read-only LDAP snapshot from the latest sync."
+          }
+          actions={
+            canEditIdentity && !isEditingIdentity ? (
+              <button
+                className="workspace-inline-button"
+                type="button"
+                onClick={handleStartEditIdentity}
+                aria-label="Edit identity"
+              >
+                Edit
+              </button>
+            ) : null
+          }
         >
           <div className="user-detail-meta">
             <div>
@@ -325,15 +407,43 @@ export default function UserDetailPage() {
               <span className="user-detail-label">Email</span>
               <span className="user-detail-value">{formatValue(user.ldapFields?.mail)}</span>
             </div>
+            {!isEditingIdentity && canAssignRoleOnTarget ? (
+              <div>
+                <span className="user-detail-label">Role</span>
+                <span className="user-detail-value">{ROLE_LABELS[user.role] ?? user.role}</span>
+              </div>
+            ) : null}
             <div>
               <span className="user-detail-label">Department</span>
               <span className="user-detail-value">{formatValue(user.ldapFields?.department)}</span>
             </div>
           </div>
 
-          {profileFields.length ? (
-            isEditingProfileFields ? (
-              <form className="user-detail-field-list" onSubmit={handleSaveProfileFields}>
+          {isEditingIdentity ? (
+            <>
+              <form
+                id="user-identity-edit-form"
+                className="user-detail-identity-form user-detail-field-list"
+                onSubmit={handleSaveIdentity}
+              >
+                {canAssignRoleOnTarget ? (
+                  <label className="user-detail-field" htmlFor="user-role-select">
+                    <span className="user-detail-field-label">Role</span>
+                    <select
+                      id="user-role-select"
+                      className="form-control"
+                      value={roleDraft}
+                      onChange={(event) => setRoleDraft(event.target.value)}
+                      aria-label="Assign user role"
+                    >
+                      {roleSelectOptions.map((r) => (
+                        <option key={r} value={r}>
+                          {ROLE_LABELS[r] ?? r}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
                 {profileFields.map((field) => (
                   <label className="user-detail-field" key={field.key}>
                     <span className="user-detail-field-label">{field.label}</span>
@@ -356,49 +466,58 @@ export default function UserDetailPage() {
                     )}
                   </label>
                 ))}
-                {updateProfileFieldsMutation.error ? (
-                  <p className="credentials-error">{updateProfileFieldsMutation.error.message}</p>
+                {updateProfileFieldsMutation.error || updateUserRoleMutation.error ? (
+                  <p className="credentials-error">
+                    {(updateUserRoleMutation.error || updateProfileFieldsMutation.error)?.message}
+                  </p>
                 ) : null}
-                <div className="credentials-actions">
-                  <button
-                    className="workspace-inline-button"
-                    type="submit"
-                    disabled={updateProfileFieldsMutation.isPending}
-                    aria-label="Save profile fields"
-                  >
-                    {updateProfileFieldsMutation.isPending ? "Saving..." : "Save"}
-                  </button>
+              </form>
+              <div
+                className="user-detail-identity-float-bar"
+                role="toolbar"
+                aria-label="Identity edit actions"
+              >
+                <div className="user-detail-identity-float-bar__inner">
                   <button
                     className="workspace-inline-link"
                     type="button"
-                    onClick={handleCancelEditProfileFields}
-                    disabled={updateProfileFieldsMutation.isPending}
+                    onClick={handleCancelEditIdentity}
+                    disabled={identitySavePending}
                   >
                     Cancel
                   </button>
+                  <button
+                    className="workspace-inline-button"
+                    type="submit"
+                    form="user-identity-edit-form"
+                    disabled={identitySavePending}
+                    aria-label="Save identity changes"
+                  >
+                    {identitySavePending ? "Saving..." : "Save"}
+                  </button>
                 </div>
-              </form>
-            ) : (
-              <div className="user-detail-field-list">
-                {profileFields.map((field) => {
-                  const fallback = !field.value ? getProfileFieldFallback(field, user) : null;
-                  const value = field.value || fallback?.value || null;
-                  const source = field.source || fallback?.source || null;
-
-                  return (
-                    <div className="user-detail-field" key={field.key}>
-                      <span className="user-detail-field-label">{field.label}</span>
-                      <span className="user-detail-field-value">{formatProfileFieldValue(field, value, canEditProfileFields)}</span>
-                      {source ? (
-                        <span className="user-detail-field-source">
-                          Source: {source === "ldap" ? "LDAP" : "Manual"}
-                        </span>
-                      ) : null}
-                    </div>
-                  );
-                })}
               </div>
-            )
+            </>
+          ) : profileFields.length ? (
+            <div className="user-detail-field-list">
+              {profileFields.map((field) => {
+                const fallback = !field.value ? getProfileFieldFallback(field, user) : null;
+                const value = field.value || fallback?.value || null;
+                const source = field.source || fallback?.source || null;
+
+                return (
+                  <div className="user-detail-field" key={field.key}>
+                    <span className="user-detail-field-label">{field.label}</span>
+                    <span className="user-detail-field-value">{formatProfileFieldValue(field, value, canEditProfileFields)}</span>
+                    {source ? (
+                      <span className="user-detail-field-source">
+                        Source: {source === "ldap" ? "LDAP" : "Manual"}
+                      </span>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
           ) : null}
 
           <div className="user-detail-field-list">
@@ -414,10 +533,12 @@ export default function UserDetailPage() {
 
         <WorkspacePanel variant="detail" title="Account Status" meta="Operational status and sync checkpoints for this account.">
           <div className="user-detail-meta">
-            <div>
-              <span className="user-detail-label">Role</span>
-              <span className="user-detail-value">{user.role}</span>
-            </div>
+            {!canAssignRoleOnTarget ? (
+              <div>
+                <span className="user-detail-label">Role</span>
+                <span className="user-detail-value">{ROLE_LABELS[user.role] ?? user.role}</span>
+              </div>
+            ) : null}
             <div>
               <span className="user-detail-label">Status</span>
               <span className="user-detail-value">{user.status}</span>

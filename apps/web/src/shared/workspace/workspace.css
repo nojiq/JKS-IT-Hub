@@ -475,10 +475,6 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.users-home-copy {
-  margin: 0;
-}
-
 .users-home-metrics {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1257,6 +1253,77 @@
 .user-detail-zone-grid {
   display: grid;
   gap: 1rem;
+}
+
+/* Fixed Save/Cancel while editing identity (long profile forms) */
+.user-detail-page--identity-editing {
+  padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+.user-detail-identity-float-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: center;
+  padding: 0.65rem 1rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
+  background: var(--ui-surface-elevated);
+  border-top: 1px solid var(--ui-border-subtle);
+  box-shadow: 0 -8px 28px rgba(15, 23, 42, 0.1);
+}
+
+.user-detail-identity-float-bar__inner {
+  width: 100%;
+  max-width: min(960px, calc(100vw - 2rem));
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.user-detail-identity-float-bar .workspace-inline-button {
+  background: var(--ui-accent-primary);
+  color: var(--ui-text-inverse);
+  border-color: var(--ui-accent-primary);
+  font-weight: 600;
+}
+
+.user-detail-identity-float-bar .workspace-inline-button:hover:not(:disabled) {
+  background: var(--ui-accent-primary-hover);
+  border-color: var(--ui-accent-primary-hover);
+  color: var(--ui-text-inverse);
+}
+
+.user-detail-identity-float-bar .workspace-inline-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.user-detail-identity-float-bar .workspace-inline-link {
+  background: var(--ui-surface-muted);
+  color: var(--ui-text-secondary);
+  border-color: var(--ui-border-subtle);
+  font-weight: 600;
+}
+
+.user-detail-identity-float-bar .workspace-inline-link:hover:not(:disabled) {
+  background: var(--ui-surface-hover);
+  color: var(--ui-text-primary);
+  border-color: var(--ui-text-muted);
+}
+
+.user-detail-identity-float-bar .workspace-inline-link:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .user-detail-identity-float-bar__inner {
+    max-width: calc(100vw - 1.25rem);
+  }
 }
 
 .user-detail-recent-actions {

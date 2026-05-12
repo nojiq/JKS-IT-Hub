@@ -13,6 +13,7 @@ import { BulkActionsBar } from "../../shared/workspace/BulkActionsBar";
 import { DataStateBlock } from "../../shared/workspace/DataStateBlock";
 import { useSharedFilters } from "../../shared/workspace/useSharedFilters";
 import { useIsMobile, useMediaQuery } from "../../shared/hooks/useMediaQuery";
+import { ROLE_LABELS } from "./roleLabels.js";
 import "../../shared/workspace/workspace.css";
 
 const IT_ROLES = ["it", "admin", "head_it"];
@@ -20,12 +21,6 @@ const EMPTY_USERS = [];
 const EMPTY_FIELDS = [];
 const EMPTY_META = {};
 const EMPTY_PAYLOAD = { users: EMPTY_USERS, fields: EMPTY_FIELDS, meta: EMPTY_META };
-const ROLE_LABELS = {
-  requester: "Requester",
-  it: "IT Support",
-  admin: "Administrator",
-  head_it: "Head of IT"
-};
 const ROWS_PER_PAGE_OPTIONS = [10, 20, 50, 100];
 
 const formatValue = (value) => {

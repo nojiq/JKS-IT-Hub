@@ -1,5 +1,6 @@
 import { requireItUser } from "../../shared/auth/requireItUser.js";
 import { requireAdminOrHead } from "../../shared/auth/requireAdminOrHead.js";
+import { ASSIGNABLE_ROLES, assertCanAssignRole } from "../../shared/auth/roleAssignment.js";
 import { createProblemDetails, sendProblem } from "../../shared/errors/problemDetails.js";
 
 export default async function (app, { config, userRepo, auditRepo, userFieldRepo }) {
@@ -256,6 +257,89 @@ export default async function (app, { config, userRepo, auditRepo, userFieldRepo
         };
     });
 
+    app.patch("/users/:id/role", async (request, reply) => {
+        const actor = await requireItUser(request, reply, {
+            config,
+            userRepo,
+            forbiddenDetail: "Only IT staff can change user roles."
+        });
+        if (!actor) return;
+
+        const { id } = request.params;
+        const target = await userRepo.findUserById(id);
+        if (!target) {
+            sendProblem(reply, createProblemDetails({
+                status: 404,
+                title: "Not Found",
+                detail: "User not found"
+            }));
+            return;
+        }
+
+        if (actor.id === id) {
+            sendProblem(reply, createProblemDetails({
+                status: 403,
+                title: "Forbidden",
+                detail: "You cannot change your own role."
+            }));
+            return;
+        }
+
+        const requestedRole = request.body?.role;
+        if (!ASSIGNABLE_ROLES.includes(requestedRole)) {
+            sendProblem(reply, createProblemDetails({
+                status: 400,
+                title: "Invalid Input",
+                detail: `role must be one of: ${ASSIGNABLE_ROLES.join(", ")}.`
+            }));
+            return;
+        }
+
+        const decision = assertCanAssignRole(actor, target, requestedRole);
+        if (!decision.ok) {
+            sendProblem(reply, createProblemDetails({
+                status: 403,
+                title: "Forbidden",
+                detail: decision.detail
+            }));
+            return;
+        }
+
+        if (target.role === requestedRole) {
+            return {
+                data: {
+                    user: mapUser(target)
+                }
+            };
+        }
+
+        const updated = await userRepo.updateUserRole(id, requestedRole);
+
+        if (auditRepo) {
+            await auditRepo.createAuditLog({
+                action: "user.role_update",
+                actorUserId: actor.id,
+                entityType: "user",
+                entityId: id,
+                metadata: {
+                    changes: [
+                        {
+                            field: "role",
+                            old: target.role,
+                            new: updated.role
+                        }
+                    ]
+                }
+            });
+        }
+
+        return {
+            data: {
+                user: mapUser(updated)
+            }
+        };
+    });
+
     app.get("/users/:id/audit-logs", async (request, reply) => {
         const actor = await requireItUser(request, reply, { config, userRepo });
         if (!actor) return;
@@ -274,6 +358,7 @@ export default async function (app, { config, userRepo, auditRepo, userFieldRepo
                 "user.ldap_create",
                 "user.ldap_update",
                 "user.update",
+                "user.role_update",
                 "credentials.regenerate.preview",
                 "credentials.regenerate.confirm",
                 "credentials.override.preview",
