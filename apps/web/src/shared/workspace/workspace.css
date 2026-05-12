@@ -1048,14 +1048,14 @@
 
 .workspace-page.users-page .users-management-table {
   width: 100%;
-  min-width: 1160px;
+  min-width: 920px;
   table-layout: auto;
 }
 
 .workspace-page.users-page .users-management-table th,
 .workspace-page.users-page .users-management-table td {
-  padding: 0.9rem 1rem;
-  font-size: 0.93rem;
+  padding: 0.65rem 0.72rem;
+  font-size: 0.9rem;
 }
 
 .workspace-page.users-page .users-management-table th {
@@ -1070,33 +1070,34 @@
 
 .workspace-page.users-page .users-management-table th[data-column="user"],
 .workspace-page.users-page .users-management-table td[data-column="user"] {
-  min-width: 320px;
+  min-width: 260px;
 }
 
 .workspace-page.users-page .users-management-table th[data-column="role"],
 .workspace-page.users-page .users-management-table td[data-column="role"] {
-  min-width: 150px;
+  min-width: 120px;
 }
 
 .workspace-page.users-page .users-management-table th[data-column="status"],
 .workspace-page.users-page .users-management-table td[data-column="status"] {
-  min-width: 130px;
+  min-width: 108px;
 }
 
 .workspace-page.users-page .users-management-table th[data-column="username"],
 .workspace-page.users-page .users-management-table td[data-column="username"] {
-  min-width: 180px;
+  min-width: 140px;
 }
 
 .workspace-page.users-page .users-management-table th[data-column="department"],
 .workspace-page.users-page .users-management-table td[data-column="department"] {
-  min-width: 190px;
+  min-width: 150px;
 }
 
 .workspace-page.users-page .users-management-table th[data-column="actions"],
 .workspace-page.users-page .users-management-table td[data-column="actions"] {
   width: 1%;
   white-space: nowrap;
+  text-align: center;
 }
 
 .workspace-page.users-page .users-table-selection-cell {
@@ -1112,8 +1113,8 @@
 }
 
 .workspace-page.users-page .users-user-avatar {
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2rem;
+  height: 2rem;
   border-radius: 999px;
   border: 1px solid var(--ui-border-subtle);
   background: var(--ui-surface-muted);
@@ -1179,6 +1180,22 @@
 .workspace-page.users-page .users-row-action {
   min-height: 2rem;
   padding: 0 0.7rem;
+}
+
+.workspace-page.users-page .users-row-action--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.workspace-page.users-page .users-row-action-icon {
+  display: block;
+  flex-shrink: 0;
 }
 
 .workspace-page.users-page .users-pagination-bar {
