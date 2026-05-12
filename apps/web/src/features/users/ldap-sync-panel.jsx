@@ -16,7 +16,13 @@ const formatTimestamp = (value) => {
     return "—";
   }
 
-  return date.toLocaleString();
+  const d = date.getDate().toString().padStart(2, "0");
+  const m = (date.getMonth() + 1).toString().padStart(2, "0");
+  const y = date.getFullYear();
+  const hours = date.getHours().toString().padStart(2, "0");
+  const mins = date.getMinutes().toString().padStart(2, "0");
+
+  return `${d}/${m}/${y} ${hours}:${mins}`;
 };
 
 const formatStatus = (status) => {
@@ -189,8 +195,9 @@ export default function LdapSyncPanel() {
         </span>
       </button>
       <span className="ldap-sync-status-dot" aria-hidden="true" />
-      <span className="ldap-sync-status-label">{isLoading ? "Loading sync" : formatStatus(status)}</span>
-      <span className="ldap-sync-timestamp">{formatTimestamp(lastUpdated)}</span>
+      <span className="ldap-sync-status-label">
+        {isLoading ? "Syncing..." : `${formatStatus(status)} ${formatTimestamp(lastUpdated)}`}
+      </span>
       {createdUsersLabel ? (
         <Link className="ldap-sync-created-chip" to="/audit-logs?action=user.ldap_create">
           {createdUsersLabel}

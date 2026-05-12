@@ -1,6 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { exportBatchCredentials } from '../api/exports.js';
+import './credential-export.css';
 
 const FORMAT_STORAGE_KEY = 'export-format-preference';
 
@@ -66,21 +66,13 @@ export function BatchCredentialExportButton({ userIds }) {
             <p className="export-preview-message">
                 IMAP credentials are excluded from exports for security.
             </p>
-            <div className="export-controls" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div className="export-controls">
                 <select
                     value={format}
                     onChange={handleFormatChange}
-                    className="format-select"
+                    className="export-format-select"
                     aria-label="Export format"
                     disabled={isDisabled}
-                    style={{
-                        padding: '8px 12px',
-                        borderRadius: '4px',
-                        border: '1px solid #ddd',
-                        background: 'white',
-                        cursor: isDisabled ? 'not-allowed' : 'pointer',
-                        opacity: isDisabled ? 0.5 : 1
-                    }}
                 >
                     <option value="standard">Standard (Human-readable)</option>
                     <option value="compressed">Compressed (CSV-style)</option>
@@ -88,7 +80,8 @@ export function BatchCredentialExportButton({ userIds }) {
                 <button
                     onClick={handleExport}
                     disabled={isDisabled}
-                    className={`btn btn-secondary ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className="workspace-inline-button"
+                    type="button"
                     title="Download credentials for selected users"
                 >
                     {isExporting ? 'Exporting Batch...' : 'Export Selected Credentials'}

@@ -14,7 +14,22 @@ export const workspaceGroups = [
         to: "/requests",
         launcherPriority: 1,
         launcherDescription: "Review purchase requests, move approvals forward, and resolve blocked items.",
-        launcherActionLabel: "Open Requests"
+        launcherActionLabel: "Open Requests",
+        children: [
+          { label: "Overview", to: "/requests" },
+          {
+            label: "My Requests",
+            to: "/requests/my-requests",
+            matches: (pathname) => {
+              if (pathname === "/requests/my-requests") return true;
+              const detailMatch = pathname.match(/^\/requests\/([^/]+)$/);
+              const excluded = new Set(["new", "my-requests", "review", "approvals"]);
+              return !!detailMatch && !excluded.has(detailMatch[1]);
+            }
+          },
+          { label: "Review Queue", to: "/requests/review" },
+          { label: "Approvals", to: "/requests/approvals", roles: ADMIN_ROLES }
+        ]
       },
       {
         id: "onboarding",
@@ -24,7 +39,13 @@ export const workspaceGroups = [
         roles: IT_ROLES,
         launcherPriority: 2,
         launcherDescription: "Prepare access, assign defaults, and generate credentials for new joiners.",
-        launcherActionLabel: "Open Onboarding"
+        launcherActionLabel: "Open Onboarding",
+        children: [
+          { label: "Overview", to: "/onboarding" },
+          { label: "New Joiner", to: "/onboarding/new-joiner" },
+          { label: "Defaults", to: "/onboarding/defaults" },
+          { label: "Catalog", to: "/onboarding/catalog" }
+        ]
       },
       {
         id: "users",
@@ -34,7 +55,14 @@ export const workspaceGroups = [
         roles: IT_ROLES,
         launcherPriority: 3,
         launcherDescription: "Manage user status, passwords, and generated access details.",
-        launcherActionLabel: "Open Users & Credentials"
+        launcherActionLabel: "Open Users & Credentials",
+        children: [
+          { label: "Overview", to: "/users" },
+          { label: "Directory", to: "/users/directory" },
+          { label: "Credential Generator", to: "/users/credential-generator" },
+          { label: "Locked Credentials", to: "/users/locked" },
+          { label: "History", to: "/users/history" }
+        ]
       },
       {
         id: "maintenance",
@@ -44,7 +72,16 @@ export const workspaceGroups = [
         roles: IT_ROLES,
         launcherPriority: 4,
         launcherDescription: "Schedule preventive work, assign tasks, and close overdue actions.",
-        launcherActionLabel: "Open Maintenance"
+        launcherActionLabel: "Open Maintenance",
+        children: [
+          { label: "Overview", to: "/maintenance" },
+          { label: "Schedule", to: "/maintenance/schedule" },
+          { label: "My Tasks", to: "/maintenance/my-tasks" },
+          { label: "History", to: "/maintenance/history" },
+          { label: "Config", to: "/maintenance/config" },
+          { label: "Rules", to: "/maintenance/assignment-rules" },
+          { label: "Checklists", to: "/maintenance/checklists" }
+        ]
       }
     ]
   },
@@ -67,7 +104,10 @@ export function resolveWorkspaceGroups(user) {
         .filter((item) => !item.roles || item.roles.includes(user?.role))
         .map((item) => ({
           ...item,
-          to: typeof item.to === "function" ? item.to(user ?? {}) : item.to
+          to: typeof item.to === "function" ? item.to(user ?? {}) : item.to,
+          children: item.children
+            ? item.children.filter((child) => !child.roles || child.roles.includes(user?.role))
+            : undefined
         }))
     }))
     .filter((group) => group.items.length > 0);

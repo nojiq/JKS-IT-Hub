@@ -13,5 +13,6 @@ export default defineConfig({
             '**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
             '../../tests/web/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
         ],
+        maxWorkers: 1,
     },
 });

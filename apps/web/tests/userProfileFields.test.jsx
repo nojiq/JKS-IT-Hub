@@ -141,8 +141,8 @@ describe("User profile fields", () => {
     expect(editButton).toBeInTheDocument();
     expect(screen.getAllByText("Source: Manual").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Source: LDAP").length).toBeGreaterThan(0);
-    expect(screen.getByText("********")).toBeInTheDocument();
-    expect(screen.queryByText("Secret123!")).not.toBeInTheDocument();
+    expect(screen.getByText("Secret123!")).toBeInTheDocument();
+    expect(screen.queryByText("********")).not.toBeInTheDocument();
 
     fireEvent.click(editButton);
 
@@ -170,5 +170,7 @@ describe("User profile fields", () => {
 
     await screen.findByRole("heading", { name: "abdullah.fauzi" });
     expect(screen.queryByRole("button", { name: "Edit profile fields" })).not.toBeInTheDocument();
+    expect(screen.getByText("********")).toBeInTheDocument();
+    expect(screen.queryByText("Secret123!")).not.toBeInTheDocument();
   });
 });

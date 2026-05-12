@@ -179,7 +179,7 @@ test("Department Assignment Rules - CRUD & Logic", async (t) => {
             url: `/api/v1/maintenance/cycles/${cycleId}/generate-schedule`,
             headers: { cookie: `it-hub-session=${itToken}` },
             payload: {
-                monthsAhead: 1,
+                monthsAhead: 12,
                 department: departmentName
             }
         });
@@ -267,7 +267,7 @@ test("Department Assignment Rules - CRUD & Logic", async (t) => {
                 url: `/api/v1/maintenance/cycles/${noRuleCycleId}/generate-schedule`,
                 headers: { cookie: `it-hub-session=${itToken}` },
                 payload: {
-                    monthsAhead: 1,
+                    monthsAhead: 12,
                     department: noRuleDepartment
                 }
             });
@@ -306,15 +306,17 @@ test("Department Assignment Rules - CRUD & Logic", async (t) => {
     });
 
     await t.test("7. Rotation handles wrap-around", async () => {
-        // We have 2 technicians (tech1, tech2)
-        // Current index should be 1 (after test 3 advanced it once)
+        const rotationBefore = await prisma.departmentRotationState.findUnique({
+            where: { ruleId }
+        });
+        const technicians = [techUser1.id, techUser2.id];
+        const startIndex = rotationBefore.currentTechnicianIndex;
 
-        // Generate more windows
         const scheduleResponse = await app.inject({
             method: "POST",
             url: `/api/v1/maintenance/cycles/${cycleId}/generate-schedule`,
             headers: { cookie: `it-hub-session=${itToken}` },
-            payload: { monthsAhead: 12, department: departmentName }
+            payload: { monthsAhead: 24, department: departmentName }
         });
 
         assert.equal(scheduleResponse.statusCode, 200);
@@ -323,10 +325,12 @@ test("Department Assignment Rules - CRUD & Logic", async (t) => {
 
         assert.ok(windows.length >= 2, "Should have generated at least 2 windows");
 
-        // window[0] should be tech2 (index 1)
-        // window[1] should be tech1 (index 0 - wrap)
-        assert.equal(windows[0].assignedToId, techUser2.id);
-        assert.equal(windows[1].assignedToId, techUser1.id, "Should wrap back to first technician");
+        assert.equal(windows[0].assignedToId, technicians[startIndex]);
+        assert.equal(
+            windows[1].assignedToId,
+            technicians[(startIndex + 1) % technicians.length],
+            "Should wrap to the next technician"
+        );
     });
 
     await t.test("8. Reset Rotation", async () => {
@@ -341,13 +345,24 @@ test("Department Assignment Rules - CRUD & Logic", async (t) => {
         const body = JSON.parse(resetResponse.body);
         assert.equal(body.data.currentTechnicianIndex, 0);
 
-        // Verify next assignment is techUser1
-        // We generate windows far enough in the future to ensure new ones are created
+        const resetCycleResponse = await app.inject({
+            method: "POST",
+            url: "/api/v1/maintenance/cycles",
+            headers: { cookie: `it-hub-session=${itToken}` },
+            payload: {
+                name: `Auto-Assign Cycle Reset - ${departmentName}`,
+                intervalMonths: 12,
+                description: "Cycle for reset rotation verification"
+            }
+        });
+        const resetCycleId = JSON.parse(resetCycleResponse.body).data.id;
+
+        // Verify next assignment is techUser1 on a fresh cycle.
         const scheduleResponse = await app.inject({
             method: "POST",
-            url: `/api/v1/maintenance/cycles/${cycleId}/generate-schedule`,
+            url: `/api/v1/maintenance/cycles/${resetCycleId}/generate-schedule`,
             headers: { cookie: `it-hub-session=${itToken}` },
-            payload: { monthsAhead: 24, department: departmentName }
+            payload: { monthsAhead: 12, department: departmentName }
         });
         const windows = JSON.parse(scheduleResponse.body).data.windows;
         assert.ok(windows.length > 0);

@@ -16,7 +16,6 @@
   min-width: 0;
 }
 
-.maintenance-overview-grid,
 .maintenance-support-grid,
 .maintenance-panel-grid {
   display: grid;
@@ -24,14 +23,27 @@
   gap: 1rem;
 }
 
+.maintenance-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  border-top: 1px solid var(--ui-border-subtle);
+  border-bottom: 1px solid var(--ui-border-subtle);
+}
+
 .maintenance-overview-card {
-  min-height: 210px;
+  min-height: 0;
+  padding-inline: 1rem;
+}
+
+.maintenance-overview-card + .maintenance-overview-card {
+  border-left: 1px solid var(--ui-border-subtle);
 }
 
 .maintenance-overview-value {
   margin: 0;
   font-family: var(--font-heading);
-  font-size: clamp(2rem, 5vw, 3rem);
+  font-size: 2.25rem;
   line-height: 1;
   color: var(--ui-text-primary);
 }
@@ -122,10 +134,22 @@
 }
 
 @media (max-width: 767px) {
-  .maintenance-overview-grid,
   .maintenance-support-grid,
   .maintenance-panel-grid {
     grid-template-columns: 1fr;
+  }
+
+  .maintenance-overview-grid {
+    grid-template-columns: 1fr;
+    border-bottom: 0;
+  }
+
+  .maintenance-overview-card {
+    padding-inline: 0;
+  }
+
+  .maintenance-overview-card + .maintenance-overview-card {
+    border-left: 0;
   }
 
   .maintenance-home-actions,

@@ -83,8 +83,8 @@ const profileFieldInputType = (type) => {
   return "text";
 };
 
-const formatProfileFieldValue = (field, value) => {
-  if (field.sensitive && value) {
+const formatProfileFieldValue = (field, value, canRevealSensitive = false) => {
+  if (field.sensitive && value && !canRevealSensitive) {
     return "********";
   }
   return formatValue(value);
@@ -388,7 +388,7 @@ export default function UserDetailPage() {
                   return (
                     <div className="user-detail-field" key={field.key}>
                       <span className="user-detail-field-label">{field.label}</span>
-                      <span className="user-detail-field-value">{formatProfileFieldValue(field, value)}</span>
+                      <span className="user-detail-field-value">{formatProfileFieldValue(field, value, canEditProfileFields)}</span>
                       {source ? (
                         <span className="user-detail-field-source">
                           Source: {source === "ldap" ? "LDAP" : "Manual"}
@@ -433,53 +433,49 @@ export default function UserDetailPage() {
           variant="detail"
           title="Credentials"
           meta="Generated credentials, exports, locks, and regeneration controls."
-          actions={(
-            <div className="credentials-actions">
-              {canManageCredentials && credentialsQuery.data?.data?.length > 0 ? (
+          actions={canManageCredentials ? (
+            <div className="user-detail-credentials-header-toolbar" role="toolbar" aria-label="Credential shortcuts">
+              {credentialsQuery.data?.data?.length > 0 ? (
                 <Link className="workspace-inline-link" to={`/users/${id}/credentials/history`}>
                   View History
                 </Link>
               ) : null}
-              {canManageCredentials ? (
-                <Link className="workspace-inline-link" to={`/users/imap-generator?userId=${id}`}>
-                  Open IMAP Generator
-                </Link>
-              ) : null}
-              {canManageCredentials ? (
+                <Link className="workspace-inline-link" to={`/users/credential-generator?mode=imap&userId=${id}`}>
+                Open Credential Generator
+              </Link>
+              <Link className="workspace-inline-link" to="/users/locked">
+                Locked Credentials
+              </Link>
+              <button
+                className="workspace-inline-button"
+                onClick={() => setShowRegeneration(true)}
+                disabled={user.status === "disabled" || !user.ldapSyncedAt}
+                title={user.status === "disabled" ? "Cannot regenerate for disabled users" : !user.ldapSyncedAt ? "LDAP sync required first" : "Regenerate credentials"}
+                type="button"
+              >
+                Regenerate Credentials
+              </button>
+            </div>
+          ) : null}
+        >
+          {canManageCredentials ? (
+            <>
+              <div className="user-detail-credentials-export-block">
                 <CredentialExportButton
                   userId={id}
                   username={user.username}
                   credentials={credentialsQuery.data?.data || []}
                 />
-              ) : null}
-              {canManageCredentials ? (
-                <Link className="workspace-inline-link" to="/users/locked">
-                  Locked Credentials
-                </Link>
-              ) : null}
-              {canManageCredentials ? (
-                <button
-                  className="workspace-inline-button"
-                  onClick={() => setShowRegeneration(true)}
-                  disabled={user.status === "disabled" || !user.ldapSyncedAt}
-                  title={user.status === "disabled" ? "Cannot regenerate for disabled users" : !user.ldapSyncedAt ? "LDAP sync required first" : "Regenerate credentials"}
-                  type="button"
-                >
-                  Regenerate Credentials
-                </button>
-              ) : null}
-            </div>
-          )}
-        >
-          {canManageCredentials ? (
-            <CredentialGenerator
-              userId={id}
-              userName={user.username}
-              userStatus={user.status}
-              userLdapFields={user.ldapFields}
-              canEnableUser={canEnableUsers}
-              onEnableUser={canEnableUsers ? handleEnableUser : undefined}
-            />
+              </div>
+              <CredentialGenerator
+                userId={id}
+                userName={user.username}
+                userStatus={user.status}
+                userLdapFields={user.ldapFields}
+                canEnableUser={canEnableUsers}
+                onEnableUser={canEnableUsers ? handleEnableUser : undefined}
+              />
+            </>
           ) : (
             <>
               <DisabledUserBanner

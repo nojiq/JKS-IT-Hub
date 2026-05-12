@@ -143,31 +143,23 @@ describe('Users module overview route', () => {
         });
     });
 
-    it('opens /users on a module landing page with shared module tabs', async () => {
+    it('opens /users on the users module landing page', async () => {
         renderApp();
 
         expect(await screen.findByRole('heading', { name: 'Users & Credentials' })).toBeInTheDocument();
-        expect(screen.getByRole('navigation', { name: 'Users and credentials sections' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page');
-        expect(screen.getByRole('link', { name: 'Directory' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'IMAP Generator' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Locked Credentials' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'History' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'User Directory' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Open Directory' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Recent Access Actions' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Password Generation' })).toBeInTheDocument();
         expect(screen.getAllByRole('heading', { name: 'Locked Credentials' }).length).toBeGreaterThanOrEqual(1);
         expect(document.querySelector('.users-subnav')).not.toBeInTheDocument();
     });
 
-    it('keeps directory active inside shared module tabs', async () => {
+    it('renders directory route inside users layout', async () => {
         renderApp({ initialEntry: '/users/directory' });
 
         expect(await screen.findByText('Directory Content')).toBeInTheDocument();
-        expect(screen.getByRole('navigation', { name: 'Users and credentials sections' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Directory' })).toHaveAttribute('aria-current', 'page');
-        expect(screen.getByRole('link', { name: 'Locked Credentials' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'History' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Users & Credentials' })).toBeInTheDocument();
     });
 
     it.each([
@@ -193,7 +185,6 @@ describe('Users module overview route', () => {
         });
 
         expect(await screen.findByRole('heading', { name: 'Users & Credentials' })).toBeInTheDocument();
-        expect(screen.getByRole('navigation', { name: 'Users and credentials sections' })).toBeInTheDocument();
     });
 
     it('redirects unauthorized users to / and does not render the users module shell', async () => {

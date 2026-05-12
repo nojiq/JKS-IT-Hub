@@ -709,6 +709,17 @@ export const updateAssignmentRule = async (id, data, tx = prisma) => {
             );
         }
 
+        if (data.assignmentStrategy === 'ROTATION') {
+            await client.departmentRotationState.upsert({
+                where: { ruleId: id },
+                update: {},
+                create: {
+                    ruleId: id,
+                    currentTechnicianIndex: 0
+                }
+            });
+        }
+
         // Return updated rule with relations
         return client.departmentAssignmentRule.findUnique({
             where: { id },

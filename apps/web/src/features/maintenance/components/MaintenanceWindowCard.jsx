@@ -52,31 +52,40 @@ const MaintenanceWindowCard = ({ window, onView, onEdit, onCancel, onSignOff, on
             </div>
 
             <div className="maintenance-window-card__actions">
-                <button type="button" className="btn-secondary" onClick={() => onView?.(window)}>
-                    View Details
-                </button>
+                <div className="maintenance-window-card__action-group maintenance-window-card__action-group--review">
+                    <button type="button" className="btn-secondary" onClick={() => onView?.(window)}>
+                        View Details
+                    </button>
+
+                    {!isTerminalStatus && onSignOff && (
+                        <button type="button" className="btn-primary" onClick={() => onSignOff(window)}>
+                            Sign-Off
+                        </button>
+                    )}
+                </div>
 
                 {!isTerminalStatus && (
                     <>
-                        {onSignOff && (
-                            <button type="button" className="btn-primary" onClick={() => onSignOff(window)}>
-                                Sign-Off
-                            </button>
-                        )}
-                        {onAssign && (
-                            <button type="button" className="btn-tertiary" onClick={() => onAssign(window)}>
-                                {window.assignedTo ? 'Reassign' : 'Assign'}
-                            </button>
-                        )}
-                        {onEdit && (
-                            <button type="button" className="btn-secondary" onClick={() => onEdit(window)}>
-                                Edit
-                            </button>
+                        {(onAssign || onEdit) && (
+                            <div className="maintenance-window-card__action-group maintenance-window-card__action-group--manage">
+                                {onAssign && (
+                                    <button type="button" className="btn-tertiary" onClick={() => onAssign(window)}>
+                                        {window.assignedTo ? 'Reassign' : 'Assign'}
+                                    </button>
+                                )}
+                                {onEdit && (
+                                    <button type="button" className="btn-secondary" onClick={() => onEdit(window)}>
+                                        Edit
+                                    </button>
+                                )}
+                            </div>
                         )}
                         {onCancel && (
-                            <button type="button" className="btn-danger" onClick={() => onCancel(window)}>
-                                Cancel
-                            </button>
+                            <div className="maintenance-window-card__action-group maintenance-window-card__action-group--danger">
+                                <button type="button" className="btn-danger" onClick={() => onCancel(window)}>
+                                    Cancel
+                                </button>
+                            </div>
                         )}
                     </>
                 )}

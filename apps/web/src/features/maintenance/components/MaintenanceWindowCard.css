@@ -37,5 +37,113 @@
 .maintenance-window-card__actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 0.65rem;
+    align-items: center;
+    padding-top: 0.15rem;
+}
+
+.maintenance-window-card__action-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    align-items: center;
+}
+
+.maintenance-window-card__action-group--review {
+    order: 1;
+}
+
+.maintenance-window-card__action-group--manage {
+    order: 2;
+    padding-left: 0.65rem;
+    border-left: 1px solid #e2e8f0;
+}
+
+.maintenance-window-card__action-group--danger {
+    order: 3;
+    margin-left: auto;
+}
+
+.maintenance-window-card__actions button {
+    min-height: 2.25rem;
+    padding: 0.5rem 0.8rem;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1;
+    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+}
+
+.maintenance-window-card__actions .btn-primary {
+    background: #1e3a5f;
+    border-color: #1e3a5f;
+    color: #fff;
+}
+
+.maintenance-window-card__actions .btn-secondary {
+    background: #fff;
+    border-color: #cbd5e1;
+    color: #334155;
+}
+
+.maintenance-window-card__actions .btn-tertiary {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #334155;
+}
+
+.maintenance-window-card__actions .btn-danger {
+    background: #fff;
+    border-color: #fecaca;
+    color: #b91c1c;
+}
+
+.maintenance-window-card__actions .btn-primary:hover,
+.maintenance-window-card__actions .btn-secondary:hover,
+.maintenance-window-card__actions .btn-tertiary:hover,
+.maintenance-window-card__actions .btn-danger:hover {
+    box-shadow: 0 3px 8px rgba(15, 23, 42, 0.14);
+}
+
+.maintenance-window-card__actions .btn-primary:hover {
+    background: #172f4d;
+    border-color: #172f4d;
+}
+
+.maintenance-window-card__actions .btn-secondary:hover,
+.maintenance-window-card__actions .btn-tertiary:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.maintenance-window-card__actions .btn-danger:hover {
+    background: #fef2f2;
+    border-color: #fca5a5;
+    color: #991b1b;
+}
+
+@media (max-width: 640px) {
+    .maintenance-window-card__actions {
+        align-items: stretch;
+    }
+
+    .maintenance-window-card__action-group {
+        width: 100%;
+    }
+
+    .maintenance-window-card__action-group--manage {
+        padding-left: 0;
+        border-left: 0;
+    }
+
+    .maintenance-window-card__action-group--danger {
+        margin-left: 0;
+    }
+
+    .maintenance-window-card__actions button {
+        flex: 1 1 auto;
+    }
 }

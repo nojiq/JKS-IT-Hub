@@ -1,6 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
+import { resolve } from 'node:path';
 import MaintenanceWindowList from '../../apps/web/src/features/maintenance/components/MaintenanceWindowList.jsx';
+
+const testDir = dirname(fileURLToPath(import.meta.url));
 
 const baseWindow = {
     scheduledEndDate: null,
@@ -73,5 +79,20 @@ describe('MaintenanceWindowList', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'Next' }));
         expect(onPageChange).toHaveBeenCalledWith(2);
+    });
+
+    it('owns styles for every maintenance card action variant', () => {
+        const css = readFileSync(
+            resolve(testDir, '../../apps/web/src/features/maintenance/components/MaintenanceWindowCard.css'),
+            'utf8'
+        );
+
+        expect(css).toContain('.maintenance-window-card__actions .btn-primary');
+        expect(css).toContain('.maintenance-window-card__actions .btn-secondary');
+        expect(css).toContain('.maintenance-window-card__actions .btn-tertiary');
+        expect(css).toContain('.maintenance-window-card__actions .btn-danger');
+        expect(css).toContain('.maintenance-window-card__action-group--review');
+        expect(css).toContain('.maintenance-window-card__action-group--manage');
+        expect(css).toContain('.maintenance-window-card__action-group--danger');
     });
 });

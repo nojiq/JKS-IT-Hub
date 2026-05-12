@@ -176,6 +176,12 @@ export const listUsersFiltered = async (filters = {}, pagination = {}) => {
       },
       {
         ldapAttributes: {
+          path: '$.mail',
+          string_contains: filters.search
+        }
+      },
+      {
+        ldapAttributes: {
           path: '$.department',
           string_contains: filters.search
         }

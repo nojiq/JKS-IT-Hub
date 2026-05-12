@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavLink, Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { fetchSession, logout } from "../../features/users/auth-api";
@@ -6,11 +6,12 @@ import { NotificationBell } from "../../features/notifications/components/Notifi
 import { ThemeToggle } from "../ui/ThemeToggle/ThemeToggle";
 import { DataStateBlock } from "./DataStateBlock";
 import { useIsDesktop } from "../hooks/useMediaQuery";
-import { SidebarCollapseIcon, SidebarMenuIcon, WorkspaceNavIcon } from "./WorkspaceIcons";
+import { SidebarCollapseIcon, SidebarMenuIcon, WorkspaceNavIcon, ChevronIcon } from "./WorkspaceIcons";
 import { resolveWorkspaceGroups } from "./workspaceModules";
 import "./workspace.css";
 
 const SIDEBAR_STORAGE_KEY = "workspace-sidebar-collapsed";
+const EXPANDED_STORAGE_KEY = "workspace-sidebar-expanded";
 
 const hasRole = (role, allowedRoles) => {
   if (!allowedRoles) {
@@ -38,6 +39,17 @@ const initialsFor = (username) => {
     .join("") || "NA";
 };
 
+function isRootModulePath(to) {
+  return to.split("/").filter(Boolean).length === 1;
+}
+
+function matchesPath(pathname, to) {
+  if (isRootModulePath(to)) {
+    return pathname === to;
+  }
+  return pathname === to || pathname.startsWith(`${to}/`);
+}
+
 export function WorkspaceLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -45,10 +57,16 @@ export function WorkspaceLayout() {
   const isDesktop = useIsDesktop();
   const [menuOpen, setMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
+    if (typeof window === "undefined") return false;
     return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true";
+  });
+  const [expandedItems, setExpandedItems] = useState(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      return JSON.parse(window.localStorage.getItem(EXPANDED_STORAGE_KEY) || "{}");
+    } catch {
+      return {};
+    }
   });
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const menuRef = useRef(null);
@@ -68,6 +86,9 @@ export function WorkspaceLayout() {
       navigate("/login", { replace: true });
     }
   });
+
+  const user = userFromSession(sessionQuery.data);
+  const memoizedGroups = useMemo(() => (user ? resolveWorkspaceGroups(user) : []), [user]);
 
   useEffect(() => {
     const handleOutsideClick = (event) => {
@@ -90,17 +111,35 @@ export function WorkspaceLayout() {
     setIsDrawerOpen(false);
   }, [location.pathname]);
 
+  // Handle auto-expansion on mount or pathname change
+  const lastPathname = useRef(null);
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
+    if (lastPathname.current !== location.pathname) {
+      lastPathname.current = location.pathname;
+      const currentPath = location.pathname;
+      
+      memoizedGroups.forEach(group => {
+        group.items.forEach(item => {
+          if (item.children && matchesPath(currentPath, item.to)) {
+            setExpandedItems(prev => ({ ...prev, [item.id]: true }));
+          }
+        });
+      });
     }
+  }, [location.pathname, memoizedGroups]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
     window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
 
   useEffect(() => {
-    if (isDesktop) {
-      setIsDrawerOpen(false);
-    }
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(EXPANDED_STORAGE_KEY, JSON.stringify(expandedItems));
+  }, [expandedItems]);
+
+  useEffect(() => {
+    if (isDesktop) setIsDrawerOpen(false);
   }, [isDesktop]);
 
   useEffect(() => {
@@ -141,23 +180,28 @@ export function WorkspaceLayout() {
     );
   }
 
-  const user = userFromSession(sessionQuery.data);
-
   if (!user) {
     return <Navigate replace to="/login" />;
   }
-  const resolvedGroups = resolveWorkspaceGroups(user).map((group) => ({
-    ...group,
-    items: group.items.filter((item) => hasRole(user.role, item.roles))
-  }));
+
+  /** Desktop: follow persisted collapse. Mobile drawer open: always show labels, subtrees, brand subtitle. */
+  const showExpandedSidebarChrome = !isSidebarCollapsed || (!isDesktop && isDrawerOpen);
 
   const handleSidebarToggle = () => {
     if (isDesktop) {
       setIsSidebarCollapsed((current) => !current);
       return;
     }
-
     setIsDrawerOpen((current) => !current);
+  };
+
+  const toggleExpand = (itemId, event) => {
+    // If it's a click on the chevron, just toggle
+    // If it's a click on the link, toggle if it's not already expanded
+    setExpandedItems(prev => ({
+      ...prev,
+      [itemId]: !prev[itemId]
+    }));
   };
 
   return (
@@ -178,29 +222,79 @@ export function WorkspaceLayout() {
         <div className="workspace-brand">
           <span className="workspace-brand-mark">ITH</span>
           <strong className="workspace-brand-name">IT Hub</strong>
-          {isSidebarCollapsed ? null : <p className="workspace-brand-subtitle">IT Operations Console</p>}
+          {showExpandedSidebarChrome ? <p className="workspace-brand-subtitle">IT Operations Console</p> : null}
         </div>
 
         <nav className="workspace-nav">
-          {resolvedGroups.map((group) => (
+          {memoizedGroups.map((group) => (
             <section key={group.id} className="workspace-nav-group" aria-label={group.label}>
               <p className="workspace-nav-group-label">{group.label}</p>
               <div className="workspace-nav-group-items">
                 {group.items.map((item) => {
+                  const hasChildren = item.children && item.children.length > 0;
+                  const isExpanded = expandedItems[item.id];
+
                   return (
-                    <div key={item.id} className="workspace-nav-item">
-                      <NavLink
-                        to={item.to}
-                        aria-label={item.label}
-                        className={({ isActive }) =>
-                          `workspace-nav-link${isActive ? " is-active" : ""}`
-                        }
-                      >
-                        <span className="workspace-nav-link-icon" aria-hidden="true">
-                          <WorkspaceNavIcon icon={item.icon} className="workspace-nav-icon" />
-                        </span>
-                        <span className="workspace-nav-link-label">{item.label}</span>
-                      </NavLink>
+                    <div key={item.id} className={`workspace-nav-item${isExpanded ? " is-expanded" : ""}`}>
+                      <div className="workspace-nav-item-header">
+                        <NavLink
+                          to={item.to}
+                          aria-label={item.label}
+                          className={({ isActive }) =>
+                            `workspace-nav-link${isActive ? " is-active" : ""}${hasChildren ? " has-children" : ""}`
+                          }
+                          onClick={(e) => {
+                            if (hasChildren && !isExpanded) {
+                              setExpandedItems(prev => ({ ...prev, [item.id]: true }));
+                            }
+                          }}
+                        >
+                          <span className="workspace-nav-link-icon" aria-hidden="true">
+                            <WorkspaceNavIcon icon={item.icon} className="workspace-nav-icon" />
+                          </span>
+                          <span className="workspace-nav-link-label">{item.label}</span>
+                        </NavLink>
+
+                        {hasChildren && showExpandedSidebarChrome && (
+                          <button
+                            type="button"
+                            className="workspace-nav-toggle-btn"
+                            aria-label={isExpanded ? "Collapse" : "Expand"}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              toggleExpand(item.id);
+                            }}
+                          >
+                            <ChevronIcon className="workspace-nav-chevron" />
+                          </button>
+                        )}
+                      </div>
+
+                      {hasChildren && showExpandedSidebarChrome && (
+                        <div
+                          className="workspace-nav-children-container"
+                          aria-hidden={!isExpanded}
+                        >
+                          <div className="workspace-nav-children">
+                            {item.children.map((child) => {
+                              const isSubActive = typeof child.matches === "function"
+                                ? child.matches(location.pathname)
+                                : matchesPath(location.pathname, child.to);
+
+                              return (
+                                <NavLink
+                                  key={child.to}
+                                  to={child.to}
+                                  className={`workspace-subnav-link${isSubActive ? " is-active" : ""}`}
+                                >
+                                  {child.label}
+                                </NavLink>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

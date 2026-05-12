@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { exportCredentials } from '../api/exports.js';
 import { ExportPreview } from './ExportPreview.jsx';
+import './credential-export.css';
 
 const FORMAT_STORAGE_KEY = 'export-format-preference';
 
@@ -47,19 +48,13 @@ export function CredentialExportButton({ userId, username, credentials = [] }) {
   return (
     <div className="credential-export">
       <ExportPreview credentials={credentials} />
-      <div className="export-controls" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+      <div className="export-controls">
         <select
           value={format}
           onChange={handleFormatChange}
-          className="format-select"
+          className="export-format-select"
           aria-label="Export format"
-          style={{
-            padding: '8px 12px',
-            borderRadius: '4px',
-            border: '1px solid #ddd',
-            background: 'white',
-            cursor: 'pointer'
-          }}
+          disabled={isExporting}
         >
           <option value="standard">Standard (Human-readable)</option>
           <option value="compressed">Compressed (CSV-style)</option>
@@ -67,7 +62,8 @@ export function CredentialExportButton({ userId, username, credentials = [] }) {
         <button
           onClick={handleExport}
           disabled={isExporting}
-          className="btn btn-secondary"
+          className="workspace-inline-button"
+          type="button"
           title="Download credentials for secure delivery"
         >
           {isExporting ? 'Exporting...' : 'Export Credentials'}

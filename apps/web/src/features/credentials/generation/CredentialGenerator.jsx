@@ -114,45 +114,44 @@ const CredentialGenerator = ({ userId, userName, userStatus, userLdapFields, onE
                 />
             )}
 
-            <div className="generator-header">
-                <h2>Credential Management</h2>
-                <p className="user-info">
-                    Managing credentials for: <strong>{userName}</strong>
+            <div className="credential-generator-toolbar">
+                <p className="credential-generator-context">
+                    <span className="credential-generator-context-label">Generating for</span>
+                    <strong className="credential-generator-username">{userName}</strong>
                 </p>
-            </div>
-
-            <div className="generator-actions">
-                <label style={{ display: "grid", gap: "0.4rem" }}>
-                    <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                        Generation Scope
-                    </span>
-                    <select
-                        value={selectedSystemId}
-                        onChange={(event) => setSelectedSystemId(event.target.value)}
-                        disabled={isProcessing}
-                        style={{ maxWidth: "320px" }}
+                <div className="credential-generator-controls">
+                    <label className="credential-generator-scope">
+                        <span className="credential-generator-field-label">Generation scope</span>
+                        <select
+                            className="credential-generator-select"
+                            value={selectedSystemId}
+                            onChange={(event) => setSelectedSystemId(event.target.value)}
+                            disabled={isProcessing}
+                            aria-label="Generation scope"
+                        >
+                            <option value="">All systems (template default)</option>
+                            {systemConfigs.map((config) => (
+                                <option key={config.systemId} value={config.systemId}>
+                                    {config.systemId} ({config.usernameLdapField})
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                    <button
+                        className="workspace-inline-button is-primary credential-generator-submit"
+                        onClick={handlePreviewRequest}
+                        disabled={isProcessing || isUserDisabled}
+                        title={isUserDisabled ? 'Cannot generate credentials for disabled users' : ''}
+                        type="button"
                     >
-                        <option value="">All Systems (template default)</option>
-                        {systemConfigs.map((config) => (
-                            <option key={config.systemId} value={config.systemId}>
-                                {config.systemId} ({config.usernameLdapField})
-                            </option>
-                        ))}
-                    </select>
-                </label>
-                <button
-                    className="btn-generate"
-                    onClick={handlePreviewRequest}
-                    disabled={isProcessing || isUserDisabled}
-                    title={isUserDisabled ? 'Cannot generate credentials for disabled users' : ''}
-                >
-                    {isProcessing ? 'Processing...' : 'Generate Credentials'}
-                </button>
+                        {isProcessing ? 'Processing...' : 'Generate credentials'}
+                    </button>
+                </div>
             </div>
 
             {isUserDisabled && (
-                <div className="warning-message">
-                    Credential generation is disabled while user account is disabled.
+                <div className="credential-generator-inline-warning" role="status">
+                    Credential generation is disabled while this account is disabled.
                 </div>
             )}
 

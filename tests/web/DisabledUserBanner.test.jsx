@@ -153,7 +153,7 @@ describe('CredentialGenerator Disabled State', () => {
             />
         );
 
-        const button = screen.getByRole('button', { name: 'Generate Credentials' });
+        const button = screen.getByRole('button', { name: 'Generate credentials' });
         expect(button).toBeDisabled();
         expect(button).toHaveAttribute('title', 'Cannot generate credentials for disabled users');
     });
@@ -168,7 +168,7 @@ describe('CredentialGenerator Disabled State', () => {
         );
 
         expect(screen.getByTestId('disabled-user-banner')).toBeInTheDocument();
-        expect(screen.getByText(/Credential generation is disabled while user account is disabled/i)).toBeInTheDocument();
+        expect(screen.getByText(/Credential generation is disabled while this account is disabled/i)).toBeInTheDocument();
     });
 
     it('should surface enable user action in generator when permission is provided', () => {

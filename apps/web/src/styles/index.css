@@ -593,7 +593,7 @@ h6,
 
 .users-page,
 .user-detail {
-  width: min(980px, 92vw);
+  width: 100%;
 }
 
 .users-header {
@@ -1082,6 +1082,23 @@ h6,
 }
 
 /* Credentials Section in User Detail */
+.user-detail-credentials-header-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: min(36rem, 100%);
+}
+
+.user-detail-credentials-export-block {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: 12px;
+  background: var(--ui-surface-muted);
+}
+
 .user-detail-credentials {
   margin-top: 1.5rem;
   padding-top: 1.5rem;

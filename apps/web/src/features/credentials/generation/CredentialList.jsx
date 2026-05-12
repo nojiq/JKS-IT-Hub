@@ -36,7 +36,7 @@ const CredentialList = ({ credentials, onViewHistory, onRegenerate, onOverride }
         return (
             <div className="credential-list-empty">
                 <p>No credentials generated yet.</p>
-                <p className="hint">Click "Generate Credentials" to create credentials for this user.</p>
+                <p className="hint">Choose a scope above, then use Generate credentials.</p>
             </div>
         );
     }

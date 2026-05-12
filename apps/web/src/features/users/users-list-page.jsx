@@ -274,20 +274,6 @@ export default function UsersListPage() {
 
   return (
     <section className="workspace-page users-page">
-      <section className="users-page-intro">
-        <h2 className="users-page-title">User Directory</h2>
-        <p className="users-page-description">
-          Review synced LDAP records, confirm account status, and open credential actions from the directory.
-        </p>
-        <p className="users-page-meta">
-          {payload.meta?.total ? `${payload.meta.total} users in scope` : "Directory tools stay inside Users & Credentials"}
-        </p>
-      </section>
-
-      <section className="users-directory-actions" aria-label="Directory actions">
-        <LdapSyncPanel />
-      </section>
-
       {isItUser ? (
         <BulkActionsBar selectedCount={selectedUsers.size}>
           <BatchCredentialExportButton userIds={Array.from(selectedUsers)} />
@@ -391,8 +377,8 @@ export default function UsersListPage() {
           <WorkspacePanel
             variant="table"
             className="users-management-card"
-            title="Directory Records"
-            meta="Filter, review, and open synced user profiles."
+            title="User Directory"
+            actions={<LdapSyncPanel />}
             footer={
               <div className="users-pagination-bar">
                 <p className="users-pagination-summary">
