@@ -21,6 +21,15 @@ export const useImapPreview = () => {
     });
 };
 
+export const useActualPasswordPreview = () => {
+    return useMutation({
+        mutationFn: async (payload) => {
+            const response = await credentialsApi.previewActualPassword(payload);
+            return response.data;
+        }
+    });
+};
+
 export const useImapSave = () => {
     return useMutation({
         mutationFn: async (payload) => {

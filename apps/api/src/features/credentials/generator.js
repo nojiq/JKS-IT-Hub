@@ -363,6 +363,106 @@ export const generateImapDeterministicPassword = ({
   };
 };
 
+const YAHOO_ACTUAL_MODE = 'yahoo_actual';
+const YAHOO_ACTUAL_ALGORITHM_VERSION = 1;
+
+/** Stable class order (sorted keys) for mandatory picks + pool concatenation */
+const YAHOO_CHARSET_ORDER = [
+  { key: 'digit', pool: '0123456789' },
+  { key: 'lowercase', pool: 'abcdefghijklmnopqrstuvwxyz' },
+  { key: 'special', pool: '!@#$%^&*-_+=' },
+  { key: 'uppercase', pool: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' }
+];
+
+const deriveDeterministicFromPool = (seed, length, pool) => {
+  if (!pool || pool.length === 0) {
+    throw new Error('Character pool must be non-empty');
+  }
+  let result = '';
+  let counter = 0;
+  while (result.length < length) {
+    const digest = createHash('sha256')
+      .update(`${seed}:${counter}`)
+      .digest();
+
+    for (const byte of digest) {
+      result += pool[byte % pool.length];
+      if (result.length >= length) {
+        break;
+      }
+    }
+
+    counter += 1;
+  }
+
+  return result;
+};
+
+/**
+ * Deterministic Yahoo "actual" password from identity + Yahoo temp password.
+ * Same normalized inputs + length + charset flags always yield same password (v1).
+ */
+export const generateActualDeterministicPassword = ({
+  fullName = '',
+  email = '',
+  dob = '',
+  temporaryPassword = '',
+  length,
+  charset
+}) => {
+  const normalized = {
+    fullName: normalizeImapInputValue('fullName', fullName),
+    email: normalizeImapInputValue('email', email),
+    dob: String(dob ?? '').trim(),
+    temporaryPassword: String(temporaryPassword ?? '').trim()
+  };
+
+  const enabledDefs = YAHOO_CHARSET_ORDER.filter((def) => charset[def.key]);
+  if (enabledDefs.length === 0) {
+    throw new Error('At least one character class must be enabled');
+  }
+
+  if (length < enabledDefs.length) {
+    throw new Error('Length must be at least the number of enabled character classes');
+  }
+
+  const charsetFlags = {
+    digit: Boolean(charset.digit),
+    lowercase: Boolean(charset.lowercase),
+    special: Boolean(charset.special),
+    uppercase: Boolean(charset.uppercase)
+  };
+
+  const deterministicSeed = stableStringify({
+    mode: YAHOO_ACTUAL_MODE,
+    algorithmVersion: YAHOO_ACTUAL_ALGORITHM_VERSION,
+    inputs: normalized,
+    length,
+    charset: charsetFlags
+  });
+
+  const allowedPool = enabledDefs.map((d) => d.pool).join('');
+  const mandatory = enabledDefs.map((def) =>
+    deriveDeterministicFromPool(`${deterministicSeed}:mandatory:${def.key}`, 1, def.pool)
+  );
+  const restLen = length - mandatory.length;
+  const tail = restLen > 0
+    ? deriveDeterministicFromPool(`${deterministicSeed}:tail`, restLen, allowedPool)
+    : '';
+
+  const password = mandatory.join('') + tail;
+
+  return {
+    password,
+    metadata: {
+      mode: YAHOO_ACTUAL_MODE,
+      algorithmVersion: YAHOO_ACTUAL_ALGORITHM_VERSION,
+      length,
+      charset: charsetFlags
+    }
+  };
+};
+
 /**
  * Generate credentials for a single system
  * @param {Object} system - System configuration from template
@@ -563,6 +663,7 @@ export default {
   generateCredentials,
   previewCredentials,
   generateImapDeterministicPassword,
+  generateActualDeterministicPassword,
   MissingLdapFieldsError,
   NoActiveTemplateError
 };

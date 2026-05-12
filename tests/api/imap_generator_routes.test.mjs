@@ -180,6 +180,89 @@ test("IMAP Generator API previews deterministic passwords", async () => {
     await app.close();
 });
 
+test("Credential Generator API previews Yahoo actual passwords", async () => {
+    const { app, authHeader } = await buildApp({ role: "it" });
+
+    const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/credentials/actual-password/preview",
+        headers: authHeader,
+        payload: {
+            fullName: "Test User",
+            email: "test@example.com",
+            dob: "1999-01-01",
+            temporaryPassword: "yahooTemp1",
+            length: 12,
+            charset: {
+                uppercase: true,
+                lowercase: true,
+                digit: true,
+                special: true
+            }
+        }
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = response.json();
+    assert.equal(body.data.password.length, 12);
+    assert.equal(body.data.metadata.mode, "yahoo_actual");
+    await app.close();
+});
+
+test("Credential Generator API rejects invalid email on Yahoo actual preview", async () => {
+    const { app, authHeader } = await buildApp({ role: "it" });
+
+    const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/credentials/actual-password/preview",
+        headers: authHeader,
+        payload: {
+            fullName: "Test User",
+            email: "not-an-email",
+            dob: "1999-01-01",
+            temporaryPassword: "yahooTemp1",
+            length: 12,
+            charset: {
+                uppercase: true,
+                lowercase: true,
+                digit: true,
+                special: true
+            }
+        }
+    });
+
+    assert.equal(response.statusCode, 400);
+    const body = response.json();
+    assert.match(body.detail || "", /email/i);
+    await app.close();
+});
+
+test("Credential Generator API rejects actual-password preview for non-IT roles", async () => {
+    const { app, authHeader } = await buildApp({ role: "requester" });
+
+    const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/credentials/actual-password/preview",
+        headers: authHeader,
+        payload: {
+            fullName: "x",
+            email: "x@x.co",
+            dob: "1",
+            temporaryPassword: "t",
+            length: 8,
+            charset: {
+                uppercase: true,
+                lowercase: true,
+                digit: true,
+                special: false
+            }
+        }
+    });
+
+    assert.equal(response.statusCode, 403);
+    await app.close();
+});
+
 test("IMAP Generator API saves passwords with active mode", async () => {
     const { app, authHeader } = await buildApp({ role: "admin" });
 

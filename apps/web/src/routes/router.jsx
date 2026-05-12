@@ -12,7 +12,7 @@ import TemplateList from "../features/credentials/templates/TemplateList.jsx";
 import TemplateEditor from "../features/credentials/templates/TemplateEditor.jsx";
 import { CredentialHistory } from "../features/credentials/history";
 import LockedCredentialsList from "../features/credentials/components/LockedCredentialsList.jsx";
-import ImapGeneratorPage from "../features/credentials/imap/ImapGeneratorPage.jsx";
+import CredentialGeneratorPage from "../features/credentials/credential-generator/CredentialGeneratorPage.jsx";
 import AuditLogPage from "../features/audit/audit-log-page.jsx";
 import SystemManagementPage from "../features/system-configs/SystemManagementPage.jsx";
 import MaintenanceConfigPage from "../features/maintenance/pages/MaintenanceConfigPage.jsx";
@@ -120,7 +120,8 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <UsersHomePage /> },
           { path: "directory", element: <UsersListPage /> },
-          { path: "imap-generator", element: <ImapGeneratorPage /> },
+          { path: "imap-generator", element: <CredentialGeneratorPage /> },
+          { path: "credential-generator", element: <CredentialGeneratorPage /> },
           { path: "locked", element: <LockedCredentialsList /> },
           { path: "history", element: <CredentialHistory /> },
           { path: ":id", element: <UserDetailPage /> },

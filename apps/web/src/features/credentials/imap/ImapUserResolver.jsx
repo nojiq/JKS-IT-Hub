@@ -16,7 +16,7 @@ const ImapUserResolver = ({
         <section className="imap-generator-panel">
             <h2>User Resolver</h2>
             <label className="imap-generator-label" htmlFor="imap-user-resolver">
-                Search by full name
+                Search by name or email
             </label>
             <div className="imap-generator-resolver">
                 <input
@@ -26,7 +26,7 @@ const ImapUserResolver = ({
                     aria-expanded={hasSuggestions ? "true" : "false"}
                     className="imap-generator-input"
                     type="search"
-                    placeholder="Find a user or start manual entry"
+                    placeholder="Search by name, email, or start manual entry"
                     value={resolverQuery}
                     onChange={(event) => onResolverChange(event.target.value)}
                 />

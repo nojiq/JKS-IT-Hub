@@ -20,6 +20,8 @@ import {
     saveImapGeneratorSchema,
     reviewImapConflictsSchema
 } from "./imap/schema.js";
+import { previewActualPasswordSchema } from "./actualPasswordSchema.js";
+import { generateActualDeterministicPassword } from "./generator.js";
 import { CredentialLockedError, CredentialsLockedError, DisabledUserError, NoChangesDetectedError } from "./service.js";
 import { hasItRole } from "../../shared/auth/rbac.js";
 import { requireItRole } from "../../shared/auth/middleware.js";
@@ -1600,6 +1602,33 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
 
         const result = await credentialService.previewImapPassword(validation.data);
         reply.send({ data: result });
+    });
+
+    app.post("/actual-password/preview", async (request, reply) => {
+        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        if (!actor) return;
+        if (!ensureImapGeneratorAccess(actor, reply, "Only IT roles can access the credential generator")) return;
+
+        const validation = previewActualPasswordSchema.safeParse(request.body || {});
+        if (!validation.success) {
+            sendProblem(reply, createProblemDetails({
+                status: 400,
+                title: "Invalid Input",
+                detail: validation.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ')
+            }));
+            return;
+        }
+
+        try {
+            const result = generateActualDeterministicPassword(validation.data);
+            reply.send({ data: result });
+        } catch (error) {
+            sendProblem(reply, createProblemDetails({
+                status: 400,
+                title: "Invalid Password Options",
+                detail: error.message || "Could not build password from options"
+            }));
+        }
     });
 
     app.post("/imap/save", async (request, reply) => {

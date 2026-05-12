@@ -242,6 +242,16 @@ export const previewImapPassword = async (payload) => {
     return handleResponse(response);
 };
 
+export const previewActualPassword = async (payload) => {
+    const response = await fetch(`${CREDENTIALS_BASE}/actual-password/preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+    });
+    return handleResponse(response);
+};
+
 export const saveImapPassword = async (payload) => {
     const response = await fetch(`${CREDENTIALS_BASE}/imap/save`, {
         method: 'POST',
