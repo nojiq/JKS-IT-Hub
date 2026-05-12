@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, useOutletContext } from "react-router-dom";
 import App from "../app.jsx";
+import { RouteErrorPage } from "./RouteErrorPage.jsx";
 import { WorkspaceLayout } from "../shared/workspace/WorkspaceLayout";
 import HomePage from "../features/users/home-page.jsx";
 import LoginPage from "../features/users/login-page.jsx";
@@ -57,11 +58,13 @@ export const router = createBrowserRouter([
   {
     path: "/login",
     element: <App />,
+    errorElement: <RouteErrorPage />,
     children: [{ index: true, element: <LoginPage /> }]
   },
   {
     path: "/",
     element: <WorkspaceLayout />,
+    errorElement: <RouteErrorPage />,
     children: [
       { index: true, element: <HomePage /> },
       { path: "audit-logs", element: <AuditLogPage /> },
