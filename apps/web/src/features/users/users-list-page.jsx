@@ -133,7 +133,10 @@ const buildUserProfile = (entry) => {
     normalizeScalar(getLdapValue(ldapFields, ["samaccountname", "samAccountName", "uid"])) ||
     normalizeScalar(entry.username) ||
     "-";
-  const department = normalizeScalar(getLdapValue(ldapFields, ["department", "dept"])) || "-";
+  const department =
+    normalizeScalar(entry.orgSnapshot?.department?.name) ||
+    normalizeScalar(getLdapValue(ldapFields, ["department", "dept"])) ||
+    "-";
   const status = normalizeScalar(entry.status).toLowerCase();
   const isActive = status === "active";
 

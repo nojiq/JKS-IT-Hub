@@ -45,3 +45,21 @@ test("auth config falls back to the committed frontend origin", () => {
 
   process.env = originalEnv;
 });
+
+test("auth config disables Pulse org sync when Pulse env is absent", () => {
+  const originalEnv = process.env;
+  process.env = { ...originalEnv, ...authEnvDefaults };
+  delete process.env.PULSE_ORG_SYNC_ENABLED;
+  delete process.env.PULSE_MONGO_URI;
+  delete process.env.PULSE_MONGO_DATABASE;
+  delete process.env.PULSE_MONGO_TIMEOUT_MS;
+
+  assert.deepEqual(getAuthConfig().pulseOrg, {
+    enabled: false,
+    mongoUri: null,
+    database: "jkspulse",
+    timeoutMs: 2000
+  });
+
+  process.env = originalEnv;
+});

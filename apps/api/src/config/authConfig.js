@@ -53,7 +53,11 @@ const envSchema = z.object({
   MAINTENANCE_SCHEDULE_CRON: z.string().optional(),
   MAINTENANCE_SCHEDULE_TIMEZONE: z.string().optional(),
   MAINTENANCE_SCHEDULE_RETRY_ATTEMPTS: z.string().optional(),
-  MAINTENANCE_SCHEDULE_RETRY_DELAY_MS: z.string().optional()
+  MAINTENANCE_SCHEDULE_RETRY_DELAY_MS: z.string().optional(),
+  PULSE_ORG_SYNC_ENABLED: z.string().optional(),
+  PULSE_MONGO_URI: z.string().optional(),
+  PULSE_MONGO_DATABASE: z.string().optional(),
+  PULSE_MONGO_TIMEOUT_MS: z.string().optional()
 });
 
 export const getAuthConfig = () => {
@@ -102,6 +106,12 @@ export const getAuthConfig = () => {
       timezone: env.MAINTENANCE_SCHEDULE_TIMEZONE ?? "UTC",
       retryAttempts: toNumber(env.MAINTENANCE_SCHEDULE_RETRY_ATTEMPTS) ?? 3,
       retryDelayMs: toNumber(env.MAINTENANCE_SCHEDULE_RETRY_DELAY_MS) ?? 1000
+    },
+    pulseOrg: {
+      enabled: toBoolean(env.PULSE_ORG_SYNC_ENABLED, Boolean(env.PULSE_MONGO_URI)),
+      mongoUri: env.PULSE_MONGO_URI ?? null,
+      database: env.PULSE_MONGO_DATABASE ?? "jkspulse",
+      timeoutMs: toNumber(env.PULSE_MONGO_TIMEOUT_MS) ?? 2000
     }
   };
 };

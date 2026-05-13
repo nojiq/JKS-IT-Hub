@@ -43,3 +43,26 @@ test("linkDraftToUserAndPromote blocks repeated promotion for an already linked 
         }
     );
 });
+
+test("getUserDepartment prefers Pulse org snapshot over LDAP department", async () => {
+    process.env.DATABASE_URL ??= "mysql://test:test@localhost:3306/test";
+    const { getUserDepartment } = await import("../../apps/api/src/features/onboarding/service.js");
+
+    assert.equal(
+        getUserDepartment({
+            ldapAttributes: { department: "Legacy LDAP" },
+            orgSnapshot: {
+                department: { name: "IT" }
+            }
+        }),
+        "IT"
+    );
+
+    assert.equal(
+        getUserDepartment({
+            ldapAttributes: { dept: "Finance" },
+            orgSnapshot: null
+        }),
+        "Finance"
+    );
+});

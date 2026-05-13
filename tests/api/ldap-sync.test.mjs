@@ -648,6 +648,149 @@ test("manual sync writes audit rows for newly created LDAP users", async () => {
   assert.equal(createdAudit.metadata.syncRunId, run.id);
 });
 
+test("scheduled sync enriches LDAP users with Pulse org snapshot", async () => {
+  const syncRepo = createInMemorySyncRepo();
+  const upserts = [];
+  const pulseCalls = [];
+  const orgSnapshot = {
+    source: "jkspulse",
+    division: { id: "div-1", name: "CORPORATE SERVICES" },
+    department: { id: "dept-1", code: "IT", name: "IT" },
+    section: { id: "sec-1", name: "INFRASTRUCTURE" },
+    matchedBy: "email",
+    confidence: "exact"
+  };
+  const runner = createLdapSyncRunner({
+    config: baseConfig,
+    ldapService: {
+      searchEntries: async () => [
+        {
+          dn: "uid=jane,dc=example,dc=com",
+          uid: "jane",
+          cn: "Jane Doe",
+          mail: "jane@jks.com"
+        }
+      ]
+    },
+    syncRepo,
+    userRepo: {
+      findUsersByUsernames: async () => [],
+      upsertUserFromLdap: async (data) => {
+        upserts.push(data);
+        return { id: "user-1", username: data.username };
+      }
+    },
+    pulseOrgClient: {
+      resolveForLdapUser: async (input) => {
+        pulseCalls.push(input);
+        return orgSnapshot;
+      }
+    },
+    auditRepo: { createAuditLog: async () => ({}) },
+    eventChannel: null
+  });
+
+  const run = await runner.startScheduledSync();
+
+  assert.equal(run.status, "completed");
+  assert.equal(pulseCalls.length, 1);
+  assert.equal(pulseCalls[0].username, "jane");
+  assert.equal(pulseCalls[0].ldapAttributes.mail, "jane@jks.com");
+  assert.deepEqual(upserts[0].orgSnapshot, orgSnapshot);
+  assert.ok(upserts[0].orgSyncedAt instanceof Date);
+});
+
+test("scheduled sync updates unchanged LDAP user when Pulse org snapshot changed", async () => {
+  const syncRepo = createInMemorySyncRepo();
+  const upserts = [];
+  const nextOrgSnapshot = {
+    source: "jkspulse",
+    division: { id: "div-1", name: "CORPORATE SERVICES" },
+    department: { id: "dept-1", code: "IT", name: "IT" },
+    section: null,
+    matchedBy: "department",
+    confidence: "exact"
+  };
+  const runner = createLdapSyncRunner({
+    config: baseConfig,
+    ldapService: {
+      searchEntries: async () => [
+        {
+          dn: "uid=jane,dc=example,dc=com",
+          uid: "jane",
+          cn: "Jane Doe",
+          mail: "jane@jks.com"
+        }
+      ]
+    },
+    syncRepo,
+    userRepo: {
+      findUsersByUsernames: async () => [
+        {
+          id: "user-1",
+          username: "jane",
+          ldapAttributes: { uid: "jane", cn: "Jane Doe", mail: "jane@jks.com" },
+          orgSnapshot: { source: "jkspulse", department: { id: "old", name: "OLD" } }
+        }
+      ],
+      upsertUserFromLdap: async (data) => {
+        upserts.push(data);
+        return { id: "user-1", username: data.username };
+      }
+    },
+    pulseOrgClient: {
+      resolveForLdapUser: async () => nextOrgSnapshot
+    },
+    auditRepo: { createAuditLog: async () => ({}) },
+    eventChannel: null
+  });
+
+  const run = await runner.startScheduledSync();
+
+  assert.equal(run.updatedCount, 1);
+  assert.equal(upserts.length, 1);
+  assert.deepEqual(upserts[0].orgSnapshot, nextOrgSnapshot);
+});
+
+test("scheduled sync continues when Pulse org enrichment fails", async () => {
+  const syncRepo = createInMemorySyncRepo();
+  const upserts = [];
+  const runner = createLdapSyncRunner({
+    config: baseConfig,
+    ldapService: {
+      searchEntries: async () => [
+        {
+          dn: "uid=jane,dc=example,dc=com",
+          uid: "jane",
+          cn: "Jane Doe",
+          mail: "jane@jks.com"
+        }
+      ]
+    },
+    syncRepo,
+    userRepo: {
+      findUsersByUsernames: async () => [],
+      upsertUserFromLdap: async (data) => {
+        upserts.push(data);
+        return { id: "user-1", username: data.username };
+      }
+    },
+    pulseOrgClient: {
+      resolveForLdapUser: async () => {
+        throw new Error("Pulse unavailable");
+      }
+    },
+    auditRepo: { createAuditLog: async () => ({}) },
+    eventChannel: null
+  });
+
+  const run = await runner.startScheduledSync();
+
+  assert.equal(run.status, "completed");
+  assert.equal(upserts.length, 1);
+  assert.equal("orgSnapshot" in upserts[0], false);
+});
+
 test("serializeSyncRun includes compact created user summary", () => {
   const payload = serializeSyncRun({
     id: "run-1",

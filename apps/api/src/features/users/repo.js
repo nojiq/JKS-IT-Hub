@@ -24,6 +24,8 @@ export const findUserByLdapMail = async (mail) => {
       ldap_dn AS ldapDn,
       ldap_attributes AS ldapAttributes,
       ldap_synced_at AS ldapSyncedAt,
+      org_snapshot AS orgSnapshot,
+      org_synced_at AS orgSyncedAt,
       created_at AS createdAt,
       updated_at AS updatedAt
     FROM users
@@ -46,7 +48,9 @@ export const findUserById = async (id) => {
       role: true,
       status: true,
       ldapAttributes: true,
-      ldapSyncedAt: true
+      ldapSyncedAt: true,
+      orgSnapshot: true,
+      orgSyncedAt: true
     }
   });
 };
@@ -60,7 +64,9 @@ export const listUsers = async () => {
       role: true,
       status: true,
       ldapAttributes: true,
-      ldapSyncedAt: true
+      ldapSyncedAt: true,
+      orgSnapshot: true,
+      orgSyncedAt: true
     }
   });
 };
@@ -75,7 +81,9 @@ export const findUsersByUsernames = async (usernames = []) => {
     select: {
       id: true,
       username: true,
-      ldapAttributes: true
+      ldapAttributes: true,
+      orgSnapshot: true,
+      orgSyncedAt: true
     }
   });
 };
@@ -90,7 +98,9 @@ export const findUsersByIds = async (ids = []) => {
     select: {
       id: true,
       username: true,
-      ldapAttributes: true
+      ldapAttributes: true,
+      orgSnapshot: true,
+      orgSyncedAt: true
     }
   });
 };
@@ -118,20 +128,28 @@ export const upsertUserFromLdap = async ({
   username,
   ldapDn,
   ldapAttributes,
+  orgSnapshot = undefined,
+  orgSyncedAt = undefined,
   syncedAt = new Date()
 }) => {
+  const orgData = orgSnapshot === undefined
+    ? {}
+    : { orgSnapshot, orgSyncedAt: orgSyncedAt ?? new Date() };
+
   return prisma.user.upsert({
     where: { username },
     create: {
       username,
       ldapDn,
       ldapAttributes,
-      ldapSyncedAt: syncedAt
+      ldapSyncedAt: syncedAt,
+      ...orgData
     },
     update: {
       ldapDn,
       ldapAttributes,
-      ldapSyncedAt: syncedAt
+      ldapSyncedAt: syncedAt,
+      ...orgData
     }
   });
 };
@@ -148,7 +166,9 @@ export const updateUserRole = async (id, role) => {
       role: true,
       status: true,
       ldapAttributes: true,
-      ldapSyncedAt: true
+      ldapSyncedAt: true,
+      orgSnapshot: true,
+      orgSyncedAt: true
     }
   });
 };
@@ -163,7 +183,9 @@ export const updateUserStatus = async (id, status) => {
       role: true,
       status: true,
       ldapAttributes: true,
-      ldapSyncedAt: true
+      ldapSyncedAt: true,
+      orgSnapshot: true,
+      orgSyncedAt: true
     }
   });
 };
@@ -247,7 +269,9 @@ export const listUsersFiltered = async (filters = {}, pagination = {}) => {
         role: true,
         status: true,
         ldapAttributes: true,
-        ldapSyncedAt: true
+        ldapSyncedAt: true,
+        orgSnapshot: true,
+        orgSyncedAt: true
       }
     })
   ]);

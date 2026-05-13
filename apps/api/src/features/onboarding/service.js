@@ -37,6 +37,11 @@ const getAttributeValue = (attributes, keys = []) => {
   return "";
 };
 
+export const getUserDepartment = (user) =>
+  trimToNull(user?.orgSnapshot?.department?.name) ??
+  trimToNull(getAttributeValue(user?.ldapAttributes ?? {}, ["department", "dept"])) ??
+  "";
+
 const deriveNameParts = (fullName) => {
   const parts = String(fullName ?? "")
     .trim()
@@ -56,7 +61,7 @@ const buildDirectoryUserSummary = (user) => {
   const email =
     trimToNull(getAttributeValue(ldapAttributes, ["mail", "email", "userPrincipalName"])) ??
     `${user.username}@jkseng.com`;
-  const department = trimToNull(getAttributeValue(ldapAttributes, ["department", "dept"])) ?? "";
+  const department = getUserDepartment(user);
 
   return {
     id: user.id,
@@ -105,7 +110,7 @@ const buildExistingIdentity = (user) => {
       cn: ldapAttributes.cn ?? summary.displayName,
       displayName: ldapAttributes.displayName ?? summary.displayName,
       mail: ldapAttributes.mail ?? summary.email,
-      department: ldapAttributes.department ?? summary.department,
+      department: summary.department,
       givenName: ldapAttributes.givenName ?? givenName,
       sn: ldapAttributes.sn ?? surname
     }
