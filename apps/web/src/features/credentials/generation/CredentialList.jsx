@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { formatDisplayDateTime } from '../../../shared/utils/date-format.js';
 import './CredentialList.css';
 
 const CredentialList = ({ credentials, onViewHistory, onRegenerate, onOverride }) => {
@@ -29,7 +30,7 @@ const CredentialList = ({ credentials, onViewHistory, onRegenerate, onOverride }
     };
 
     const formatDate = (dateString) => {
-        return new Date(dateString).toLocaleString();
+        return formatDisplayDateTime(dateString);
     };
 
     if (!credentials || credentials.length === 0) {

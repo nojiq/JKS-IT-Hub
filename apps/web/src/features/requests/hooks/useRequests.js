@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { submitRequest, fetchMyRequests, fetchRequestDetails, fetchAllRequests } from "../api/requestsApi.js";
 
 // Query Keys
@@ -25,7 +25,7 @@ export const useMyRequests = (filters = {}) => {
     return useQuery({
         queryKey: requestsKeys.myParams(filters),
         queryFn: () => fetchMyRequests(filters),
-        keepPreviousData: true
+        placeholderData: keepPreviousData
     });
 };
 
@@ -41,6 +41,6 @@ export const useAllRequests = (filters = {}) => {
     return useQuery({
         queryKey: ['requests', 'admin', filters],
         queryFn: () => fetchAllRequests(filters),
-        keepPreviousData: true
+        placeholderData: keepPreviousData
     });
 };

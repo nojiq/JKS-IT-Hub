@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as credentialsApi from '../api/credentials.js';
 
 const CREDENTIALS_QUERY_KEY = 'credentials';
@@ -95,7 +95,7 @@ export const useCredentialHistory = (userId, filters = {}) => {
         queryKey: [CREDENTIALS_QUERY_KEY, 'history', userId, filters],
         queryFn: () => credentialsApi.getCredentialHistory(userId, filters),
         enabled: !!userId,
-        keepPreviousData: true
+        placeholderData: keepPreviousData
     });
 };
 

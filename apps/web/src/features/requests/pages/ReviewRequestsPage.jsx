@@ -11,6 +11,7 @@ import { BulkActionsBar } from '../../../shared/workspace/BulkActionsBar';
 import { useSharedFilters } from '../../../shared/workspace/useSharedFilters';
 import { FilterSelect } from '../../../shared/components/FilterPanel/FilterSelect';
 import { SearchEmptyState } from '../../../shared/components/EmptyState/SearchEmptyState';
+import { formatDisplayDate } from '../../../shared/utils/date-format.js';
 import '../../../shared/workspace/workspace.css';
 import './ReviewRequestsPage.css';
 
@@ -277,7 +278,7 @@ const ReviewRequestsPage = () => {
                                             <div className="text-secondary">{request.requester?.ldapAttributes?.department}</div>
                                         </div>
                                     </td>
-                                    <td data-label="Date">{new Date(request.createdAt).toLocaleDateString()}</td>
+                                    <td data-label="Date">{formatDisplayDate(request.createdAt)}</td>
                                     <td data-label="Priority">
                                         {request.priority ? (
                                             <span className={priorityClass(request.priority)}>{request.priority}</span>

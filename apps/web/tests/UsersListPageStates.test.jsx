@@ -126,6 +126,33 @@ describe('UsersListPage states', () => {
         expect(screen.queryByRole('link', { name: 'Back to dashboard' })).not.toBeInTheDocument();
     });
 
+    it('keeps previous directory results while search refetches so the search input stays mounted', () => {
+        useQuery.mockReturnValue({
+            data: {
+                users: [
+                    {
+                        id: '1',
+                        username: 'alice',
+                        role: 'requester',
+                        status: 'active',
+                        ldapFields: { mail: 'alice@example.com' }
+                    }
+                ],
+                fields: ['mail'],
+                meta: { total: 1, page: 1, perPage: 20 }
+            },
+            isLoading: false,
+            error: null,
+            isFetching: false,
+            refetch: vi.fn()
+        });
+
+        renderPage();
+
+        const queryOptions = useQuery.mock.calls.at(-1)[0];
+        expect(queryOptions.placeholderData).toEqual(expect.any(Function));
+    });
+
     it('points empty sync guidance to the toolbar sync action', () => {
         useQuery.mockReturnValue({
             data: {

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useCompareVersions, useCredentialVersion } from '../hooks/useCredentials.js';
+import { formatDisplayDateTime } from '../../../shared/utils/date-format.js';
 import './CredentialHistory.css';
 
 /**
@@ -65,15 +66,7 @@ function CredentialComparison({ versionId1, versionId2, onClose }) {
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatDisplayDateTime(dateString);
   };
 
   const getChanges = (field) => {

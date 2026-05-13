@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTemplates } from '../hooks/useTemplates.js';
+import { formatDisplayDate } from '../../../shared/utils/date-format.js';
 import './templates.css';
 
 export default function TemplateList({
@@ -38,7 +39,7 @@ export default function TemplateList({
                         <div className="meta">
                             <span>Version: {template.version}</span>
                             <span>History: v1 - v{template.version}</span>
-                            <span>Updated: {new Date(template.updatedAt).toLocaleDateString()}</span>
+                            <span>Updated: {formatDisplayDate(template.updatedAt)}</span>
                         </div>
                         <div className="actions">
                             <Link to={`${template.id}/edit`} className="btn btn-secondary">Edit</Link>

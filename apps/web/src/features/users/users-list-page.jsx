@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link, useOutletContext } from "react-router-dom";
 import { fetchUsers } from "./users-api.js";
 import { BatchCredentialExportButton } from "../exports/components/BatchCredentialExportButton.jsx";
@@ -164,7 +164,7 @@ export default function UsersListPage() {
   const usersQuery = useQuery({
     queryKey: ["users", filterContract.filters],
     queryFn: () => fetchUsers(filterContract.filters),
-    keepPreviousData: true
+    placeholderData: keepPreviousData
   });
 
   const payload = usersQuery.data ?? EMPTY_PAYLOAD;

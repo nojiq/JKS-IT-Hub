@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMarkAsRead } from '../hooks/useNotifications.js';
+import { formatDisplayDate } from '../../../shared/utils/date-format.js';
 import './NotificationItem.css';
 
 const formatTime = (dateString) => {
@@ -12,7 +13,7 @@ const formatTime = (dateString) => {
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
 
-    if (days > 7) return date.toLocaleDateString(); // e.g., "12/10/2023"
+    if (days > 7) return formatDisplayDate(date);
     if (days > 0) return `${days}d ago`;
     if (hours > 0) return `${hours}h ago`;
     if (minutes > 0) return `${minutes}m ago`;

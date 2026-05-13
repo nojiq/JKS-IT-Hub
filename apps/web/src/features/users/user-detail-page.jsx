@@ -29,6 +29,25 @@ const formatValue = (value) => {
   return String(value);
 };
 
+const formatDdMmYyyy = (value) => {
+  const text = String(value ?? "").trim();
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return formatValue(value);
+  }
+
+  const [, year, month, day] = match;
+  return `${day}/${month}/${year}`;
+};
+
+const formatLdapValue = (field, value) => {
+  if (String(field).toLowerCase() === "birthdate") {
+    return formatDdMmYyyy(value);
+  }
+
+  return formatValue(value);
+};
+
 const formatDate = (value) => {
   if (!value) {
     return "Not synced yet";
@@ -547,7 +566,7 @@ export default function UserDetailPage() {
             {rows.map((row) => (
               <div className="user-detail-field" key={row.key}>
                 <span className="user-detail-field-label">{row.field}</span>
-                <span className="user-detail-field-value">{formatValue(row.value)}</span>
+                <span className="user-detail-field-value">{formatLdapValue(row.field, row.value)}</span>
                 <span className="user-detail-field-source">Source: LDAP</span>
               </div>
             ))}

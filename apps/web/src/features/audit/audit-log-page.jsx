@@ -6,19 +6,11 @@ import { fetchAuditLogs } from "./audit-api.js";
 import { DataStateBlock } from "../../shared/workspace/DataStateBlock.jsx";
 import { WorkspacePageHeader } from "../../shared/workspace/WorkspacePageHeader.jsx";
 import { WorkspacePanel } from "../../shared/workspace/WorkspacePanel.jsx";
+import { formatDisplayDateTime } from "../../shared/utils/date-format.js";
 import "../../shared/workspace/workspace.css";
 
 const formatTimestamp = (isoString) => {
-    const date = new Date(isoString);
-    return new Intl.DateTimeFormat('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-    }).format(date);
+    return formatDisplayDateTime(isoString, { fallback: '—', includeSeconds: true });
 };
 
 const formatMetadata = (metadata) => {

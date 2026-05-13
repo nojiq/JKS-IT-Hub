@@ -78,9 +78,9 @@ const userDetailPayload = Object.freeze({
             matchedBy: 'email',
             confidence: 'exact'
         }),
-        ldapFields: Object.freeze({ mail: 'jane@example.com', department: 'Finance' })
+        ldapFields: Object.freeze({ mail: 'jane@example.com', department: 'Finance', birthDate: '1998-01-02' })
     }),
-    fields: Object.freeze(['mail', 'department'])
+    fields: Object.freeze(['mail', 'department', 'birthDate'])
 });
 
 const historyPayload = Object.freeze([]);
@@ -153,6 +153,8 @@ describe('UserDetailPage', () => {
         expect(screen.getByText('Section')).toBeInTheDocument();
         expect(screen.getByText('INFRASTRUCTURE')).toBeInTheDocument();
         expect(screen.getAllByText('Source: JKSPulse').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByText('02/01/1998')).toBeInTheDocument();
+        expect(screen.queryByText('1998-01-02')).not.toBeInTheDocument();
         expect(screen.getByText('Account Status')).toBeInTheDocument();
         expect(screen.getByText('Credential Generator Stub')).toBeInTheDocument();
         expect(screen.getByText('Recent Actions')).toBeInTheDocument();

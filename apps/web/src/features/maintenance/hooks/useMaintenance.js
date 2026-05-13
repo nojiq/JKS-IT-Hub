@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as api from "../api/maintenanceApi.js";
 
 export const maintenanceConfigViewStates = Object.freeze({
@@ -148,7 +148,7 @@ export const useWindows = (filters = {}) => {
     return useQuery({
         queryKey: maintenanceKeys.windows(filters),
         queryFn: () => api.fetchWindows(filters),
-        keepPreviousData: true,
+        placeholderData: keepPreviousData,
     });
 };
 
@@ -232,7 +232,7 @@ export const useMaintenanceHistory = (filters = {}) => {
     return useQuery({
         queryKey: maintenanceKeys.history(filters),
         queryFn: () => api.fetchCompletionHistory(filters),
-        keepPreviousData: true,
+        placeholderData: keepPreviousData,
     });
 };
 
@@ -316,7 +316,7 @@ export const useMyMaintenanceWindows = (filters = {}) => {
     return useQuery({
         queryKey: assignmentRulesKeys.myTasks(filters),
         queryFn: () => api.fetchMyMaintenanceWindows(filters),
-        keepPreviousData: true
+        placeholderData: keepPreviousData
     });
 };
 
