@@ -15,6 +15,7 @@ import { CredentialExportButton } from "../exports/components/CredentialExportBu
 import { DataStateBlock } from "../../shared/workspace/DataStateBlock.jsx";
 import { WorkspacePageHeader } from "../../shared/workspace/WorkspacePageHeader.jsx";
 import { WorkspacePanel } from "../../shared/workspace/WorkspacePanel.jsx";
+import { formatDisplayDateTime } from "../../shared/utils/date-format.js";
 
 const formatValue = (value) => {
   if (value === null || value === undefined || value === "") {
@@ -52,11 +53,7 @@ const formatDate = (value) => {
   if (!value) {
     return "Not synced yet";
   }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return String(value);
-  }
-  return date.toLocaleString();
+  return formatDisplayDateTime(value, { fallback: String(value) });
 };
 
 const getLdapValue = (fields, keys = []) => {

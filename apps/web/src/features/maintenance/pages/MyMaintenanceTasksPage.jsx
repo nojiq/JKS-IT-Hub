@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useMyMaintenanceWindows } from '../hooks/useMaintenance.js';
 import { DataStateBlock } from '../../../shared/workspace/DataStateBlock.jsx';
 import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel.jsx';
+import { formatDisplayDateTime } from '../../../shared/utils/date-format.js';
 import './MaintenanceHomePage.css';
 import './MyMaintenanceTasksPage.css';
 
@@ -131,7 +132,7 @@ const MyMaintenanceTasksPage = () => {
                                     <div className="detail-row">
                                         <span className="detail-label">Scheduled:</span>
                                         <span className="detail-value">
-                                            {new Date(window.scheduledStartDate).toLocaleString()}
+                                            {formatDisplayDateTime(window.scheduledStartDate)}
                                         </span>
                                     </div>
 
@@ -139,7 +140,7 @@ const MyMaintenanceTasksPage = () => {
                                         <div className="detail-row">
                                             <span className="detail-label">End:</span>
                                             <span className="detail-value">
-                                                {new Date(window.scheduledEndDate).toLocaleString()}
+                                                {formatDisplayDateTime(window.scheduledEndDate)}
                                             </span>
                                         </div>
                                     )}
@@ -173,7 +174,7 @@ const MyMaintenanceTasksPage = () => {
                                         <div className="detail-row">
                                             <span className="detail-label">Assigned At:</span>
                                             <span className="detail-value">
-                                                {new Date(window.assignmentTimestamp).toLocaleString()}
+                                                {formatDisplayDateTime(window.assignmentTimestamp)}
                                             </span>
                                         </div>
                                     )}

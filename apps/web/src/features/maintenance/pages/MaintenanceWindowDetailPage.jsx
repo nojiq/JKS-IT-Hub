@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useWindow, useMaintenanceCompletion } from '../hooks/useMaintenance.js';
 import DeviceTypeBadge from '../components/DeviceTypeBadge.jsx';
+import { formatDisplayDateTime } from '../../../shared/utils/date-format.js';
 import './MaintenanceSchedulePage.css';
 
 const toTypeCounts = (deviceTypes = []) => {
@@ -85,8 +86,8 @@ const MaintenanceWindowDetailPage = () => {
 
                 <section>
                     <h2 style={{ marginBottom: '0.5rem' }}>Schedule</h2>
-                    <p><strong>Start:</strong> {new Date(window.scheduledStartDate).toLocaleString()}</p>
-                    <p><strong>End:</strong> {window.scheduledEndDate ? new Date(window.scheduledEndDate).toLocaleString() : '-'}</p>
+                    <p><strong>Start:</strong> {formatDisplayDateTime(window.scheduledStartDate, { fallback: '-' })}</p>
+                    <p><strong>End:</strong> {formatDisplayDateTime(window.scheduledEndDate, { fallback: '-' })}</p>
                 </section>
 
                 <section>
@@ -119,7 +120,7 @@ const MaintenanceWindowDetailPage = () => {
                         <p><strong>Status:</strong> <span className="status-badge completed">COMPLETED</span></p>
                         <p>
                             <strong>Signed Off By:</strong> {completion.completedBy?.username || 'Unknown'} at{' '}
-                            {completion.completedAt ? new Date(completion.completedAt).toLocaleString() : '-'}
+                            {formatDisplayDateTime(completion.completedAt, { fallback: '-' })}
                         </p>
                         <p>
                             <strong>Sign-Off Mode:</strong> {formatSignoffMode(completion.signoffMode)}
@@ -128,7 +129,7 @@ const MaintenanceWindowDetailPage = () => {
                             <p><strong>Signer Name:</strong> {completion.signerName}</p>
                         )}
                         {completion.signerConfirmedAt && (
-                            <p><strong>Signer Confirmed At:</strong> {new Date(completion.signerConfirmedAt).toLocaleString()}</p>
+                            <p><strong>Signer Confirmed At:</strong> {formatDisplayDateTime(completion.signerConfirmedAt, { fallback: '-' })}</p>
                         )}
                         {completion.signerSignatureUrl && (
                             <div style={{ marginBottom: '0.75rem' }}>

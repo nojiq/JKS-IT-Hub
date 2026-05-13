@@ -1,5 +1,6 @@
 import React from 'react';
 import DeviceTypeBadge from "./DeviceTypeBadge.jsx";
+import { formatDisplayDateTime } from '../../../shared/utils/date-format.js';
 import './MaintenanceWindowCard.css';
 
 const statusClassName = (status) => String(status || '').toLowerCase();
@@ -12,10 +13,7 @@ const assignmentReasonLabel = (reason) => {
 };
 
 const formatDateTime = (value) => {
-    if (!value) return '-';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '-';
-    return date.toLocaleString();
+    return formatDisplayDateTime(value, { fallback: '-' });
 };
 
 const formatDurationHours = (startValue, endValue) => {
