@@ -1,5 +1,9 @@
+import { buildApiUrl } from "../../../shared/utils/api-client.js";
+
 const API_BASE = '/api/v1';
 const CREDENTIALS_BASE = '/api/v1/credentials';
+
+const apiUrl = (path) => buildApiUrl(path);
 
 const buildQueryString = (params = {}) => {
     const search = new URLSearchParams();
@@ -12,7 +16,24 @@ const buildQueryString = (params = {}) => {
 };
 
 const handleResponse = async (response) => {
-    const data = await response.json();
+    let data;
+
+    try {
+        data = await response.json();
+    } catch (parseError) {
+        if (!response.ok) {
+            const statusText = response.statusText ? ` ${response.statusText}` : '';
+            const error = new Error(`Request failed with ${response.status}${statusText}`);
+            error.status = response.status;
+            error.problemDetails = {
+                status: response.status,
+                title: response.statusText || 'Request failed',
+                detail: 'The server returned a non-JSON response.'
+            };
+            throw error;
+        }
+        throw parseError;
+    }
     
     if (!response.ok) {
         const error = new Error(data.detail || 'Request failed');
@@ -34,7 +55,7 @@ const toIsoDateTimeFilter = (value, endOfDay = false) => {
 };
 
 export const generateCredentials = async (userId, systemId = undefined) => {
-    const response = await fetch(`${API_BASE}/credential-templates/users/${userId}/generate`, {
+    const response = await fetch(apiUrl(`${API_BASE}/credential-templates/users/${userId}/generate`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -44,7 +65,7 @@ export const generateCredentials = async (userId, systemId = undefined) => {
 };
 
 export const previewCredentials = async (userId, systemId = undefined) => {
-    const response = await fetch(`${API_BASE}/credential-templates/users/${userId}/preview`, {
+    const response = await fetch(apiUrl(`${API_BASE}/credential-templates/users/${userId}/preview`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -54,28 +75,28 @@ export const previewCredentials = async (userId, systemId = undefined) => {
 };
 
 export const getUserCredentials = async (userId) => {
-    const response = await fetch(`${API_BASE}/credential-templates/users/${userId}`, {
+    const response = await fetch(apiUrl(`${API_BASE}/credential-templates/users/${userId}`), {
         credentials: 'include'
     });
     return handleResponse(response);
 };
 
 export const getCredentialDetail = async (credentialId) => {
-    const response = await fetch(`${API_BASE}/credential-templates/detail/${credentialId}`, {
+    const response = await fetch(apiUrl(`${API_BASE}/credential-templates/detail/${credentialId}`), {
         credentials: 'include'
     });
     return handleResponse(response);
 };
 
 export const getCredentialVersions = async (credentialId) => {
-    const response = await fetch(`${API_BASE}/credential-templates/detail/${credentialId}/versions`, {
+    const response = await fetch(apiUrl(`${API_BASE}/credential-templates/detail/${credentialId}/versions`), {
         credentials: 'include'
     });
     return handleResponse(response);
 };
 
 export const confirmCredentials = async (userId, { previewToken, confirmed }) => {
-    const response = await fetch(`${API_BASE}/credential-templates/users/${userId}/confirm`, {
+    const response = await fetch(apiUrl(`${API_BASE}/credential-templates/users/${userId}/confirm`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -87,7 +108,7 @@ export const confirmCredentials = async (userId, { previewToken, confirmed }) =>
 // Credential Regeneration API (Story 2.4)
 
 export const initiateRegeneration = async (userId, systemId = undefined) => {
-    const response = await fetch(`${API_BASE}/credential-templates/users/${userId}/regenerate`, {
+    const response = await fetch(apiUrl(`${API_BASE}/credential-templates/users/${userId}/regenerate`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -97,7 +118,7 @@ export const initiateRegeneration = async (userId, systemId = undefined) => {
 };
 
 export const previewRegeneration = async (userId) => {
-    const response = await fetch(`${API_BASE}/credential-templates/users/${userId}/regenerate/preview`, {
+    const response = await fetch(apiUrl(`${API_BASE}/credential-templates/users/${userId}/regenerate/preview`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include'
@@ -106,7 +127,7 @@ export const previewRegeneration = async (userId) => {
 };
 
 export const confirmRegeneration = async (userId, { previewToken, confirmed, acknowledgedWarnings }) => {
-    const response = await fetch(`${API_BASE}/credential-templates/users/${userId}/regenerate/confirm`, {
+    const response = await fetch(apiUrl(`${API_BASE}/credential-templates/users/${userId}/regenerate/confirm`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -129,21 +150,21 @@ export const getCredentialHistory = async (userId, filters = {}) => {
     const queryString = params.toString();
     const url = `${API_BASE}/credential-templates/users/${userId}/history${queryString ? `?${queryString}` : ''}`;
     
-    const response = await fetch(url, {
+    const response = await fetch(apiUrl(url), {
         credentials: 'include'
     });
     return handleResponse(response);
 };
 
 export const getCredentialVersion = async (versionId) => {
-    const response = await fetch(`${API_BASE}/credential-templates/versions/${versionId}`, {
+    const response = await fetch(apiUrl(`${API_BASE}/credential-templates/versions/${versionId}`), {
         credentials: 'include'
     });
     return handleResponse(response);
 };
 
 export const compareCredentialVersions = async (versionId1, versionId2) => {
-    const response = await fetch(`${API_BASE}/credential-templates/versions/compare`, {
+    const response = await fetch(apiUrl(`${API_BASE}/credential-templates/versions/compare`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -153,7 +174,7 @@ export const compareCredentialVersions = async (versionId1, versionId2) => {
 };
 
 export const revealCredentialPassword = async (versionId) => {
-    const response = await fetch(`${API_BASE}/credential-templates/versions/${versionId}/reveal`, {
+    const response = await fetch(apiUrl(`${API_BASE}/credential-templates/versions/${versionId}/reveal`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include'
@@ -164,7 +185,7 @@ export const revealCredentialPassword = async (versionId) => {
 // Credential Override API (Story 2.6)
 
 export const previewOverride = async (userId, system, overrideData) => {
-    const response = await fetch(`${API_BASE}/credential-templates/users/${userId}/${system}/override/preview`, {
+    const response = await fetch(apiUrl(`${API_BASE}/credential-templates/users/${userId}/${system}/override/preview`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -174,7 +195,7 @@ export const previewOverride = async (userId, system, overrideData) => {
 };
 
 export const confirmOverride = async (userId, system, previewToken, confirmed = true) => {
-    const response = await fetch(`${API_BASE}/credential-templates/users/${userId}/${system}/override/confirm`, {
+    const response = await fetch(apiUrl(`${API_BASE}/credential-templates/users/${userId}/${system}/override/confirm`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -184,14 +205,14 @@ export const confirmOverride = async (userId, system, previewToken, confirmed = 
 };
 
 export const getImapWorkbench = async (userId) => {
-    const response = await fetch(`${CREDENTIALS_BASE}/imap/users/${userId}/workbench`, {
+    const response = await fetch(apiUrl(`${CREDENTIALS_BASE}/imap/users/${userId}/workbench`), {
         credentials: 'include'
     });
     return handleResponse(response);
 };
 
 export const previewImapPassword = async (payload) => {
-    const response = await fetch(`${CREDENTIALS_BASE}/imap/preview`, {
+    const response = await fetch(apiUrl(`${CREDENTIALS_BASE}/imap/preview`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -201,7 +222,7 @@ export const previewImapPassword = async (payload) => {
 };
 
 export const previewActualPassword = async (payload) => {
-    const response = await fetch(`${CREDENTIALS_BASE}/actual-password/preview`, {
+    const response = await fetch(apiUrl(`${CREDENTIALS_BASE}/actual-password/preview`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -211,7 +232,7 @@ export const previewActualPassword = async (payload) => {
 };
 
 export const saveImapPassword = async (payload) => {
-    const response = await fetch(`${CREDENTIALS_BASE}/imap/save`, {
+    const response = await fetch(apiUrl(`${CREDENTIALS_BASE}/imap/save`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -221,14 +242,14 @@ export const saveImapPassword = async (payload) => {
 };
 
 export const getPreviousImapPasswords = async (userId) => {
-    const response = await fetch(`${CREDENTIALS_BASE}/imap/users/${userId}/passwords`, {
+    const response = await fetch(apiUrl(`${CREDENTIALS_BASE}/imap/users/${userId}/passwords`), {
         credentials: 'include'
     });
     return handleResponse(response);
 };
 
 export const reviewImapConflicts = async (userId, payload) => {
-    const response = await fetch(`${CREDENTIALS_BASE}/imap/users/${userId}/conflicts/review`, {
+    const response = await fetch(apiUrl(`${CREDENTIALS_BASE}/imap/users/${userId}/conflicts/review`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
