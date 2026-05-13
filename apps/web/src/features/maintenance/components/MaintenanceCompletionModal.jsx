@@ -4,6 +4,7 @@ import { signOffWindow } from '../api/maintenanceApi.js';
 import { useSignOffEligibility } from '../hooks/useMaintenance.js';
 import { MobileModal } from '../../../shared/ui/MobileModal/MobileModal';
 import { TouchCheckbox } from '../../../shared/ui/TouchCheckbox/TouchCheckbox';
+import { formatDisplayDate } from '../../../shared/utils/date-format.js';
 import './MaintenanceCompletionModal.css';
 
 const MaintenanceCompletionModal = ({ window: maintenanceWindow, onClose, onSuccess }) => {
@@ -243,7 +244,7 @@ const MaintenanceCompletionModal = ({ window: maintenanceWindow, onClose, onSucc
         >
             <div className="window-summary">
                 <p><strong>Cycle:</strong> {maintenanceWindow.cycleConfig?.name}</p>
-                <p><strong>Scheduled:</strong> {new Date(maintenanceWindow.scheduledStartDate).toLocaleDateString()}</p>
+                <p><strong>Scheduled:</strong> {formatDisplayDate(maintenanceWindow.scheduledStartDate, { fallback: '-' })}</p>
                 {maintenanceWindow.assignedTo && <p><strong>Assigned To:</strong> {maintenanceWindow.assignedTo.username}</p>}
             </div>
 

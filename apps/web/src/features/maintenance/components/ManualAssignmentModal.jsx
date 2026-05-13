@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useManuallyAssignWindow } from '../hooks/useMaintenance.js';
 import { fetchUsers } from '../../users/users-api.js';
+import { formatDisplayDateTime } from '../../../shared/utils/date-format.js';
 import './ManualAssignmentModal.css';
 
 const ManualAssignmentModal = ({ window, onClose }) => {
@@ -63,7 +64,7 @@ const ManualAssignmentModal = ({ window, onClose }) => {
                 <div className="modal-body">
                     <div className="window-info">
                         <p><strong>Cycle:</strong> {window.cycleConfig?.name || 'Ad-hoc'}</p>
-                        <p><strong>Scheduled:</strong> {new Date(window.scheduledStartDate).toLocaleString()}</p>
+                        <p><strong>Scheduled:</strong> {formatDisplayDateTime(window.scheduledStartDate, { fallback: '-' })}</p>
                         {window.assignedTo && (
                             <p><strong>Currently assigned to:</strong> {window.assignedTo.displayName || window.assignedTo.username}</p>
                         )}

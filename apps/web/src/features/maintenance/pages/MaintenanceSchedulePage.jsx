@@ -18,6 +18,7 @@ import { useFilterParams } from '../../../shared/hooks/useFilterParams';
 import { SearchEmptyState } from '../../../shared/components/EmptyState/SearchEmptyState';
 import { DataStateBlock } from '../../../shared/workspace/DataStateBlock.jsx';
 import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel.jsx';
+import { formatDisplayDateTime } from '../../../shared/utils/date-format.js';
 import { filterCyclesForGeneration } from '../utils/scheduleGeneration.js';
 import './MaintenanceHomePage.css';
 
@@ -251,8 +252,8 @@ const MaintenanceSchedulePage = () => {
                         </div>
                         <div className="maintenance-window-detail-body">
                             <p><strong>Status:</strong> {detailWindow.status}</p>
-                            <p><strong>Scheduled Start:</strong> {new Date(detailWindow.scheduledStartDate).toLocaleString()}</p>
-                            <p><strong>Scheduled End:</strong> {detailWindow.scheduledEndDate ? new Date(detailWindow.scheduledEndDate).toLocaleString() : '-'}</p>
+                            <p><strong>Scheduled Start:</strong> {formatDisplayDateTime(detailWindow.scheduledStartDate, { fallback: '-' })}</p>
+                            <p><strong>Scheduled End:</strong> {formatDisplayDateTime(detailWindow.scheduledEndDate, { fallback: '-' })}</p>
                             <p><strong>Cycle:</strong> {detailWindow.cycleConfig?.name || 'Ad-hoc'}</p>
                             <p><strong>Description:</strong> {detailWindow.cycleConfig?.description || '-'}</p>
                         </div>

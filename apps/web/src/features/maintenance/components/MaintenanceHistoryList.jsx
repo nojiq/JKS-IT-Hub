@@ -1,6 +1,7 @@
 import React from 'react';
 import './MaintenanceWindowList.css';
 import DeviceTypeBadge from './DeviceTypeBadge.jsx';
+import { formatDisplayDateTime } from '../../../shared/utils/date-format.js';
 
 const formatSignoffMode = (mode) => (mode === 'ASSISTED' ? 'Assisted' : 'Standard');
 
@@ -35,7 +36,7 @@ const MaintenanceHistoryList = ({ completions }) => {
 
                         return (
                             <tr key={record.id}>
-                                <td>{new Date(record.completedAt).toLocaleString()}</td>
+                                <td>{formatDisplayDateTime(record.completedAt, { fallback: '-' })}</td>
                                 <td>{record.completedBy?.username || 'Unknown'}</td>
                                 <td>{formatSignoffMode(signoffMode)}</td>
                                 <td>{record.signerName || '-'}</td>

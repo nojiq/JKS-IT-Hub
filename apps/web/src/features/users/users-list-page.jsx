@@ -13,6 +13,7 @@ import { BulkActionsBar } from "../../shared/workspace/BulkActionsBar";
 import { DataStateBlock } from "../../shared/workspace/DataStateBlock";
 import { useSharedFilters } from "../../shared/workspace/useSharedFilters";
 import { useIsMobile, useMediaQuery } from "../../shared/hooks/useMediaQuery";
+import { formatDisplayDate } from "../../shared/utils/date-format.js";
 import { ROLE_LABELS } from "./roleLabels.js";
 import "../../shared/workspace/workspace.css";
 
@@ -34,6 +35,13 @@ const formatValue = (value) => {
     return JSON.stringify(value);
   }
   return String(value);
+};
+
+const formatLdapFieldValue = (field, value) => {
+  if (String(field).toLowerCase() === "birthdate") {
+    return formatDisplayDate(value, { fallback: formatValue(value) });
+  }
+  return formatValue(value);
 };
 
 const normalizeScalar = (value) => {
@@ -362,7 +370,7 @@ export default function UsersListPage() {
                       {uniqueFields.map((field) => (
                         <div className="users-mobile-field-row" key={field}>
                           <dt>{field}</dt>
-                          <dd>{formatValue(entry.ldapFields?.[field])}</dd>
+                          <dd>{formatLdapFieldValue(field, entry.ldapFields?.[field])}</dd>
                         </div>
                       ))}
                     </dl>

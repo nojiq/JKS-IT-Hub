@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatDisplayDate } from '../../../shared/utils/date-format.js';
 import './AssignmentRuleList.css';
 
 const AssignmentRuleList = ({ rules = [], onEdit, onDeactivate, onResetRotation }) => {
@@ -36,7 +37,7 @@ const AssignmentRuleList = ({ rules = [], onEdit, onDeactivate, onResetRotation 
                                     Index: {rule.rotationState.currentTechnicianIndex}
                                     {rule.rotationState.lastAssignedAt && (
                                         <span className="last-assigned">
-                                            {' '}(Last: {new Date(rule.rotationState.lastAssignedAt).toLocaleDateString()})
+                                            {' '}(Last: {formatDisplayDate(rule.rotationState.lastAssignedAt)})
                                         </span>
                                     )}
                                 </span>
