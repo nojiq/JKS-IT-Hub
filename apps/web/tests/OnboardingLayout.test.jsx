@@ -114,39 +114,27 @@ describe('Onboarding navigation', () => {
     it.each([
         ['it'],
         ['head_it'],
-        ['admin']
-    ])('redirects %s users away from onboarding', async (role) => {
-        renderApp({
-            user: {
-                id: `user-${role}`,
-                username: `${role}.user`,
-                role,
-                status: 'active'
-            }
-        });
+        ['admin'],
+        ['requester']
+    ])('renders onboarding shell for %s users', async (role) => {
+        const sessionUser = {
+            id: `user-${role}`,
+            username: `${role}.user`,
+            role,
+            status: 'active'
+        };
+        fetchSession.mockResolvedValue({ user: sessionUser });
 
-        expect(await screen.findByText('Dashboard Content')).toBeInTheDocument();
-        expect(screen.queryByRole('heading', { name: 'Onboarding' })).not.toBeInTheDocument();
+        renderApp({ user: sessionUser });
+
+        expect(await screen.findByRole('heading', { name: 'Onboarding' })).toBeInTheDocument();
+        expect(screen.getByText('Overview Content')).toBeInTheDocument();
     });
 
-    it('redirects unauthorized users to / and does not render the onboarding shell', async () => {
-        fetchSession.mockResolvedValue({
-            user: {
-                id: 'user-2',
-                username: 'riley.requester',
-                role: 'requester',
-                status: 'active'
-            }
-        });
+    it('redirects unauthenticated visitors away from onboarding', async () => {
+        fetchSession.mockResolvedValue({ user: null });
 
-        const { router } = renderApp({
-            user: {
-                id: 'user-2',
-                username: 'riley.requester',
-                role: 'requester',
-                status: 'active'
-            }
-        });
+        const { router } = renderApp({ user: null });
 
         expect(await screen.findByText('Dashboard Content')).toBeInTheDocument();
         expect(router.state.location.pathname).toBe('/');

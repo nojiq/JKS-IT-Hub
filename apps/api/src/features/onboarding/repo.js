@@ -313,7 +313,8 @@ export const listDirectoryUsers = async (search, tx = prisma) => {
       id: true,
       username: true,
       status: true,
-      ldapAttributes: true
+      ldapAttributes: true,
+      orgSnapshot: true
     }
   });
 };

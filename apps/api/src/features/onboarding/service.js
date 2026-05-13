@@ -54,6 +54,19 @@ const deriveNameParts = (fullName) => {
   };
 };
 
+const getPulseOrgNames = (user) => {
+  const snap = user?.orgSnapshot;
+  if (!snap || typeof snap !== "object") {
+    return { division: "", department: "", section: "" };
+  }
+
+  return {
+    division: trimToNull(snap.division?.name) ?? "",
+    department: trimToNull(snap.department?.name) ?? "",
+    section: trimToNull(snap.section?.name) ?? ""
+  };
+};
+
 const buildDirectoryUserSummary = (user) => {
   const ldapAttributes = user.ldapAttributes ?? {};
   const displayName =
@@ -69,7 +82,8 @@ const buildDirectoryUserSummary = (user) => {
     status: user.status,
     displayName,
     email,
-    department
+    department,
+    pulseOrg: getPulseOrgNames(user)
   };
 };
 
@@ -77,6 +91,7 @@ const buildManualIdentity = (manualIdentity, draftId = null) => {
   const fullName = manualIdentity.fullName.trim();
   const email = manualIdentity.email.trim().toLowerCase();
   const department = manualIdentity.department.trim();
+  const dob = String(manualIdentity.dob ?? "").trim();
   const { givenName, surname } = deriveNameParts(fullName);
 
   return {
@@ -89,7 +104,8 @@ const buildManualIdentity = (manualIdentity, draftId = null) => {
       mail: email,
       department,
       givenName,
-      sn: surname
+      sn: surname,
+      ...(dob ? { birthDate: dob } : {})
     }
   };
 };
@@ -147,6 +163,7 @@ const buildDraftSummary = (draft) => ({
   fullName: draft.fullName,
   email: draft.email,
   department: draft.department,
+  dob: draft.dob ?? null,
   createdAt: draft.createdAt,
   linkedUserId: draft.linkedUserId,
   linkedAt: draft.linkedAt,
@@ -240,7 +257,8 @@ const saveDraftCredentials = async (performedByUserId, previewSession) => {
           {
             fullName: manualIdentity.fullName,
             email: manualIdentity.email.toLowerCase(),
-            department: manualIdentity.department
+            department: manualIdentity.department,
+            dob: manualIdentity.dob
           },
           tx
         )
@@ -249,6 +267,7 @@ const saveDraftCredentials = async (performedByUserId, previewSession) => {
             fullName: manualIdentity.fullName,
             email: manualIdentity.email.toLowerCase(),
             department: manualIdentity.department,
+            dob: manualIdentity.dob,
             createdById: performedByUserId
           },
           tx
@@ -391,7 +410,20 @@ export const listOnboardingDrafts = async ({ status = "all" } = {}) => {
 };
 
 export const previewOnboardingSetup = async (input) => {
-  const catalogItems = await resolveSelectedCatalogItems(input.selectedCatalogItemKeys);
+  let catalogItemKeys = [...(input.selectedCatalogItemKeys ?? [])];
+  if (!catalogItemKeys.length) {
+    if (input.mode === "manual") {
+      const allItems = await repo.listCatalogItems();
+      catalogItemKeys = allItems.map((item) => item.itemKey).filter(Boolean);
+      if (!catalogItemKeys.length) {
+        throw new OnboardingValidationError("No catalog items configured for onboarding");
+      }
+    } else {
+      throw new OnboardingValidationError("Select at least one catalog item");
+    }
+  }
+
+  const catalogItems = await resolveSelectedCatalogItems(catalogItemKeys);
   const activeTemplate = await credentialRepo.getActiveCredentialTemplate();
 
   if (!activeTemplate) {
@@ -422,7 +454,7 @@ export const previewOnboardingSetup = async (input) => {
       department
     };
   } else {
-    department = input.manualIdentity.department.trim();
+    department = (input.manualIdentity.department ?? "").trim();
     identity = buildManualIdentity(input.manualIdentity, input.draftId ?? null);
     source = {
       mode: "manual",
@@ -431,7 +463,8 @@ export const previewOnboardingSetup = async (input) => {
       manualIdentity: {
         fullName: input.manualIdentity.fullName.trim(),
         email: input.manualIdentity.email.trim().toLowerCase(),
-        department
+        department,
+        dob: input.manualIdentity.dob.trim()
       }
     };
   }
@@ -444,7 +477,7 @@ export const previewOnboardingSetup = async (input) => {
     ...activeTemplate,
     structure: {
       ...activeTemplate.structure,
-      systems: input.selectedCatalogItemKeys
+      systems: catalogItemKeys
     }
   };
 
@@ -467,7 +500,7 @@ export const previewOnboardingSetup = async (input) => {
   await credentialRepo.storePreviewSession(previewToken, {
     type: "onboarding",
     source,
-    selectedCatalogItemKeys: input.selectedCatalogItemKeys,
+    selectedCatalogItemKeys: catalogItemKeys,
     recommendedItemKeys,
     credentials: preview.credentials,
     templateVersion: preview.templateVersion,

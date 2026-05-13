@@ -39,7 +39,6 @@ export const workspaceGroups = [
         label: "Onboarding",
         icon: "onboarding",
         to: "/onboarding",
-        roles: DEV_ONLY_ROLES,
         launcherPriority: 2,
         launcherDescription: "Prepare access, assign defaults, and generate credentials for new joiners.",
         launcherActionLabel: "Open Onboarding",

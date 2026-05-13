@@ -77,12 +77,16 @@ export default async function app(fastify, options) {
     auditRepo
   });
 
+  const { createPulseOrgClient } = await import("./features/pulse-org/client.js");
+  const pulseOrgClient = createPulseOrgClient({ config: config.pulseOrg, logger: fastify.log });
+
   // Register LDAP feature (includes scheduled sync)
   await fastify.register(import("./features/ldap/index.js"), {
     config,
     userRepo,
     auditRepo,
-    syncRepo: await import("./features/ldap/repo.js")
+    syncRepo: await import("./features/ldap/repo.js"),
+    pulseOrgClient
   });
 
   await fastify.register(import("./features/users/routes.js"), {
@@ -141,7 +145,8 @@ export default async function app(fastify, options) {
     config,
     userRepo,
     onboardingService,
-    auditRepo
+    auditRepo,
+    pulseOrgClient
   });
 
   // Normalization rules routes

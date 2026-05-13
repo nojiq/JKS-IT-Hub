@@ -262,6 +262,7 @@ model OnboardingDraft {
   fullName     String   @db.VarChar(191) @map("full_name")
   email        String   @db.VarChar(191) @map("email")
   department   String   @db.VarChar(191) @map("department")
+  dob          String?  @db.VarChar(10) @map("dob")
   linkedUserId String?  @db.Char(36) @map("linked_user_id")
   createdById  String?  @db.Char(36) @map("created_by_id")
   linkedAt     DateTime? @map("linked_at")

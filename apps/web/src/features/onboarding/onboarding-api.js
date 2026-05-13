@@ -74,6 +74,11 @@ export const fetchManagedDepartments = async () => {
   return parsePayload(response);
 };
 
+export const fetchPulseOrgHierarchy = async () => {
+  const response = await apiFetch("/api/v1/onboarding/pulse-org-hierarchy");
+  return parsePayload(response);
+};
+
 export const fetchUsersForOnboarding = async (search = "") => {
   const params = new URLSearchParams();
   if (search.trim()) {

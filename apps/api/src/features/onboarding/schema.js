@@ -37,10 +37,15 @@ export const previewOnboardingSchema = z.object({
     .object({
       fullName: z.string().trim().min(1, "Full name is required").max(191),
       email: z.string().trim().email("Email must be valid"),
-      department: z.string().trim().min(1, "Department is required").max(191)
+      department: z.preprocess((val) => (val == null ? "" : val), z.string().max(191)).transform((s) => s.trim()),
+      dob: z
+        .string()
+        .trim()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth is required (YYYY-MM-DD)")
+        .max(10)
     })
     .optional(),
-  selectedCatalogItemKeys: z.array(itemKeySchema).min(1, "Select at least one catalog item")
+  selectedCatalogItemKeys: z.preprocess((val) => (Array.isArray(val) ? val : []), z.array(itemKeySchema))
 }).superRefine((value, ctx) => {
   if (value.mode === "existing_user" && !value.userId) {
     ctx.addIssue({
@@ -55,6 +60,14 @@ export const previewOnboardingSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ["manualIdentity"],
       message: "Manual identity is required for manual onboarding"
+    });
+  }
+
+  if (value.mode === "existing_user" && !value.selectedCatalogItemKeys?.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["selectedCatalogItemKeys"],
+      message: "Select at least one catalog item"
     });
   }
 });

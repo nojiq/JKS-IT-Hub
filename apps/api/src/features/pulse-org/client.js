@@ -113,6 +113,57 @@ export const createPulseOrgClient = ({ config = {}, logger, mongoClientFactory }
     return database.collection("users").findOne({ $or: emailConditions });
   };
 
+  const toIdString = (id) => (id === undefined || id === null ? null : String(id));
+
+  /** Lists divisions, departments, and sections from JKSPulse MongoDB for onboarding pickers. */
+  const listOrgHierarchy = async () => {
+    const database = await getDb();
+    if (!database) {
+      return {
+        enabled: false,
+        divisions: [],
+        departments: [],
+        sections: []
+      };
+    }
+
+    const [divisionsRaw, departmentsRaw, sectionsRaw] = await Promise.all([
+      database.collection("divisions").find({}).project({ name: 1, code: 1 }).sort({ name: 1 }).toArray(),
+      database
+        .collection("departments")
+        .find({})
+        .project({ name: 1, code: 1, divisionId: 1 })
+        .sort({ name: 1 })
+        .toArray(),
+      database
+        .collection("sections")
+        .find({})
+        .project({ name: 1, departmentId: 1 })
+        .sort({ name: 1 })
+        .toArray()
+    ]);
+
+    return {
+      enabled: true,
+      divisions: divisionsRaw.map((d) => ({
+        id: toIdString(d._id),
+        name: String(d.name ?? ""),
+        ...(d.code != null && String(d.code).trim() !== "" ? { code: String(d.code) } : {})
+      })),
+      departments: departmentsRaw.map((d) => ({
+        id: toIdString(d._id),
+        divisionId: d.divisionId != null ? toIdString(d.divisionId) : null,
+        name: String(d.name ?? ""),
+        ...(d.code != null && String(d.code).trim() !== "" ? { code: String(d.code) } : {})
+      })),
+      sections: sectionsRaw.map((s) => ({
+        id: toIdString(s._id),
+        departmentId: s.departmentId != null ? toIdString(s.departmentId) : null,
+        name: String(s.name ?? "")
+      }))
+    };
+  };
+
   const resolveForLdapUser = async ({ username, ldapAttributes = {} } = {}) => {
     const database = await getDb();
     if (!database) {
@@ -156,6 +207,7 @@ export const createPulseOrgClient = ({ config = {}, logger, mongoClientFactory }
 
   return {
     resolveForLdapUser,
+    listOrgHierarchy,
     close: async () => {
       await client?.close?.();
       client = null;

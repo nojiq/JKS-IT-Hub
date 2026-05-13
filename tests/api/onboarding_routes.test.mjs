@@ -38,7 +38,7 @@ const createSessionCookie = async (user) => {
     return `${baseConfig.cookie.name}=${token}`;
 };
 
-const createTestApp = async ({ userRepo, onboardingService } = {}) => {
+const createTestApp = async ({ userRepo, onboardingService, pulseOrgClient } = {}) => {
     const { default: onboardingRoutes } = await import("../../apps/api/src/features/onboarding/routes.js");
     const app = Fastify({ logger: false });
     await app.register(cookie);
@@ -46,7 +46,8 @@ const createTestApp = async ({ userRepo, onboardingService } = {}) => {
         prefix: "/api/v1/onboarding",
         config: baseConfig,
         userRepo,
-        onboardingService
+        onboardingService,
+        pulseOrgClient
     });
     await app.ready();
     return app;
@@ -71,6 +72,37 @@ test("GET /api/v1/onboarding/catalog-items lists catalog items for IT", async ()
 
     assert.equal(response.statusCode, 200);
     assert.equal(response.json().data[0].itemKey, "sigma");
+});
+
+test("GET /api/v1/onboarding/pulse-org-hierarchy returns JKSPulse org tree", async () => {
+    const actor = { id: randomUUID(), username: "it_user", role: "dev", status: "active" };
+    const app = await createTestApp({
+        userRepo: {
+            findUserByUsername: async (username) => (username === actor.username ? actor : null)
+        },
+        onboardingService: {},
+        pulseOrgClient: {
+            listOrgHierarchy: async () => ({
+                enabled: true,
+                divisions: [{ id: "div-1", name: "Operations" }],
+                departments: [{ id: "dept-1", divisionId: "div-1", name: "Production" }],
+                sections: [{ id: "sec-1", departmentId: "dept-1", name: "Line A" }]
+            })
+        }
+    });
+
+    const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/onboarding/pulse-org-hierarchy",
+        headers: { cookie: await createSessionCookie(actor) }
+    });
+
+    assert.equal(response.statusCode, 200);
+    const data = response.json().data;
+    assert.equal(data.enabled, true);
+    assert.equal(data.divisions[0].name, "Operations");
+    assert.equal(data.departments[0].name, "Production");
+    assert.equal(data.sections[0].name, "Line A");
 });
 
 test("POST /api/v1/onboarding/department-bundles creates a department bundle", async () => {
@@ -134,7 +166,8 @@ test("POST /api/v1/onboarding/preview returns setup sheet preview", async () => 
             manualIdentity: {
                 fullName: "Haziq Afendi",
                 email: "haziq.afendi@jkseng.com",
-                department: "Marketing"
+                department: "Marketing",
+                dob: "1990-05-01"
             },
             selectedCatalogItemKeys: ["canva"]
         }
@@ -143,6 +176,66 @@ test("POST /api/v1/onboarding/preview returns setup sheet preview", async () => 
     assert.equal(response.statusCode, 200);
     assert.equal(response.json().data.previewToken, "preview-1");
     assert.equal(response.json().data.setupSheet.entries[0].systemId, "canva");
+});
+
+test("POST /api/v1/onboarding/preview accepts manual body with only name, email, dob and no catalog keys", async () => {
+    const actor = { id: randomUUID(), username: "it_user", role: "dev", status: "active" };
+    const app = await createTestApp({
+        userRepo: {
+            findUserByUsername: async (username) => (username === actor.username ? actor : null)
+        },
+        onboardingService: {
+            previewOnboardingSetup: async () => ({
+                previewToken: "preview-min",
+                source: { mode: "manual", department: "" },
+                recommendedItemKeys: [],
+                setupSheet: { entries: [] }
+            })
+        }
+    });
+
+    const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/onboarding/preview",
+        headers: { cookie: await createSessionCookie(actor) },
+        payload: {
+            mode: "manual",
+            manualIdentity: {
+                fullName: "Min User",
+                email: "min.user@jkseng.com",
+                dob: "1999-11-22"
+            },
+            selectedCatalogItemKeys: []
+        }
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.json().data.previewToken, "preview-min");
+});
+
+test("POST /api/v1/onboarding/preview rejects existing-user preview without catalog keys", async () => {
+    const actor = { id: randomUUID(), username: "it_user", role: "dev", status: "active" };
+    const app = await createTestApp({
+        userRepo: {
+            findUserByUsername: async (username) => (username === actor.username ? actor : null)
+        },
+        onboardingService: {
+            previewOnboardingSetup: async () => ({})
+        }
+    });
+
+    const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/onboarding/preview",
+        headers: { cookie: await createSessionCookie(actor) },
+        payload: {
+            mode: "existing_user",
+            userId: "00000000-0000-0000-0000-000000000001",
+            selectedCatalogItemKeys: []
+        }
+    });
+
+    assert.equal(response.statusCode, 400);
 });
 
 test("POST /api/v1/onboarding/confirm requires explicit confirmation", async () => {

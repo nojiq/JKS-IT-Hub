@@ -1,15 +1,41 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
 import {
   confirmOnboardingSetup,
   fetchCatalogItems,
-  fetchOnboardingDrafts,
   fetchDepartmentBundles,
+  fetchOnboardingDrafts,
+  fetchPulseOrgHierarchy,
   fetchUsersForOnboarding,
   linkAndPromoteOnboardingDraft,
   previewOnboardingSetup
 } from "../onboarding-api.js";
+import { previewImapPassword } from "../../credentials/api/credentials.js";
+import { useActualPasswordPreview } from "../../credentials/hooks/useImapGenerator.js";
 import "../onboarding.css";
+import "../new-joiner-page.css";
+
+const STATUS_OPTIONS = ["", "Active", "Pending", "Suspended"];
+const CATEGORY_OPTIONS = ["", "Staff", "Contractor", "Vendor"];
+
+const defaultActualCharset = {
+  uppercase: true,
+  lowercase: true,
+  digit: true,
+  special: true
+};
+
+const ACTUAL_PASSWORD_LENGTH = 12;
+
+/** Empty allowed; non-empty must match API email validation. */
+const isOptionalEmailValid = (raw) => {
+  const value = String(raw ?? "").trim();
+  if (!value) {
+    return true;
+  }
+  return z.string().email().safeParse(value).success;
+};
 
 const getRecommendedItemKeys = (bundles, department) => {
   const normalizedDepartment = department.trim().toLowerCase();
@@ -21,6 +47,24 @@ const getRecommendedItemKeys = (bundles, department) => {
     (entry) => entry.department.trim().toLowerCase() === normalizedDepartment && entry.isActive
   );
   return bundle?.catalogItemKeys ?? [];
+};
+
+/** Work-email local part without dots, title-cased + @7189 (e.g. abu.ali@jkseng.com → Abuali@7189). */
+const deriveActiveDirectoryFromEmail = (email) => {
+  const trimmed = String(email ?? "")
+    .trim()
+    .toLowerCase();
+  const at = trimmed.indexOf("@");
+  if (at <= 0) {
+    return "";
+  }
+  const local = trimmed.slice(0, at).replace(/\./g, "");
+  const cleaned = local.replace(/[^a-z0-9]/g, "");
+  if (!cleaned) {
+    return "";
+  }
+  const cased = cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase();
+  return `${cased}@7189`;
 };
 
 const syncSelection = (currentSelection, nextKeys) => {
@@ -64,12 +108,35 @@ export function NewJoinerPage() {
   const [activeDraftId, setActiveDraftId] = useState(null);
   const [linkingDraftId, setLinkingDraftId] = useState(null);
   const [linkTargetUserId, setLinkTargetUserId] = useState("");
+
+  const [status, setStatus] = useState("");
+  const [category, setCategory] = useState("");
+  const [dob, setDob] = useState("");
+  const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [actualPassword, setActualPassword] = useState("");
+  const [ipadMail, setIpadMail] = useState("");
+  const [macMail, setMacMail] = useState("");
+  const [iphoneMail, setIphoneMail] = useState("");
+  const [outlookDesktop, setOutlookDesktop] = useState("");
+  const [outlookIos, setOutlookIos] = useState("");
+  const [outlookAndroid, setOutlookAndroid] = useState("");
+  const [androidPassword, setAndroidPassword] = useState("");
+  const [remarks, setRemarks] = useState("");
+
+  const [imapUsername, setImapUsername] = useState("");
+  const [imapPassword, setImapPassword] = useState("");
+  const [credentialBusy, setCredentialBusy] = useState(null);
+  const [credentialError, setCredentialError] = useState("");
+
   const [manualIdentity, setManualIdentity] = useState({
     fullName: "",
     email: "",
     department: ""
   });
   const [department, setDepartment] = useState("");
+  const [manualPulseDivisionId, setManualPulseDivisionId] = useState("");
+  const [manualPulseDepartmentId, setManualPulseDepartmentId] = useState("");
+  const [manualPulseSectionId, setManualPulseSectionId] = useState("");
   const [selectedItemKeys, setSelectedItemKeys] = useState(new Set());
   const [previewResult, setPreviewResult] = useState(null);
   const [confirmedResult, setConfirmedResult] = useState(null);
@@ -82,6 +149,11 @@ export function NewJoinerPage() {
   const bundlesQuery = useQuery({
     queryKey: ["onboarding", "department-bundles"],
     queryFn: fetchDepartmentBundles
+  });
+
+  const pulseOrgQuery = useQuery({
+    queryKey: ["onboarding", "pulse-org-hierarchy"],
+    queryFn: fetchPulseOrgHierarchy
   });
 
   const usersQuery = useQuery({
@@ -122,16 +194,125 @@ export function NewJoinerPage() {
     }
   });
 
+  const actualPreviewMutation = useActualPasswordPreview();
+  const actualPreviewMutateRef = useRef(actualPreviewMutation.mutate);
+
+  useEffect(() => {
+    actualPreviewMutateRef.current = actualPreviewMutation.mutate;
+  }, [actualPreviewMutation.mutate]);
+
   const catalogItems = catalogItemsQuery.data ?? [];
   const bundles = bundlesQuery.data ?? [];
   const users = usersQuery.data ?? [];
   const drafts = draftsQuery.data ?? [];
+  const pulseHierarchy = useMemo(
+    () =>
+      pulseOrgQuery.data ?? {
+        enabled: false,
+        divisions: [],
+        departments: [],
+        sections: []
+      },
+    [pulseOrgQuery.data]
+  );
+  const departmentsInSelectedDivision = useMemo(() => {
+    const all = pulseHierarchy.departments ?? [];
+    if (!manualPulseDivisionId) {
+      return all;
+    }
+    return all.filter((d) => d.divisionId === manualPulseDivisionId);
+  }, [pulseHierarchy.departments, manualPulseDivisionId]);
+  const sectionsInSelectedDepartment = useMemo(() => {
+    if (!manualPulseDepartmentId) {
+      return [];
+    }
+    return (pulseHierarchy.sections ?? []).filter((s) => s.departmentId === manualPulseDepartmentId);
+  }, [pulseHierarchy.sections, manualPulseDepartmentId]);
   const departmentOptions = useMemo(
     () => bundles.filter((bundle) => bundle.isActive).map((bundle) => bundle.department),
     [bundles]
   );
+  const manualPreviewReady = useMemo(() => {
+    if (mode !== "manual") {
+      return true;
+    }
+    const name = manualIdentity.fullName.trim();
+    const email = manualIdentity.email.trim();
+    return (
+      Boolean(name) &&
+      Boolean(email) &&
+      z.string().email().safeParse(email).success &&
+      /^\d{4}-\d{2}-\d{2}$/.test(dob.trim())
+    );
+  }, [mode, manualIdentity.fullName, manualIdentity.email, dob]);
+
   const resolvedDepartment = mode === "existing_user" ? department : manualIdentity.department;
   const setupSheet = confirmedResult?.setupSheet ?? previewResult?.setupSheet ?? null;
+  const selectedDirectoryUser = useMemo(
+    () => users.find((entry) => entry.id === selectedUserId) ?? null,
+    [users, selectedUserId]
+  );
+  const derivedActiveDirectory = useMemo(
+    () => deriveActiveDirectoryFromEmail(manualIdentity.email),
+    [manualIdentity.email]
+  );
+  const pulseOrg = selectedDirectoryUser?.pulseOrg ?? {
+    division: "",
+    department: "",
+    section: ""
+  };
+
+  const actualCharsetEnabledCount = useMemo(
+    () =>
+      [
+        defaultActualCharset.uppercase,
+        defaultActualCharset.lowercase,
+        defaultActualCharset.digit,
+        defaultActualCharset.special
+      ].filter(Boolean).length,
+    []
+  );
+
+  const canPreviewActualPassword = useMemo(() => {
+    if (actualCharsetEnabledCount <= 0 || ACTUAL_PASSWORD_LENGTH < actualCharsetEnabledCount) {
+      return false;
+    }
+    return isOptionalEmailValid(manualIdentity.email);
+  }, [manualIdentity.email, actualCharsetEnabledCount]);
+
+  const actualPreviewPayload = useMemo(
+    () => ({
+      fullName: manualIdentity.fullName,
+      email: manualIdentity.email,
+      dob: dob || "",
+      temporaryPassword,
+      length: ACTUAL_PASSWORD_LENGTH,
+      charset: defaultActualCharset
+    }),
+    [manualIdentity.fullName, manualIdentity.email, dob, temporaryPassword]
+  );
+
+  useEffect(() => {
+    if (!canPreviewActualPassword) {
+      setActualPassword("");
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      actualPreviewMutateRef.current(actualPreviewPayload, {
+        onSuccess: (data) => {
+          if (data?.password) {
+            setActualPassword(data.password);
+          }
+        },
+        onError: () => {
+          setActualPassword("");
+        }
+      });
+    }, 200);
+
+    return () => window.clearTimeout(timer);
+  }, [actualPreviewPayload, canPreviewActualPassword]);
 
   useEffect(() => {
     if (mode !== "manual") {
@@ -146,6 +327,27 @@ export function NewJoinerPage() {
   }, [bundles, manualIdentity.department, mode]);
 
   useEffect(() => {
+    if (mode !== "manual" || !pulseHierarchy.enabled || !(pulseHierarchy.departments ?? []).length) {
+      return;
+    }
+    const name = manualIdentity.department?.trim();
+    if (!name) {
+      setManualPulseDivisionId("");
+      setManualPulseDepartmentId("");
+      setManualPulseSectionId("");
+      return;
+    }
+    const match = pulseHierarchy.departments.find(
+      (d) => d.name.trim().toLowerCase() === name.toLowerCase()
+    );
+    if (!match) {
+      return;
+    }
+    setManualPulseDivisionId(match.divisionId ?? "");
+    setManualPulseDepartmentId(match.id);
+  }, [mode, pulseHierarchy.enabled, pulseHierarchy.departments, manualIdentity.department]);
+
+  useEffect(() => {
     if (mode !== "existing_user") {
       return;
     }
@@ -156,6 +358,14 @@ export function NewJoinerPage() {
     setSelectedItemKeys((current) =>
       syncSelection(current, getRecommendedItemKeys(bundles, nextDepartment))
     );
+
+    if (selectedUser) {
+      setManualIdentity((prev) => ({
+        ...prev,
+        fullName: selectedUser.displayName || selectedUser.username || "",
+        email: selectedUser.email || ""
+      }));
+    }
   }, [bundles, mode, selectedUserId, users]);
 
   const toggleSelection = (itemKey) => {
@@ -178,15 +388,118 @@ export function NewJoinerPage() {
     );
   };
 
+  const handleManualPulseDivisionChange = (nextDivisionId) => {
+    setManualPulseDivisionId(nextDivisionId);
+    setManualPulseDepartmentId("");
+    setManualPulseSectionId("");
+    handleManualDepartmentChange("");
+  };
+
+  const handleManualPulseDepartmentChange = (nextDepartmentId) => {
+    setManualPulseDepartmentId(nextDepartmentId);
+    setManualPulseSectionId("");
+    const dept = (pulseHierarchy.departments ?? []).find((d) => d.id === nextDepartmentId);
+    handleManualDepartmentChange(dept?.name ?? "");
+  };
+
+  const handleManualPulseSectionChange = (nextSectionId) => {
+    setManualPulseSectionId(nextSectionId);
+  };
+
   const handleExistingUserChange = (nextUserId) => {
     const selectedUser = users.find((entry) => entry.id === nextUserId);
-    const nextDepartment = selectedUser?.department ?? "";
 
     setSelectedUserId(nextUserId);
-    setDepartment(nextDepartment);
-    setSelectedItemKeys((current) =>
-      syncSelection(current, getRecommendedItemKeys(bundles, nextDepartment))
-    );
+    if (selectedUser) {
+      setDepartment(selectedUser.department ?? "");
+      setManualIdentity((prev) => ({
+        ...prev,
+        fullName: selectedUser.displayName || selectedUser.username || "",
+        email: selectedUser.email || ""
+      }));
+      setSelectedItemKeys((current) =>
+        syncSelection(current, getRecommendedItemKeys(bundles, selectedUser.department ?? ""))
+      );
+    }
+  };
+
+  const resetFormExtras = () => {
+    setStatus("");
+    setCategory("");
+    setDob("");
+    setTemporaryPassword("");
+    setActualPassword("");
+    setImapUsername("");
+    setImapPassword("");
+    setIpadMail("");
+    setMacMail("");
+    setIphoneMail("");
+    setOutlookDesktop("");
+    setOutlookIos("");
+    setOutlookAndroid("");
+    setAndroidPassword("");
+    setRemarks("");
+    setCredentialError("");
+  };
+
+  const handleGenerateImapPassword = async () => {
+    setCredentialError("");
+    if (mode === "manual") {
+      if (!manualIdentity.fullName.trim() || !manualIdentity.email.trim()) {
+        setCredentialError("Enter name and work email before generating IMAP credentials.");
+        return;
+      }
+    } else if (!selectedUserId) {
+      setCredentialError("Select a directory user before generating IMAP credentials.");
+      return;
+    }
+
+    setCredentialBusy("imap");
+    try {
+      const baseInputs = {
+        email: manualIdentity.email.trim(),
+        fullName: manualIdentity.fullName.trim(),
+        dob: dob || "",
+        firstName: "",
+        lastName: "",
+        phone: ""
+      };
+
+      const selectedFields = {
+        email: true,
+        fullName: true,
+        ...(dob.trim() ? { dob: true } : {})
+      };
+
+      const payload =
+        mode === "existing_user" && selectedUserId
+          ? {
+              userId: selectedUserId,
+              inputs: baseInputs,
+              selectedFields
+            }
+          : {
+              manualIdentity: {
+                fullName: manualIdentity.fullName.trim(),
+                email: manualIdentity.email.trim()
+              },
+              inputs: baseInputs,
+              selectedFields
+            };
+
+      const body = await previewImapPassword(payload);
+      const data = body?.data;
+      const proposed = data?.proposedCredential;
+      if (!proposed?.password) {
+        throw new Error("No IMAP password returned from preview.");
+      }
+      setImapUsername(proposed.username || "");
+      setImapPassword(proposed.password);
+    } catch (e) {
+      setCredentialError(e.message || "Could not generate IMAP credentials.");
+    } finally {
+      setCredentialBusy(null);
+    }
   };
 
   const handlePreview = () => {
@@ -203,7 +516,8 @@ export function NewJoinerPage() {
       }
       payload.manualIdentity = {
         ...manualIdentity,
-        department: manualIdentity.department
+        department: manualIdentity.department,
+        dob: dob.trim()
       };
     }
 
@@ -225,11 +539,15 @@ export function NewJoinerPage() {
     setMode("manual");
     setSelectedUserId("");
     setActiveDraftId(draft.id);
+    setDob(draft.dob ?? "");
     setManualIdentity({
       fullName: draft.fullName,
       email: draft.email,
       department: draft.department
     });
+    setManualPulseDivisionId("");
+    setManualPulseDepartmentId("");
+    setManualPulseSectionId("");
     setDepartment(draft.department);
     setSelectedItemKeys(new Set(draft.selectedCatalogItemKeys ?? []));
     setPreviewResult({
@@ -263,157 +581,468 @@ export function NewJoinerPage() {
     });
   };
 
+  const handleCancel = () => {
+    setMode("manual");
+    setSelectedUserId("");
+    setActiveDraftId(null);
+    setManualIdentity({ fullName: "", email: "", department: "" });
+    setDepartment("");
+    setManualPulseDivisionId("");
+    setManualPulseDepartmentId("");
+    setManualPulseSectionId("");
+    setSelectedItemKeys(new Set());
+    setPreviewResult(null);
+    setConfirmedResult(null);
+    resetFormExtras();
+  };
+
+  const identityLocked = mode === "existing_user";
+
   return (
-    <div className="onboarding-panel">
-      <article className="onboarding-card">
-        <div className="onboarding-card-header">
-          <div>
-            <h2>Identity Source</h2>
-            <p className="onboarding-card-subtitle">
-              Start from a manual joiner draft or pull from the directory before building the setup sheet.
-            </p>
-          </div>
-          {resolvedDepartment ? <span className="onboarding-badge">{resolvedDepartment}</span> : null}
-        </div>
-
-        <div className="onboarding-mode-switch">
-          <label className="onboarding-mode-option">
-            <input
-              type="radio"
-              name="onboarding-mode"
-              checked={mode === "manual"}
-              onChange={() => {
-                setMode("manual");
-                setSelectedUserId("");
-                setPreviewResult(null);
-                setConfirmedResult(null);
-              }}
-            />
-            Manual Joiner
-          </label>
-          <label className="onboarding-mode-option">
-            <input
-              type="radio"
-              name="onboarding-mode"
-              checked={mode === "existing_user"}
-              onChange={() => {
-                setMode("existing_user");
-                setActiveDraftId(null);
-                setPreviewResult(null);
-                setConfirmedResult(null);
-              }}
-            />
-            Existing Directory User
-          </label>
-        </div>
-
-        {mode === "manual" ? (
-          <div className="onboarding-form-grid">
-            <div className="onboarding-form-field">
-              <label htmlFor="manual-full-name">Full Name</label>
+    <div className="nj-shell">
+      <section className="nj-hero">
+        <h1 className="nj-hero-bar">Add New User</h1>
+        <div className="nj-hero-body">
+          <div className="nj-identity-row">
+            <label className="nj-mode-option">
               <input
-                id="manual-full-name"
-                value={manualIdentity.fullName}
-                onChange={(event) =>
-                  setManualIdentity((current) => ({ ...current, fullName: event.target.value }))
-                }
-                placeholder="Haziq Afendi"
+                type="radio"
+                name="nj-mode"
+                checked={mode === "manual"}
+                onChange={() => {
+                  setMode("manual");
+                  setSelectedUserId("");
+                  setPreviewResult(null);
+                  setConfirmedResult(null);
+                }}
               />
-            </div>
-
-            <div className="onboarding-form-field">
-              <label htmlFor="manual-email">Email</label>
+              Manual entry
+            </label>
+            <label className="nj-mode-option">
               <input
-                id="manual-email"
-                value={manualIdentity.email}
-                onChange={(event) =>
-                  setManualIdentity((current) => ({ ...current, email: event.target.value }))
-                }
-                placeholder="haziq.afendi@jkseng.com"
+                type="radio"
+                name="nj-mode"
+                checked={mode === "existing_user"}
+                onChange={() => {
+                  setMode("existing_user");
+                  setActiveDraftId(null);
+                  setPreviewResult(null);
+                  setConfirmedResult(null);
+                }}
               />
+              Directory user
+            </label>
+            {mode === "existing_user" ? (
+              <div className="nj-directory-wrap">
+                <label htmlFor="nj-directory-user">Linked account</label>
+                <select
+                  id="nj-directory-user"
+                  aria-label="Linked account"
+                  value={selectedUserId}
+                  onChange={(event) => handleExistingUserChange(event.target.value)}
+                >
+                  <option value="">Select directory user</option>
+                  {users.map((entry) => (
+                    <option key={entry.id} value={entry.id}>
+                      {entry.displayName || entry.username}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="nj-erp-form">
+            <div className="nj-erp-section">
+              <div className="nj-erp-section-head">
+                <h3 className="nj-erp-section-title">Person &amp; account</h3>
+              </div>
+              <div className="nj-erp-rows">
+                <div className="nj-erp-row">
+                  <div className="nj-field">
+                    <label htmlFor="nj-name">Name (required)</label>
+                    <input
+                      id="nj-name"
+                      value={manualIdentity.fullName}
+                      readOnly={identityLocked}
+                      className={identityLocked ? "nj-field-readonly" : undefined}
+                      onChange={(e) =>
+                        setManualIdentity((c) => ({ ...c, fullName: e.target.value }))
+                      }
+                      placeholder="Full name"
+                    />
+                  </div>
+                  <div className="nj-field">
+                    <label htmlFor="nj-email">Work email (required)</label>
+                    <input
+                      id="nj-email"
+                      type="email"
+                      value={manualIdentity.email}
+                      readOnly={identityLocked}
+                      className={identityLocked ? "nj-field-readonly" : undefined}
+                      onChange={(e) =>
+                        setManualIdentity((c) => ({ ...c, email: e.target.value }))
+                      }
+                      placeholder="name@jkseng.com"
+                    />
+                  </div>
+                </div>
+                <div className="nj-erp-row">
+                  <div className="nj-field">
+                    <label htmlFor="nj-dob">Date of birth (required)</label>
+                    <input
+                      id="nj-dob"
+                      type="date"
+                      value={dob}
+                      onChange={(e) => setDob(e.target.value)}
+                    />
+                  </div>
+                  <div className="nj-field">
+                    <label htmlFor="nj-temp-pw">Yahoo temporary password (optional)</label>
+                    <input
+                      id="nj-temp-pw"
+                      type="password"
+                      autoComplete="new-password"
+                      value={temporaryPassword}
+                      onChange={(e) => setTemporaryPassword(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="onboarding-form-field">
-              <label htmlFor="manual-department">Department</label>
-              <select
-                id="manual-department"
-                aria-label="Department"
-                value={manualIdentity.department}
-                onChange={(event) => handleManualDepartmentChange(event.target.value)}
-              >
-                <option value="">Select department</option>
-                {departmentOptions.map((entry) => (
-                  <option key={entry} value={entry}>
-                    {entry}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        ) : (
-          <div className="onboarding-form-grid">
-            <div className="onboarding-form-field">
-              <label htmlFor="existing-user-select">Existing User</label>
-              <select
-                id="existing-user-select"
-                aria-label="Existing User"
-                value={selectedUserId}
-                onChange={(event) => handleExistingUserChange(event.target.value)}
-              >
-                <option value="">Select directory user</option>
-                {users.map((entry) => (
-                  <option key={entry.id} value={entry.id}>
-                    {entry.displayName || entry.username}
-                  </option>
-                ))}
-              </select>
+            <div className="nj-erp-section">
+              <div className="nj-erp-section-head">
+                <h3 className="nj-erp-section-title">Passwords</h3>
+              </div>
+              <div className="nj-erp-rows">
+                <div className="nj-erp-row">
+                  <div className="nj-field nj-field-span">
+                    <label htmlFor="nj-actual-password">Actual password</label>
+                    <input
+                      id="nj-actual-password"
+                      type="text"
+                      autoComplete="off"
+                      readOnly
+                      className="nj-field-readonly"
+                      value={actualPassword}
+                      placeholder={actualPreviewMutation.isPending ? "Generating…" : "—"}
+                      aria-busy={actualPreviewMutation.isPending}
+                      aria-live="polite"
+                    />
+                  </div>
+                </div>
+                <div className="nj-erp-row">
+                  <div className="nj-field">
+                    <label htmlFor="nj-android-pw">Android password (optional)</label>
+                    <input
+                      id="nj-android-pw"
+                      value={androidPassword}
+                      onChange={(e) => setAndroidPassword(e.target.value)}
+                      autoComplete="off"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="onboarding-form-field">
-              <label htmlFor="existing-department">Department</label>
-              <input id="existing-department" value={department} readOnly />
+            <div className="nj-erp-section">
+              <div className="nj-erp-section-head">
+                <h3 className="nj-erp-section-title">Organization (JKSPulse)</h3>
+              </div>
+              <div className="nj-erp-rows">
+                {mode === "existing_user" && selectedUserId ? (
+                  <div className="nj-erp-row nj-erp-row-triple">
+                    <div className="nj-field">
+                      <span className="nj-erp-readonly-label">Division</span>
+                      <div id="nj-pulse-division" className="nj-erp-readonly-value" title={pulseOrg.division || undefined}>
+                        {pulseOrg.division || "—"}
+                      </div>
+                    </div>
+                    <div className="nj-field">
+                      <span className="nj-erp-readonly-label">Department</span>
+                      <div id="nj-pulse-department" className="nj-erp-readonly-value" title={pulseOrg.department || undefined}>
+                        {pulseOrg.department || "—"}
+                      </div>
+                    </div>
+                    <div className="nj-field">
+                      <span className="nj-erp-readonly-label">Section</span>
+                      <div id="nj-pulse-section" className="nj-erp-readonly-value" title={pulseOrg.section || undefined}>
+                        {pulseOrg.section || "—"}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+                {mode === "manual" && pulseHierarchy.enabled ? (
+                  <div className="nj-erp-row nj-erp-row-triple">
+                    <div className="nj-field">
+                      <label htmlFor="nj-pulse-manual-division">Division (optional)</label>
+                      <select
+                        id="nj-pulse-manual-division"
+                        aria-label="Division (JKSPulse, optional)"
+                        value={manualPulseDivisionId}
+                        onChange={(event) => handleManualPulseDivisionChange(event.target.value)}
+                        disabled={pulseOrgQuery.isLoading}
+                      >
+                        <option value="">Select division</option>
+                        {(pulseHierarchy.divisions ?? []).map((entry) => (
+                          <option key={entry.id} value={entry.id}>
+                            {entry.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="nj-field">
+                      <label htmlFor="nj-pulse-manual-department">Department (optional)</label>
+                      <select
+                        id="nj-pulse-manual-department"
+                        aria-label="Department (JKSPulse, optional)"
+                        value={manualPulseDepartmentId}
+                        onChange={(event) => handleManualPulseDepartmentChange(event.target.value)}
+                        disabled={pulseOrgQuery.isLoading || !departmentsInSelectedDivision.length}
+                      >
+                        <option value="">Select department</option>
+                        {departmentsInSelectedDivision.map((entry) => (
+                          <option key={entry.id} value={entry.id}>
+                            {entry.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="nj-field">
+                      <label htmlFor="nj-pulse-manual-section">Section (optional)</label>
+                      <select
+                        id="nj-pulse-manual-section"
+                        aria-label="Section (JKSPulse, optional)"
+                        value={manualPulseSectionId}
+                        onChange={(event) => handleManualPulseSectionChange(event.target.value)}
+                        disabled={
+                          pulseOrgQuery.isLoading ||
+                          !manualPulseDepartmentId ||
+                          !sectionsInSelectedDepartment.length
+                        }
+                      >
+                        <option value="">
+                          {!manualPulseDepartmentId
+                            ? "Select department first"
+                            : sectionsInSelectedDepartment.length
+                              ? "Select section"
+                              : "No sections"}
+                        </option>
+                        {sectionsInSelectedDepartment.map((entry) => (
+                          <option key={entry.id} value={entry.id}>
+                            {entry.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ) : null}
+                {mode === "manual" && !pulseHierarchy.enabled && !pulseOrgQuery.isLoading ? (
+                  <div className="nj-erp-row">
+                    <div className="nj-field nj-field-span">
+                      <label htmlFor="nj-department">Department (application bundle, optional)</label>
+                      <select
+                        id="nj-department"
+                        aria-label="Department (application bundle, optional)"
+                        value={manualIdentity.department}
+                        onChange={(event) => handleManualDepartmentChange(event.target.value)}
+                      >
+                        <option value="">Select department</option>
+                        {departmentOptions.map((entry) => (
+                          <option key={entry} value={entry}>
+                            {entry}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ) : null}
+                {mode === "manual" && pulseOrgQuery.isLoading ? (
+                  <div className="nj-erp-row">
+                    <div className="nj-field nj-field-span">
+                      <span className="nj-erp-readonly-label">JKSPulse</span>
+                      <div className="nj-erp-readonly-value">Loading organization…</div>
+                    </div>
+                  </div>
+                ) : null}
+                {mode === "manual" && pulseOrgQuery.isError ? (
+                  <p className="nj-cred-error" role="alert">
+                    Could not load JKSPulse organization. Use bundle list below if shown, or try again.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="nj-erp-section">
+              <div className="nj-erp-section-head">
+                <h3 className="nj-erp-section-title">Classification</h3>
+              </div>
+              <div className="nj-erp-rows">
+                <div className="nj-erp-row">
+                  <div className="nj-field">
+                    <label htmlFor="nj-status">Status</label>
+                    <select id="nj-status" value={status} onChange={(e) => setStatus(e.target.value)}>
+                      {STATUS_OPTIONS.map((opt) => (
+                        <option key={opt || "empty-s"} value={opt}>
+                          {opt || "—"}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="nj-field">
+                    <label htmlFor="nj-category">Category</label>
+                    <select id="nj-category" value={category} onChange={(e) => setCategory(e.target.value)}>
+                      {CATEGORY_OPTIONS.map((opt) => (
+                        <option key={opt || "empty-c"} value={opt}>
+                          {opt || "—"}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="nj-erp-section">
+              <div className="nj-erp-section-head">
+                <h3 className="nj-erp-section-title">Mail &amp; Outlook</h3>
+              </div>
+              <div className="nj-erp-rows">
+                <div className="nj-erp-row">
+                  <div className="nj-field">
+                    <label htmlFor="nj-iphone-mail">iPhone mail (optional)</label>
+                    <input
+                      id="nj-iphone-mail"
+                      value={iphoneMail}
+                      onChange={(e) => setIphoneMail(e.target.value)}
+                    />
+                  </div>
+                  <div className="nj-field">
+                    <label htmlFor="nj-ipad-mail">iPad mail (optional)</label>
+                    <input id="nj-ipad-mail" value={ipadMail} onChange={(e) => setIpadMail(e.target.value)} />
+                  </div>
+                </div>
+                <div className="nj-erp-row">
+                  <div className="nj-field">
+                    <label htmlFor="nj-mac-mail">Mac mail (optional)</label>
+                    <input id="nj-mac-mail" value={macMail} onChange={(e) => setMacMail(e.target.value)} />
+                  </div>
+                  <div className="nj-field">
+                    <label htmlFor="nj-outlook-ios">Outlook iOS (optional)</label>
+                    <input id="nj-outlook-ios" value={outlookIos} onChange={(e) => setOutlookIos(e.target.value)} />
+                  </div>
+                </div>
+                <div className="nj-erp-row">
+                  <div className="nj-field">
+                    <label htmlFor="nj-outlook-android">Outlook Android (optional)</label>
+                    <input
+                      id="nj-outlook-android"
+                      value={outlookAndroid}
+                      onChange={(e) => setOutlookAndroid(e.target.value)}
+                    />
+                  </div>
+                  <div className="nj-field">
+                    <label htmlFor="nj-outlook-desktop">Outlook desktop</label>
+                    <input
+                      id="nj-outlook-desktop"
+                      value={outlookDesktop}
+                      onChange={(e) => setOutlookDesktop(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="nj-erp-section">
+              <div className="nj-erp-section-head">
+                <h3 className="nj-erp-section-title">Directory sign-in</h3>
+              </div>
+              <div className="nj-erp-rows">
+                <div className="nj-erp-row">
+                  <div className="nj-field nj-field-span">
+                    <label htmlFor="nj-ad">Active Directory (samAccountName)</label>
+                    <input
+                      id="nj-ad"
+                      readOnly
+                      className="nj-field-readonly"
+                      value={derivedActiveDirectory}
+                      placeholder="Enter a work email to derive (e.g. Abuali@7189)"
+                      aria-live="polite"
+                    />
+                  </div>
+                  <div className="nj-field nj-field-span">
+                    <label htmlFor="nj-remarks">Remarks (optional)</label>
+                    <textarea id="nj-remarks" value={remarks} onChange={(e) => setRemarks(e.target.value)} />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        )}
-      </article>
 
-      <article className="onboarding-card">
-        <div className="onboarding-card-header">
-          <div>
-            <h2>Default Bundle</h2>
-            <p className="onboarding-card-subtitle">
-              Department rules preselect the most likely access package before you finalize the app list.
-            </p>
+          <div className="nj-erp-section nj-erp-section-imap">
+            <div className="nj-erp-section-head">
+              <h3 className="nj-erp-section-title">IMAP credentials (preview)</h3>
+            </div>
+            <div className="nj-field">
+              <span className="nj-erp-readonly-label">Actions</span>
+              <div className="nj-gen-actions" style={{ maxWidth: "28rem" }}>
+                <button
+                  id="nj-gen-imap"
+                  type="button"
+                  className="nj-btn nj-btn-secondary"
+                  disabled={credentialBusy === "imap"}
+                  onClick={handleGenerateImapPassword}
+                >
+                  {credentialBusy === "imap" ? "Generating…" : "Generate IMAP password"}
+                </button>
+              {(imapUsername || imapPassword) && (
+                <div className="nj-imap-inline">
+                  <div>
+                    <strong>Username</strong> <code>{imapUsername || "—"}</code>
+                  </div>
+                  <div>
+                    <strong>Password</strong> <code>{imapPassword || "—"}</code>
+                  </div>
+                </div>
+              )}
+            </div>
+            {credentialError ? (
+              <p className="nj-cred-error" role="alert">
+                {credentialError}
+              </p>
+            ) : null}
+            </div>
           </div>
-          <span className="onboarding-badge">{resolvedDepartment || "No department yet"}</span>
+
+          <div className="nj-footer-actions">
+            <button type="button" className="nj-btn nj-btn-primary" onClick={handleConfirm} disabled={confirmMutation.isPending || !previewResult?.previewToken}>
+              {confirmMutation.isPending ? "Saving…" : "Add User"}
+            </button>
+            <button type="button" className="nj-btn nj-btn-primary" onClick={handleCancel}>
+              Cancel
+            </button>
+          </div>
         </div>
+      </section>
 
-        <div className="onboarding-step-summary">
-          <p className="onboarding-muted">
-            {resolvedDepartment
-              ? `${resolvedDepartment} defaults are ready. Review the app selection below before previewing credentials.`
-              : "Choose a department or directory user first so the module can load the right default bundle."}
-          </p>
-        </div>
-      </article>
-
-      <article className="onboarding-card">
-        <div className="onboarding-card-header">
-          <div>
-            <h2>App Access Selection</h2>
-            <p className="onboarding-card-subtitle">
-              Add or remove provisioning inputs after the default bundle is applied.
-            </p>
-          </div>
-          <span className="onboarding-badge">{selectedItemKeys.size} selected</span>
-        </div>
-
-        <div className="onboarding-selection-grid">
+      <section className="nj-section">
+        <h2>Application access</h2>
+        <p className="nj-section-sub">
+          {mode === "manual" && !resolvedDepartment
+            ? "Optional: set JKSPulse, department bundle, or tick apps below. If none are ticked, preview includes every catalog app."
+            : resolvedDepartment
+              ? `${resolvedDepartment} bundle preselected ${selectedItemKeys.size} item(s). Adjust before building the onboarding package.`
+              : pulseHierarchy.enabled
+                ? "Choose division and department from JKSPulse (manual), or a directory user to load defaults."
+                : "Pick a department bundle (manual) or a directory user to load default applications."}
+        </p>
+        <div className="nj-selection-grid">
           {catalogItems.map((item) => (
-            <div key={item.id} className="onboarding-selection-card">
-              <label htmlFor={`catalog-${item.itemKey}`}>
+            <div key={item.id} className="nj-selection-card">
+              <label htmlFor={`nj-catalog-${item.itemKey}`}>
                 <input
-                  id={`catalog-${item.itemKey}`}
+                  id={`nj-catalog-${item.itemKey}`}
                   type="checkbox"
                   aria-label={item.label}
                   checked={selectedItemKeys.has(item.itemKey)}
@@ -425,52 +1054,33 @@ export function NewJoinerPage() {
             </div>
           ))}
         </div>
-      </article>
+      </section>
 
-      <article className="onboarding-card">
-        <div className="onboarding-card-header">
-          <div>
-            <h2>Preview and Confirm</h2>
-            <p className="onboarding-card-subtitle">
-              Generate the setup sheet, validate usernames and passwords, then save the onboarding package.
-            </p>
-          </div>
-          {previewResult?.recommendedItemKeys?.length ? (
-            <span className="onboarding-badge is-muted">
-              Recommended: {previewResult.recommendedItemKeys.join(", ")}
-            </span>
-          ) : null}
-        </div>
-
-        <div className="onboarding-actions">
+      <section className="nj-section">
+        <h2>Onboarding package</h2>
+        <p className="nj-section-sub">Preview generated app credentials, then save the package as a draft.</p>
+        <div className="nj-setup-actions">
           <button
-            className="onboarding-button"
+            className="nj-btn nj-btn-secondary"
             type="button"
             onClick={handlePreview}
-            disabled={previewMutation.isPending || !selectedItemKeys.size}
+            disabled={
+              previewMutation.isPending ||
+              (mode === "manual" && !manualPreviewReady) ||
+              (mode === "existing_user" && !selectedItemKeys.size)
+            }
           >
-            Preview Setup Sheet
-          </button>
-          <button
-            className="onboarding-button-secondary"
-            type="button"
-            onClick={handleConfirm}
-            disabled={confirmMutation.isPending || !previewResult?.previewToken}
-          >
-            Save Onboarding Credentials
+            Preview setup sheet
           </button>
         </div>
-
-        {previewMutation.error ? <p className="onboarding-muted">{previewMutation.error.message}</p> : null}
-        {confirmMutation.error ? <p className="onboarding-muted">{confirmMutation.error.message}</p> : null}
-        {linkMutation.error ? <p className="onboarding-muted">{linkMutation.error.message}</p> : null}
+        {previewMutation.error ? <p className="nj-cred-error">{previewMutation.error.message}</p> : null}
+        {confirmMutation.error ? <p className="nj-cred-error">{confirmMutation.error.message}</p> : null}
+        {linkMutation.error ? <p className="nj-cred-error">{linkMutation.error.message}</p> : null}
 
         {!setupSheet?.entries?.length ? (
-          <div className="onboarding-empty">
-            Preview the setup sheet to generate usernames, passwords, URLs, and notes.
-          </div>
+          <div className="nj-empty">Run preview to fill usernames, passwords, and handoff notes for each app.</div>
         ) : (
-          <table className="onboarding-setup-table">
+          <table className="nj-setup-table">
             <thead>
               <tr>
                 <th>App</th>
@@ -493,78 +1103,67 @@ export function NewJoinerPage() {
             </tbody>
           </table>
         )}
-      </article>
+      </section>
 
-      <article className="onboarding-card">
-        <div className="onboarding-card-header">
-          <div>
-            <h2>Draft Recovery</h2>
-            <p className="onboarding-card-subtitle">
-              Reopen manual onboarding drafts, copy their setup sheet, or link them to a real
-              directory user later.
-            </p>
-          </div>
-          <span className="onboarding-badge">{drafts.length} drafts</span>
+      <section className="nj-section">
+        <div className="nj-list-head" style={{ marginBottom: 0 }}>
+          <h2 style={{ margin: 0 }}>Draft recovery</h2>
+          <span className="nj-badge">{drafts.length} drafts</span>
         </div>
+        <p className="nj-section-sub">Reopen packages, copy setup sheets, or link a manual draft to a directory account.</p>
 
         {!drafts.length ? (
-          <div className="onboarding-empty">
-            No saved drafts yet. Manual onboarding confirmations will appear here.
-          </div>
+          <div className="nj-empty">No saved drafts yet. Saving an onboarding package creates a draft you can return to.</div>
         ) : (
-          <div className="onboarding-list">
+          <div className="nj-list">
             {drafts.map((draft) => (
-              <div key={draft.id} className="onboarding-list-item">
-                <div className="onboarding-list-item-header">
+              <div key={draft.id} className="nj-list-item">
+                <div className="nj-list-head">
                   <div>
-                    <p className="onboarding-list-item-title">{draft.fullName}</p>
-                    <p className="onboarding-list-item-meta">
+                    <p className="onboarding-list-item-title" style={{ margin: 0 }}>
+                      {draft.fullName}
+                    </p>
+                    <p className="onboarding-list-item-meta" style={{ margin: "0.25rem 0 0" }}>
                       {draft.email} • {draft.department} • {formatDraftDate(draft.createdAt)}
                     </p>
                   </div>
-                  <span
-                    className={`onboarding-badge${draft.status === "completed" ? "" : " is-muted"}`}
-                  >
+                  <span className={`nj-badge${draft.status === "completed" ? "" : " nj-badge-muted"}`}>
                     {draft.status === "completed" ? "Completed" : "Draft"}
                   </span>
                 </div>
 
-                <div className="onboarding-actions">
-                  <button
-                    className="onboarding-button-secondary"
-                    type="button"
-                    onClick={() => handleOpenDraft(draft)}
-                  >
-                    Open Draft
+                <div className="nj-setup-actions">
+                  <button className="nj-btn nj-btn-secondary" type="button" onClick={() => handleOpenDraft(draft)}>
+                    Open draft
                   </button>
                   <button
-                    className="onboarding-button-secondary"
+                    className="nj-btn nj-btn-secondary"
                     type="button"
                     onClick={() => handleCopySetupSheet(draft.setupSheet)}
                   >
-                    Copy Setup Sheet
+                    Copy setup sheet
                   </button>
                   {draft.status !== "completed" ? (
                     <button
-                      className="onboarding-button"
+                      className="nj-btn nj-btn-primary"
                       type="button"
                       onClick={() => {
                         setLinkingDraftId(draft.id);
                         setLinkTargetUserId("");
                       }}
                     >
-                      Link to Directory User
+                      Link to directory user
                     </button>
                   ) : null}
                 </div>
 
                 {linkingDraftId === draft.id ? (
-                  <div className="onboarding-inline-panel">
-                    <div className="onboarding-form-field">
-                      <label htmlFor={`link-draft-${draft.id}`}>Link Draft To User</label>
+                  <div className="nj-inline-panel">
+                    <div className="nj-field">
+                      <label htmlFor={`nj-link-draft-${draft.id}`}>Link draft to user</label>
                       <select
-                        id={`link-draft-${draft.id}`}
-                        aria-label="Link Draft To User"
+                        id={`nj-link-draft-${draft.id}`}
+                        aria-label="Link draft to user"
                         value={linkTargetUserId}
                         onChange={(event) => setLinkTargetUserId(event.target.value)}
                       >
@@ -577,17 +1176,17 @@ export function NewJoinerPage() {
                       </select>
                     </div>
 
-                    <div className="onboarding-actions">
+                    <div className="nj-setup-actions">
                       <button
-                        className="onboarding-button"
+                        className="nj-btn nj-btn-primary"
                         type="button"
                         onClick={() => handleLinkDraft(draft.id)}
                         disabled={linkMutation.isPending || !linkTargetUserId}
                       >
-                        Confirm Link & Promote
+                        Confirm link & promote
                       </button>
                       <button
-                        className="onboarding-button-secondary"
+                        className="nj-btn nj-btn-secondary"
                         type="button"
                         onClick={() => {
                           setLinkingDraftId(null);
@@ -603,7 +1202,7 @@ export function NewJoinerPage() {
             ))}
           </div>
         )}
-      </article>
+      </section>
     </div>
   );
 }

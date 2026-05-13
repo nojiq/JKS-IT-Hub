@@ -25,13 +25,19 @@ const createFakeMongo = ({ users = [], departments = [], divisions = [], section
     }
     return actual === expected;
   });
+  const createFindChain = (items) => ({
+    project: () => createFindChain(items),
+    sort: () => createFindChain(items),
+    toArray: async () => [...items]
+  });
   fake.client = {
       connect: async () => {
         fake.connectCalls += 1;
       },
       db: () => ({
         collection: (name) => ({
-          findOne: (query) => findOne(collections[name] ?? [], query)
+          findOne: (query) => findOne(collections[name] ?? [], query),
+          find: () => createFindChain(collections[name] ?? [])
         })
       })
     };
@@ -140,4 +146,60 @@ test("returns null when no Pulse match exists", async () => {
     username: "missing",
     ldapAttributes: { mail: "missing@jks.com", department: "Missing" }
   }), null);
+});
+
+test("listOrgHierarchy returns empty when Pulse is disabled", async () => {
+  const client = createPulseOrgClient({
+    config: { enabled: false },
+    mongoClientFactory: () => {
+      throw new Error("should not connect");
+    }
+  });
+
+  assert.deepEqual(await client.listOrgHierarchy(), {
+    enabled: false,
+    divisions: [],
+    departments: [],
+    sections: []
+  });
+});
+
+test("listOrgHierarchy returns sorted divisions, departments, and sections", async () => {
+  const fake = createFakeMongo({
+    divisions: [
+      { _id: "div-a", name: "A-Div" },
+      { _id: "div-b", name: "B-Div" }
+    ],
+    departments: [
+      { _id: "dept-1", name: "A-Dept", divisionId: "div-a" },
+      { _id: "dept-2", name: "Z-Dept", divisionId: "div-a", code: "Z" }
+    ],
+    sections: [
+      { _id: "sec-1", name: "A-Sec", departmentId: "dept-1" },
+      { _id: "sec-2", name: "B-Sec", departmentId: "dept-1" }
+    ]
+  });
+  const client = createPulseOrgClient({
+    config: { enabled: true, mongoUri: "mongodb://localhost:27017/jkspulse", database: "jkspulse", timeoutMs: 10 },
+    mongoClientFactory: () => fake.client
+  });
+
+  const hierarchy = await client.listOrgHierarchy();
+  assert.equal(hierarchy.enabled, true);
+  assert.deepEqual(
+    hierarchy.divisions.map((d) => d.name),
+    ["A-Div", "B-Div"]
+  );
+  assert.deepEqual(
+    hierarchy.departments.map((d) => d.name),
+    ["A-Dept", "Z-Dept"]
+  );
+  assert.equal(hierarchy.departments[0].divisionId, "div-a");
+  assert.equal(hierarchy.departments[0].code, undefined);
+  assert.equal(hierarchy.departments[1].code, "Z");
+  assert.deepEqual(
+    hierarchy.sections.map((s) => s.name),
+    ["A-Sec", "B-Sec"]
+  );
+  assert.equal(hierarchy.sections[0].departmentId, "dept-1");
 });
