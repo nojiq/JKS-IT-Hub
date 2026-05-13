@@ -213,14 +213,19 @@ test("POST /api/v1/onboarding/preview accepts manual body with only name, email,
     assert.equal(response.json().data.previewToken, "preview-min");
 });
 
-test("POST /api/v1/onboarding/preview rejects existing-user preview without catalog keys", async () => {
+test("POST /api/v1/onboarding/preview accepts existing-user body without catalog keys", async () => {
     const actor = { id: randomUUID(), username: "it_user", role: "dev", status: "active" };
     const app = await createTestApp({
         userRepo: {
             findUserByUsername: async (username) => (username === actor.username ? actor : null)
         },
         onboardingService: {
-            previewOnboardingSetup: async () => ({})
+            previewOnboardingSetup: async () => ({
+                previewToken: "preview-existing-min",
+                source: { mode: "existing_user", userId: "00000000-0000-0000-0000-000000000001" },
+                recommendedItemKeys: [],
+                setupSheet: { entries: [] }
+            })
         }
     });
 
@@ -235,7 +240,8 @@ test("POST /api/v1/onboarding/preview rejects existing-user preview without cata
         }
     });
 
-    assert.equal(response.statusCode, 400);
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.json().data.previewToken, "preview-existing-min");
 });
 
 test("POST /api/v1/onboarding/confirm requires explicit confirmation", async () => {

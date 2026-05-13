@@ -85,11 +85,6 @@
   padding-top: 0.25rem;
 }
 
-.nj-erp-section-imap {
-  border-top: 1px solid var(--ui-border-subtle);
-  padding: 1rem 0 0.25rem;
-}
-
 .nj-erp-section-head {
   margin-bottom: 0.85rem;
 }
@@ -174,6 +169,52 @@
   font-size: 0.9rem;
 }
 
+.nj-email-combo {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 2.35rem;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: 3px;
+  background: var(--ui-surface-muted);
+  overflow: hidden;
+}
+
+.nj-email-combo input {
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.nj-email-combo input:focus {
+  outline: none;
+}
+
+.nj-email-combo:focus-within {
+  outline: 2px solid color-mix(in srgb, var(--ui-accent-primary) 45%, transparent);
+  outline-offset: 1px;
+}
+
+.nj-email-suffix {
+  flex: 0 0 auto;
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.65rem;
+  border-left: 1px solid var(--ui-border-subtle);
+  color: var(--ui-text-secondary);
+  background: color-mix(in srgb, var(--ui-surface-elevated) 70%, var(--ui-surface-muted));
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.nj-field-error {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ui-feedback-error);
+}
+
 .nj-field textarea {
   min-height: 4.5rem;
   resize: vertical;
@@ -237,18 +278,6 @@
   margin: 0.35rem 0 0;
   font-size: 0.82rem;
   color: var(--ui-feedback-error);
-}
-
-.nj-imap-inline {
-  display: grid;
-  gap: 0.35rem;
-  font-size: 0.82rem;
-  color: var(--ui-text-secondary);
-}
-
-.nj-imap-inline code {
-  font-size: 0.8rem;
-  word-break: break-all;
 }
 
 .nj-section {

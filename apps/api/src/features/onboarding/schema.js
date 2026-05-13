@@ -62,14 +62,6 @@ export const previewOnboardingSchema = z.object({
       message: "Manual identity is required for manual onboarding"
     });
   }
-
-  if (value.mode === "existing_user" && !value.selectedCatalogItemKeys?.length) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["selectedCatalogItemKeys"],
-      message: "Select at least one catalog item"
-    });
-  }
 });
 
 export const confirmOnboardingSchema = z.object({

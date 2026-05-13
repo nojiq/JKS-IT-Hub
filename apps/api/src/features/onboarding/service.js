@@ -412,22 +412,8 @@ export const listOnboardingDrafts = async ({ status = "all" } = {}) => {
 export const previewOnboardingSetup = async (input) => {
   let catalogItemKeys = [...(input.selectedCatalogItemKeys ?? [])];
   if (!catalogItemKeys.length) {
-    if (input.mode === "manual") {
-      const allItems = await repo.listCatalogItems();
-      catalogItemKeys = allItems.map((item) => item.itemKey).filter(Boolean);
-      if (!catalogItemKeys.length) {
-        throw new OnboardingValidationError("No catalog items configured for onboarding");
-      }
-    } else {
-      throw new OnboardingValidationError("Select at least one catalog item");
-    }
-  }
-
-  const catalogItems = await resolveSelectedCatalogItems(catalogItemKeys);
-  const activeTemplate = await credentialRepo.getActiveCredentialTemplate();
-
-  if (!activeTemplate) {
-    throw new OnboardingValidationError("No active onboarding defaults found");
+    const allItems = await repo.listCatalogItems();
+    catalogItemKeys = allItems.map((item) => item.itemKey).filter(Boolean);
   }
 
   let source;
@@ -473,25 +459,43 @@ export const previewOnboardingSetup = async (input) => {
     ? await repo.getDepartmentBundleByDepartment(department)
     : null;
   const recommendedItemKeys = recommendedBundle?.catalogItemKeys ?? [];
-  const onboardingTemplate = {
-    ...activeTemplate,
-    structure: {
-      ...activeTemplate.structure,
-      systems: catalogItemKeys
-    }
+
+  const catalogItems = catalogItemKeys.length
+    ? await resolveSelectedCatalogItems(catalogItemKeys)
+    : [];
+  let preview = {
+    success: true,
+    credentials: [],
+    templateVersion: null
   };
 
-  const preview = await credentialService.previewUserCredentials(identity.id, null, {
-    repo: createPreviewRepo(onboardingTemplate, identity),
-    userRepo: {
-      isUserDisabled: () => false
-    }
-  });
+  if (catalogItemKeys.length) {
+    const activeTemplate = await credentialRepo.getActiveCredentialTemplate();
 
-  if (!preview.success) {
-    throw new OnboardingValidationError(preview.error?.message ?? "Unable to preview onboarding setup", {
-      error: preview.error
+    if (!activeTemplate) {
+      throw new OnboardingValidationError("No active onboarding defaults found");
+    }
+
+    const onboardingTemplate = {
+      ...activeTemplate,
+      structure: {
+        ...activeTemplate.structure,
+        systems: catalogItemKeys
+      }
+    };
+
+    preview = await credentialService.previewUserCredentials(identity.id, null, {
+      repo: createPreviewRepo(onboardingTemplate, identity),
+      userRepo: {
+        isUserDisabled: () => false
+      }
     });
+
+    if (!preview.success) {
+      throw new OnboardingValidationError(preview.error?.message ?? "Unable to preview onboarding setup", {
+        error: preview.error
+      });
+    }
   }
 
   const previewToken = createPreviewToken();

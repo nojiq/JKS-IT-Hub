@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NewJoinerPage } from '../src/features/onboarding/pages/NewJoinerPage.jsx';
+import { ToastProvider } from '../src/shared/components/Toast/ToastProvider.jsx';
 
 vi.mock('../src/features/onboarding/onboarding-api.js', () => ({
     fetchCatalogItems: vi.fn(),
@@ -41,7 +42,9 @@ const renderPage = () => {
 
     return render(
         <QueryClientProvider client={queryClient}>
-            <NewJoinerPage />
+            <ToastProvider>
+                <NewJoinerPage />
+            </ToastProvider>
         </QueryClientProvider>
     );
 };
@@ -81,6 +84,15 @@ describe('NewJoinerPage', () => {
             data: {
                 password: 'DeterministicPreview#1',
                 metadata: { mode: 'yahoo-actual' }
+            }
+        });
+
+        previewImapPassword.mockResolvedValue({
+            data: {
+                proposedCredential: {
+                    username: 'haziq.afendi',
+                    password: 'ImapPreview#1'
+                }
             }
         });
 
@@ -182,9 +194,104 @@ describe('NewJoinerPage', () => {
     it('derives Active Directory value from work email', async () => {
         renderPage();
 
-        fireEvent.change(screen.getByLabelText('Work email (required)'), { target: { value: 'abu.ali@jkseng.com' } });
+        fireEvent.change(screen.getByLabelText('Work email (required)'), { target: { value: 'abu.ali' } });
 
         expect(screen.getByLabelText('Active Directory (samAccountName)')).toHaveValue('Abuali@7189');
+    });
+
+    it('shows a fixed JKS email domain while storing the full work email', async () => {
+        renderPage();
+
+        fireEvent.change(screen.getByLabelText('Name (required)'), { target: { value: 'Haziq Afendi' } });
+        fireEvent.change(screen.getByLabelText('Work email (required)'), { target: { value: 'haziq.afendi' } });
+        fireEvent.change(screen.getByLabelText(/Date of birth/), { target: { value: '1995-06-15' } });
+
+        expect(screen.getByLabelText('Work email (required)')).toHaveValue('haziq.afendi');
+        expect(screen.getByText('@jkseng.com')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Preview setup sheet' }));
+
+        await waitFor(() => {
+            expect(previewOnboardingSetup.mock.calls[0][0]).toEqual(
+                expect.objectContaining({
+                    manualIdentity: expect.objectContaining({
+                        email: 'haziq.afendi@jkseng.com'
+                    })
+                })
+            );
+        });
+    });
+
+    it('strips the JKS domain when a full work email is pasted', async () => {
+        renderPage();
+
+        fireEvent.change(screen.getByLabelText('Work email (required)'), {
+            target: { value: 'haziq.afendi@jkseng.com' }
+        });
+
+        expect(screen.getByLabelText('Work email (required)')).toHaveValue('haziq.afendi');
+        expect(screen.queryByText('Only @jkseng.com email addresses are allowed.')).not.toBeInTheDocument();
+    });
+
+    it('warns when a pasted work email uses another domain', async () => {
+        renderPage();
+
+        fireEvent.change(screen.getByLabelText('Work email (required)'), {
+            target: { value: 'haziq.afendi@example.com' }
+        });
+
+        expect(screen.getByLabelText('Work email (required)')).toHaveValue('haziq.afendi');
+        expect(screen.getByText('Only @jkseng.com email addresses are allowed.')).toBeInTheDocument();
+    });
+
+    it('shows a live IMAP app password preview based on identity and Yahoo temporary password', async () => {
+        previewImapPassword.mockImplementation(async (payload) => ({
+            data: {
+                proposedCredential: {
+                    username: 'haziq.afendi',
+                    password: payload.inputs.temporaryPassword === 'TempYahoo#2' ? 'ImapPreview#2' : 'ImapPreview#1'
+                }
+            }
+        }));
+
+        renderPage();
+
+        fireEvent.change(screen.getByLabelText('Name (required)'), { target: { value: 'Haziq Afendi' } });
+        fireEvent.change(screen.getByLabelText('Work email (required)'), { target: { value: 'haziq.afendi' } });
+        fireEvent.change(screen.getByLabelText(/Date of birth/), { target: { value: '1995-06-15' } });
+        fireEvent.change(screen.getByLabelText(/Yahoo temporary password/), { target: { value: 'TempYahoo#1' } });
+
+        await waitFor(() => {
+            expect(previewImapPassword.mock.calls[0][0]).toEqual(
+                expect.objectContaining({
+                    manualIdentity: expect.objectContaining({
+                        email: 'haziq.afendi@jkseng.com'
+                    }),
+                    inputs: expect.objectContaining({
+                        email: 'haziq.afendi@jkseng.com',
+                        fullName: 'Haziq Afendi',
+                        dob: '1995-06-15',
+                        temporaryPassword: 'TempYahoo#1'
+                    }),
+                    selectedFields: expect.objectContaining({
+                        email: true,
+                        fullName: true,
+                        dob: true,
+                        temporaryPassword: true
+                    })
+                })
+            );
+        });
+
+        expect(await screen.findByLabelText('IMAP app password')).toHaveValue('ImapPreview#1');
+        expect(screen.queryByRole('button', { name: /Generate IMAP password/ })).not.toBeInTheDocument();
+
+        fireEvent.change(screen.getByLabelText(/Yahoo temporary password/), { target: { value: 'TempYahoo#2' } });
+
+        await waitFor(() => {
+            expect(previewImapPassword.mock.calls.at(-1)[0].inputs.temporaryPassword).toBe('TempYahoo#2');
+            expect(screen.getByLabelText('IMAP app password')).toHaveValue('ImapPreview#2');
+        });
     });
 
     it('fills actual password from live preview as inputs change', async () => {
@@ -237,13 +344,63 @@ describe('NewJoinerPage', () => {
         expect(await screen.findByRole('heading', { name: 'Add New User' })).toBeInTheDocument();
 
         const previewBtn = screen.getByRole('button', { name: 'Preview setup sheet' });
+        const addBtn = screen.getByRole('button', { name: 'Add User' });
         expect(previewBtn).toBeDisabled();
+        expect(addBtn).toBeDisabled();
 
         fireEvent.change(screen.getByLabelText('Name (required)'), { target: { value: 'Test User' } });
         fireEvent.change(screen.getByLabelText('Work email (required)'), { target: { value: 'test.user@jkseng.com' } });
         fireEvent.change(screen.getByLabelText(/Date of birth/), { target: { value: '1998-04-30' } });
 
         expect(previewBtn).not.toBeDisabled();
+        expect(addBtn).not.toBeDisabled();
+    });
+
+    it('previews and saves when Add User is clicked before manual preview', async () => {
+        renderPage();
+
+        fireEvent.change(screen.getByLabelText('Name (required)'), { target: { value: 'Test User' } });
+        fireEvent.change(screen.getByLabelText('Work email (required)'), { target: { value: 'test.user' } });
+        fireEvent.change(screen.getByLabelText(/Date of birth/), { target: { value: '1998-04-30' } });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Add User' }));
+
+        await waitFor(() => {
+            expect(previewOnboardingSetup).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    mode: 'manual',
+                    manualIdentity: expect.objectContaining({
+                        fullName: 'Test User',
+                        email: 'test.user@jkseng.com',
+                        dob: '1998-04-30'
+                    })
+                }),
+                expect.anything()
+            );
+            expect(confirmOnboardingSetup.mock.calls[0][0]).toEqual({
+                confirmed: true,
+                previewToken: 'preview-1'
+            });
+        });
+
+        expect(await screen.findByText('User added')).toBeInTheDocument();
+        expect(screen.getByText('The onboarding draft was saved successfully.')).toBeInTheDocument();
+    });
+
+    it('shows a failed Add User toast with the backend reason', async () => {
+        previewOnboardingSetup.mockRejectedValueOnce(new Error('No catalog items configured for onboarding'));
+
+        renderPage();
+
+        fireEvent.change(screen.getByLabelText('Name (required)'), { target: { value: 'Test User' } });
+        fireEvent.change(screen.getByLabelText('Work email (required)'), { target: { value: 'test.user' } });
+        fireEvent.change(screen.getByLabelText(/Date of birth/), { target: { value: '1998-04-30' } });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Add User' }));
+
+        expect(await screen.findByText('Add user failed')).toBeInTheDocument();
+        expect(screen.getAllByText('No catalog items configured for onboarding').length).toBeGreaterThan(0);
+        expect(confirmOnboardingSetup).not.toHaveBeenCalled();
     });
 
     it('builds a setup sheet for an existing user based on department bundle defaults', async () => {
@@ -274,6 +431,37 @@ describe('NewJoinerPage', () => {
                 confirmed: true,
                 previewToken: 'preview-1'
             });
+        });
+    });
+
+    it('allows existing-user preview without selected apps', async () => {
+        renderPage();
+
+        fireEvent.click(screen.getByRole('radio', { name: 'Directory user' }));
+        await screen.findByLabelText('Linked account');
+        expect(await screen.findByRole('option', { name: 'Haziq Afendi' })).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText('Linked account'), { target: { value: 'user-1' } });
+
+        await waitFor(() => {
+            expect(screen.getByLabelText('Sigma')).toBeChecked();
+        });
+
+        fireEvent.click(screen.getByLabelText('Sigma'));
+        expect(screen.getByLabelText('Sigma')).not.toBeChecked();
+
+        const previewBtn = screen.getByRole('button', { name: 'Preview setup sheet' });
+        expect(previewBtn).not.toBeDisabled();
+
+        fireEvent.click(previewBtn);
+
+        await waitFor(() => {
+            expect(previewOnboardingSetup.mock.calls[0][0]).toEqual(
+                expect.objectContaining({
+                    mode: 'existing_user',
+                    userId: 'user-1',
+                    selectedCatalogItemKeys: []
+                })
+            );
         });
     });
 
@@ -341,7 +529,7 @@ describe('NewJoinerPage', () => {
 
         await waitFor(() => {
             expect(screen.getByLabelText('Name (required)')).toHaveValue('Haziq Afendi');
-            expect(screen.getByLabelText('Work email (required)')).toHaveValue('haziq.afendi@jkseng.com');
+            expect(screen.getByLabelText('Work email (required)')).toHaveValue('haziq.afendi');
             expect(screen.getByLabelText(/Date of birth/)).toHaveValue('1995-06-15');
             expect(screen.getByLabelText('Sigma')).toBeChecked();
         });

@@ -13,11 +13,14 @@ import {
 } from "../onboarding-api.js";
 import { previewImapPassword } from "../../credentials/api/credentials.js";
 import { useActualPasswordPreview } from "../../credentials/hooks/useImapGenerator.js";
+import { useToast } from "../../../shared/hooks/useToast.js";
 import "../onboarding.css";
 import "../new-joiner-page.css";
 
 const STATUS_OPTIONS = ["", "Active", "Pending", "Suspended"];
 const CATEGORY_OPTIONS = ["", "Staff", "Contractor", "Vendor"];
+const WORK_EMAIL_DOMAIN = "jkseng.com";
+const WORK_EMAIL_SUFFIX = `@${WORK_EMAIL_DOMAIN}`;
 
 const defaultActualCharset = {
   uppercase: true,
@@ -35,6 +38,47 @@ const isOptionalEmailValid = (raw) => {
     return true;
   }
   return z.string().email().safeParse(value).success;
+};
+
+const getErrorMessage = (error, fallback = "Something went wrong.") => {
+  return error?.problemDetails?.detail || error?.message || fallback;
+};
+
+const getWorkEmailLocalPart = (email) => {
+  const value = String(email ?? "").trim();
+  if (!value) {
+    return "";
+  }
+
+  const at = value.indexOf("@");
+  if (at < 0) {
+    return value;
+  }
+
+  return value.slice(0, at);
+};
+
+const normalizeWorkEmailInput = (raw) => {
+  const value = String(raw ?? "").trim();
+  if (!value) {
+    return { email: "", error: "" };
+  }
+
+  const at = value.indexOf("@");
+  if (at < 0) {
+    return { email: `${value}${WORK_EMAIL_SUFFIX}`, error: "" };
+  }
+
+  const localPart = value.slice(0, at).trim();
+  const domain = value.slice(at + 1).trim().toLowerCase();
+  const error = domain && domain !== WORK_EMAIL_DOMAIN
+    ? `Only ${WORK_EMAIL_SUFFIX} email addresses are allowed.`
+    : "";
+
+  return {
+    email: localPart ? `${localPart}${WORK_EMAIL_SUFFIX}` : "",
+    error
+  };
 };
 
 const getRecommendedItemKeys = (bundles, department) => {
@@ -103,6 +147,7 @@ const buildSetupSheetCopy = (setupSheet) => {
 
 export function NewJoinerPage() {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [mode, setMode] = useState("manual");
   const [selectedUserId, setSelectedUserId] = useState("");
   const [activeDraftId, setActiveDraftId] = useState(null);
@@ -123,16 +168,16 @@ export function NewJoinerPage() {
   const [androidPassword, setAndroidPassword] = useState("");
   const [remarks, setRemarks] = useState("");
 
-  const [imapUsername, setImapUsername] = useState("");
   const [imapPassword, setImapPassword] = useState("");
-  const [credentialBusy, setCredentialBusy] = useState(null);
   const [credentialError, setCredentialError] = useState("");
+  const [imapPreviewBusy, setImapPreviewBusy] = useState(false);
 
   const [manualIdentity, setManualIdentity] = useState({
     fullName: "",
     email: "",
     department: ""
   });
+  const [workEmailError, setWorkEmailError] = useState("");
   const [department, setDepartment] = useState("");
   const [manualPulseDivisionId, setManualPulseDivisionId] = useState("");
   const [manualPulseDepartmentId, setManualPulseDepartmentId] = useState("");
@@ -182,6 +227,10 @@ export function NewJoinerPage() {
         setActiveDraftId(data.draftId);
       }
       queryClient.invalidateQueries({ queryKey: ["onboarding", "drafts"] });
+      toast.success("User added", "The onboarding draft was saved successfully.");
+    },
+    onError: (error) => {
+      toast.error("Add user failed", getErrorMessage(error, "Unable to save onboarding draft."));
     }
   });
 
@@ -245,6 +294,12 @@ export function NewJoinerPage() {
       /^\d{4}-\d{2}-\d{2}$/.test(dob.trim())
     );
   }, [mode, manualIdentity.fullName, manualIdentity.email, dob]);
+  const canSubmitOnboarding = useMemo(() => {
+    if (mode === "manual") {
+      return manualPreviewReady;
+    }
+    return Boolean(selectedUserId);
+  }, [manualPreviewReady, mode, selectedUserId]);
 
   const resolvedDepartment = mode === "existing_user" ? department : manualIdentity.department;
   const setupSheet = confirmedResult?.setupSheet ?? previewResult?.setupSheet ?? null;
@@ -254,6 +309,10 @@ export function NewJoinerPage() {
   );
   const derivedActiveDirectory = useMemo(
     () => deriveActiveDirectoryFromEmail(manualIdentity.email),
+    [manualIdentity.email]
+  );
+  const workEmailLocalPart = useMemo(
+    () => getWorkEmailLocalPart(manualIdentity.email),
     [manualIdentity.email]
   );
   const pulseOrg = selectedDirectoryUser?.pulseOrg ?? {
@@ -292,6 +351,54 @@ export function NewJoinerPage() {
     [manualIdentity.fullName, manualIdentity.email, dob, temporaryPassword]
   );
 
+  const canPreviewImapPassword = useMemo(() => {
+    const hasIdentity =
+      Boolean(manualIdentity.fullName.trim()) &&
+      Boolean(manualIdentity.email.trim()) &&
+      isOptionalEmailValid(manualIdentity.email);
+    const hasDob = /^\d{4}-\d{2}-\d{2}$/.test(dob.trim());
+    if (mode === "existing_user") {
+      return Boolean(selectedUserId) && hasIdentity && hasDob;
+    }
+    return hasIdentity && hasDob;
+  }, [dob, manualIdentity.email, manualIdentity.fullName, mode, selectedUserId]);
+
+  const imapPreviewPayload = useMemo(() => {
+    const baseInputs = {
+      email: manualIdentity.email.trim(),
+      fullName: manualIdentity.fullName.trim(),
+      dob: dob || "",
+      temporaryPassword,
+      firstName: "",
+      lastName: "",
+      phone: ""
+    };
+
+    const selectedFields = {
+      email: true,
+      fullName: true,
+      dob: true,
+      temporaryPassword: true
+    };
+
+    if (mode === "existing_user" && selectedUserId) {
+      return {
+        userId: selectedUserId,
+        inputs: baseInputs,
+        selectedFields
+      };
+    }
+
+    return {
+      manualIdentity: {
+        fullName: manualIdentity.fullName.trim(),
+        email: manualIdentity.email.trim()
+      },
+      inputs: baseInputs,
+      selectedFields
+    };
+  }, [dob, manualIdentity.email, manualIdentity.fullName, mode, selectedUserId, temporaryPassword]);
+
   useEffect(() => {
     if (!canPreviewActualPassword) {
       setActualPassword("");
@@ -313,6 +420,44 @@ export function NewJoinerPage() {
 
     return () => window.clearTimeout(timer);
   }, [actualPreviewPayload, canPreviewActualPassword]);
+
+  useEffect(() => {
+    if (!canPreviewImapPassword) {
+      setImapPassword("");
+      setCredentialError("");
+      setImapPreviewBusy(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setImapPreviewBusy(true);
+      setCredentialError("");
+      try {
+        const body = await previewImapPassword(imapPreviewPayload);
+        if (cancelled) {
+          return;
+        }
+        const proposed = body?.data?.proposedCredential;
+        setImapPassword(proposed?.password || "");
+      } catch (e) {
+        if (cancelled) {
+          return;
+        }
+        setImapPassword("");
+        setCredentialError(e.message || "Could not preview IMAP app password.");
+      } finally {
+        if (!cancelled) {
+          setImapPreviewBusy(false);
+        }
+      }
+    }, 200);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [canPreviewImapPassword, imapPreviewPayload]);
 
   useEffect(() => {
     if (mode !== "manual") {
@@ -365,6 +510,7 @@ export function NewJoinerPage() {
         fullName: selectedUser.displayName || selectedUser.username || "",
         email: selectedUser.email || ""
       }));
+      setWorkEmailError("");
     }
   }, [bundles, mode, selectedUserId, users]);
 
@@ -386,6 +532,12 @@ export function NewJoinerPage() {
     setSelectedItemKeys((current) =>
       syncSelection(current, getRecommendedItemKeys(bundles, nextDepartment))
     );
+  };
+
+  const handleWorkEmailChange = (rawValue) => {
+    const normalized = normalizeWorkEmailInput(rawValue);
+    setWorkEmailError(normalized.error);
+    setManualIdentity((current) => ({ ...current, email: normalized.email }));
   };
 
   const handleManualPulseDivisionChange = (nextDivisionId) => {
@@ -417,6 +569,7 @@ export function NewJoinerPage() {
         fullName: selectedUser.displayName || selectedUser.username || "",
         email: selectedUser.email || ""
       }));
+      setWorkEmailError("");
       setSelectedItemKeys((current) =>
         syncSelection(current, getRecommendedItemKeys(bundles, selectedUser.department ?? ""))
       );
@@ -429,7 +582,6 @@ export function NewJoinerPage() {
     setDob("");
     setTemporaryPassword("");
     setActualPassword("");
-    setImapUsername("");
     setImapPassword("");
     setIpadMail("");
     setMacMail("");
@@ -442,67 +594,7 @@ export function NewJoinerPage() {
     setCredentialError("");
   };
 
-  const handleGenerateImapPassword = async () => {
-    setCredentialError("");
-    if (mode === "manual") {
-      if (!manualIdentity.fullName.trim() || !manualIdentity.email.trim()) {
-        setCredentialError("Enter name and work email before generating IMAP credentials.");
-        return;
-      }
-    } else if (!selectedUserId) {
-      setCredentialError("Select a directory user before generating IMAP credentials.");
-      return;
-    }
-
-    setCredentialBusy("imap");
-    try {
-      const baseInputs = {
-        email: manualIdentity.email.trim(),
-        fullName: manualIdentity.fullName.trim(),
-        dob: dob || "",
-        firstName: "",
-        lastName: "",
-        phone: ""
-      };
-
-      const selectedFields = {
-        email: true,
-        fullName: true,
-        ...(dob.trim() ? { dob: true } : {})
-      };
-
-      const payload =
-        mode === "existing_user" && selectedUserId
-          ? {
-              userId: selectedUserId,
-              inputs: baseInputs,
-              selectedFields
-            }
-          : {
-              manualIdentity: {
-                fullName: manualIdentity.fullName.trim(),
-                email: manualIdentity.email.trim()
-              },
-              inputs: baseInputs,
-              selectedFields
-            };
-
-      const body = await previewImapPassword(payload);
-      const data = body?.data;
-      const proposed = data?.proposedCredential;
-      if (!proposed?.password) {
-        throw new Error("No IMAP password returned from preview.");
-      }
-      setImapUsername(proposed.username || "");
-      setImapPassword(proposed.password);
-    } catch (e) {
-      setCredentialError(e.message || "Could not generate IMAP credentials.");
-    } finally {
-      setCredentialBusy(null);
-    }
-  };
-
-  const handlePreview = () => {
+  const buildPreviewPayload = () => {
     const payload = {
       mode,
       selectedCatalogItemKeys: [...selectedItemKeys]
@@ -521,16 +613,36 @@ export function NewJoinerPage() {
       };
     }
 
-    previewMutation.mutate(payload);
+    return payload;
   };
 
-  const handleConfirm = () => {
-    if (!previewResult?.previewToken) {
+  const handlePreview = () => {
+    previewMutation.mutate(buildPreviewPayload());
+  };
+
+  const handleConfirm = async () => {
+    if (!canSubmitOnboarding || previewMutation.isPending || confirmMutation.isPending) {
+      return;
+    }
+
+    let previewToken = previewResult?.previewToken;
+    if (!previewToken) {
+      try {
+        const preview = await previewMutation.mutateAsync(buildPreviewPayload());
+        previewToken = preview?.previewToken;
+      } catch (error) {
+        toast.error("Add user failed", getErrorMessage(error, "Unable to preview onboarding setup."));
+        return;
+      }
+    }
+
+    if (!previewToken) {
+      toast.error("Add user failed", "Preview did not return a save token.");
       return;
     }
 
     confirmMutation.mutate({
-      previewToken: previewResult.previewToken,
+      previewToken,
       confirmed: true
     });
   };
@@ -545,6 +657,7 @@ export function NewJoinerPage() {
       email: draft.email,
       department: draft.department
     });
+    setWorkEmailError("");
     setManualPulseDivisionId("");
     setManualPulseDepartmentId("");
     setManualPulseSectionId("");
@@ -586,6 +699,7 @@ export function NewJoinerPage() {
     setSelectedUserId("");
     setActiveDraftId(null);
     setManualIdentity({ fullName: "", email: "", department: "" });
+    setWorkEmailError("");
     setDepartment("");
     setManualPulseDivisionId("");
     setManualPulseDepartmentId("");
@@ -612,6 +726,7 @@ export function NewJoinerPage() {
                 onChange={() => {
                   setMode("manual");
                   setSelectedUserId("");
+                  setWorkEmailError("");
                   setPreviewResult(null);
                   setConfirmedResult(null);
                 }}
@@ -626,6 +741,7 @@ export function NewJoinerPage() {
                 onChange={() => {
                   setMode("existing_user");
                   setActiveDraftId(null);
+                  setWorkEmailError("");
                   setPreviewResult(null);
                   setConfirmedResult(null);
                 }}
@@ -674,17 +790,30 @@ export function NewJoinerPage() {
                   </div>
                   <div className="nj-field">
                     <label htmlFor="nj-email">Work email (required)</label>
-                    <input
-                      id="nj-email"
-                      type="email"
-                      value={manualIdentity.email}
-                      readOnly={identityLocked}
-                      className={identityLocked ? "nj-field-readonly" : undefined}
-                      onChange={(e) =>
-                        setManualIdentity((c) => ({ ...c, email: e.target.value }))
-                      }
-                      placeholder="name@jkseng.com"
-                    />
+                    <div
+                      className={`nj-email-combo${identityLocked ? " nj-field-readonly" : ""}`}
+                    >
+                      <input
+                        id="nj-email"
+                        type="text"
+                        inputMode="email"
+                        autoCapitalize="none"
+                        autoComplete="off"
+                        value={workEmailLocalPart}
+                        readOnly={identityLocked}
+                        onChange={(e) => handleWorkEmailChange(e.target.value)}
+                        placeholder="user.name"
+                        aria-describedby={workEmailError ? "nj-email-error" : undefined}
+                      />
+                      <span className="nj-email-suffix" aria-hidden="true">
+                        {WORK_EMAIL_SUFFIX}
+                      </span>
+                    </div>
+                    {workEmailError ? (
+                      <p id="nj-email-error" className="nj-field-error">
+                        {workEmailError}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 <div className="nj-erp-row">
@@ -717,7 +846,7 @@ export function NewJoinerPage() {
               </div>
               <div className="nj-erp-rows">
                 <div className="nj-erp-row">
-                  <div className="nj-field nj-field-span">
+                  <div className="nj-field">
                     <label htmlFor="nj-actual-password">Actual password</label>
                     <input
                       id="nj-actual-password"
@@ -730,6 +859,25 @@ export function NewJoinerPage() {
                       aria-busy={actualPreviewMutation.isPending}
                       aria-live="polite"
                     />
+                  </div>
+                  <div className="nj-field">
+                    <label htmlFor="nj-imap-password">IMAP app password</label>
+                    <input
+                      id="nj-imap-password"
+                      type="text"
+                      autoComplete="off"
+                      readOnly
+                      className="nj-field-readonly"
+                      value={imapPassword}
+                      placeholder={imapPreviewBusy ? "Generating..." : "-"}
+                      aria-busy={imapPreviewBusy}
+                      aria-live="polite"
+                    />
+                    {credentialError ? (
+                      <p className="nj-field-error" role="alert">
+                        {credentialError}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 <div className="nj-erp-row">
@@ -980,44 +1128,14 @@ export function NewJoinerPage() {
             </div>
           </div>
 
-          <div className="nj-erp-section nj-erp-section-imap">
-            <div className="nj-erp-section-head">
-              <h3 className="nj-erp-section-title">IMAP credentials (preview)</h3>
-            </div>
-            <div className="nj-field">
-              <span className="nj-erp-readonly-label">Actions</span>
-              <div className="nj-gen-actions" style={{ maxWidth: "28rem" }}>
-                <button
-                  id="nj-gen-imap"
-                  type="button"
-                  className="nj-btn nj-btn-secondary"
-                  disabled={credentialBusy === "imap"}
-                  onClick={handleGenerateImapPassword}
-                >
-                  {credentialBusy === "imap" ? "Generating…" : "Generate IMAP password"}
-                </button>
-              {(imapUsername || imapPassword) && (
-                <div className="nj-imap-inline">
-                  <div>
-                    <strong>Username</strong> <code>{imapUsername || "—"}</code>
-                  </div>
-                  <div>
-                    <strong>Password</strong> <code>{imapPassword || "—"}</code>
-                  </div>
-                </div>
-              )}
-            </div>
-            {credentialError ? (
-              <p className="nj-cred-error" role="alert">
-                {credentialError}
-              </p>
-            ) : null}
-            </div>
-          </div>
-
           <div className="nj-footer-actions">
-            <button type="button" className="nj-btn nj-btn-primary" onClick={handleConfirm} disabled={confirmMutation.isPending || !previewResult?.previewToken}>
-              {confirmMutation.isPending ? "Saving…" : "Add User"}
+            <button
+              type="button"
+              className="nj-btn nj-btn-primary"
+              onClick={handleConfirm}
+              disabled={previewMutation.isPending || confirmMutation.isPending || !canSubmitOnboarding}
+            >
+              {previewMutation.isPending || confirmMutation.isPending ? "Saving…" : "Add User"}
             </button>
             <button type="button" className="nj-btn nj-btn-primary" onClick={handleCancel}>
               Cancel
@@ -1032,7 +1150,7 @@ export function NewJoinerPage() {
           {mode === "manual" && !resolvedDepartment
             ? "Optional: set JKSPulse, department bundle, or tick apps below. If none are ticked, preview includes every catalog app."
             : resolvedDepartment
-              ? `${resolvedDepartment} bundle preselected ${selectedItemKeys.size} item(s). Adjust before building the onboarding package.`
+              ? `${resolvedDepartment} bundle preselected ${selectedItemKeys.size} item(s). If none are ticked, preview includes every catalog app.`
               : pulseHierarchy.enabled
                 ? "Choose division and department from JKSPulse (manual), or a directory user to load defaults."
                 : "Pick a department bundle (manual) or a directory user to load default applications."}
@@ -1066,8 +1184,7 @@ export function NewJoinerPage() {
             onClick={handlePreview}
             disabled={
               previewMutation.isPending ||
-              (mode === "manual" && !manualPreviewReady) ||
-              (mode === "existing_user" && !selectedItemKeys.size)
+              (mode === "manual" && !manualPreviewReady)
             }
           >
             Preview setup sheet
