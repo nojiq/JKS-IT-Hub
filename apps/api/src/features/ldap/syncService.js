@@ -211,7 +211,9 @@ export const createLdapSyncRunner = ({
   syncRepo,
   userRepo,
   auditRepo,
-  eventChannel
+  eventChannel,
+  pulseOrgClient,
+  logger
 }) => {
   const publish = (type, run) => {
     if (!eventChannel) {
@@ -276,13 +278,28 @@ export const createLdapSyncRunner = ({
     for (const { entry, username } of entriesWithUsernames) {
       const existingUser = existingUsersMap.get(username);
       const newLdapAttributes = mapEntryAttributes(entry, attributes);
+      let orgSnapshot;
+      let orgSyncedAt;
+      let orgResolved = false;
+
+      if (pulseOrgClient?.resolveForLdapUser) {
+        try {
+          orgSnapshot = await pulseOrgClient.resolveForLdapUser({ username, ldapAttributes: newLdapAttributes });
+          orgSyncedAt = new Date();
+          orgResolved = true;
+        } catch (error) {
+          logger?.warn?.({ err: error, username }, "Pulse org enrichment failed");
+        }
+      }
 
       const isNewUser = !existingUser;
 
       if (existingUser) {
         const oldLdapAttributes = existingUser.ldapAttributes || {};
         const changes = calculateDiff(oldLdapAttributes, newLdapAttributes);
-        if (changes.length === 0) {
+        const orgChanged = orgResolved
+          && JSON.stringify(existingUser.orgSnapshot ?? null) !== JSON.stringify(orgSnapshot ?? null);
+        if (changes.length === 0 && !orgChanged) {
           skippedCount += 1;
           continue;
         }
@@ -306,6 +323,7 @@ export const createLdapSyncRunner = ({
         username,
         ldapDn: entry.dn,
         ldapAttributes: newLdapAttributes,
+        ...(orgResolved ? { orgSnapshot, orgSyncedAt } : {}),
         syncedAt: new Date()
       });
 

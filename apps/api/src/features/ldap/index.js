@@ -2,6 +2,7 @@ import { createSyncJob } from "./syncJob.js";
 import { createLdapService } from "./service.js";
 import { createLdapSyncEventChannel } from "./syncEvents.js";
 import { createLdapSyncRunner } from "./syncService.js";
+import { createPulseOrgClient } from "../pulse-org/client.js";
 // We need to import dependencies/repos here or assume they are passed in fastify.
 // Typically feature index.js is a plugin.
 
@@ -26,6 +27,10 @@ export default async function ldapFeature(fastify, options) {
         options.eventChannel ||
         fastify.ldapSyncEvents ||
         createLdapSyncEventChannel();
+    const pulseOrgClient =
+        options.pulseOrgClient ||
+        fastify.pulseOrgClient ||
+        createPulseOrgClient({ config: config.pulseOrg, logger: fastify.log });
 
     // Verify critical dependencies
     if (!userRepo || !syncRepo) {
@@ -39,7 +44,9 @@ export default async function ldapFeature(fastify, options) {
         syncRepo: syncRepo,
         userRepo: userRepo,
         auditRepo: auditRepo || {},
-        eventChannel
+        eventChannel,
+        pulseOrgClient,
+        logger: fastify.log
     });
 
     await fastify.register(import("./routes.js"), {

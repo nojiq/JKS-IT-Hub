@@ -22,7 +22,9 @@ export default async function (app, { config, userRepo, auditRepo, userFieldRepo
         role: user.role,
         status: user.status,
         ldapSyncedAt: user.ldapSyncedAt,
-        ldapFields: user.ldapAttributes || {}
+        ldapFields: user.ldapAttributes || {},
+        orgSnapshot: user.orgSnapshot || null,
+        orgSyncedAt: user.orgSyncedAt
         };
 
         if (profileFields !== undefined) {
@@ -65,7 +67,9 @@ export default async function (app, { config, userRepo, auditRepo, userFieldRepo
                 role: u.role,
                 status: u.status,
                 ldapSyncedAt: u.ldapSyncedAt,
-                ldapFields: u.ldapAttributes || {}
+                ldapFields: u.ldapAttributes || {},
+                orgSnapshot: u.orgSnapshot || null,
+                orgSyncedAt: u.orgSyncedAt
             }));
 
             return {
@@ -88,7 +92,9 @@ export default async function (app, { config, userRepo, auditRepo, userFieldRepo
             role: u.role,
             status: u.status,
             ldapSyncedAt: u.ldapSyncedAt,
-            ldapFields: u.ldapAttributes || {}
+            ldapFields: u.ldapAttributes || {},
+            orgSnapshot: u.orgSnapshot || null,
+            orgSyncedAt: u.orgSyncedAt
         }));
 
         return {

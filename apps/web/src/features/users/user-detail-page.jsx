@@ -211,6 +211,16 @@ export default function UserDetailPage() {
       })),
     [uniqueFields, user]
   );
+  const pulseOrgRows = useMemo(() => {
+    if (!user?.orgSnapshot) {
+      return [];
+    }
+    return [
+      { key: "pulse-division", field: "Division", value: user.orgSnapshot.division?.name },
+      { key: "pulse-department", field: "Department", value: user.orgSnapshot.department?.name },
+      { key: "pulse-section", field: "Section", value: user.orgSnapshot.section?.name }
+    ].filter((row) => row.value);
+  }, [user]);
 
   useEffect(() => {
     if (!sessionQuery.isLoading && sessionQuery.data === null) {
@@ -414,7 +424,9 @@ export default function UserDetailPage() {
             ) : null}
             <div>
               <span className="user-detail-label">Department</span>
-              <span className="user-detail-value">{formatValue(user.ldapFields?.department)}</span>
+              <span className="user-detail-value">
+                {formatValue(user.orgSnapshot?.department?.name ?? user.ldapFields?.department)}
+              </span>
             </div>
           </div>
 
@@ -519,6 +531,18 @@ export default function UserDetailPage() {
             </div>
           ) : null}
 
+          {pulseOrgRows.length ? (
+            <div className="user-detail-field-list">
+              {pulseOrgRows.map((row) => (
+                <div className="user-detail-field" key={row.key}>
+                  <span className="user-detail-field-label">{row.field}</span>
+                  <span className="user-detail-field-value">{formatValue(row.value)}</span>
+                  <span className="user-detail-field-source">Source: JKSPulse</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
           <div className="user-detail-field-list">
             {rows.map((row) => (
               <div className="user-detail-field" key={row.key}>
@@ -546,6 +570,12 @@ export default function UserDetailPage() {
               <span className="user-detail-label">Last LDAP sync</span>
               <span className="user-detail-value">{formatDate(user.ldapSyncedAt)}</span>
             </div>
+            {user.orgSyncedAt ? (
+              <div>
+                <span className="user-detail-label">Last org sync</span>
+                <span className="user-detail-value">{formatDate(user.orgSyncedAt)}</span>
+              </div>
+            ) : null}
           </div>
         </WorkspacePanel>
 

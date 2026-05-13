@@ -69,6 +69,15 @@ const userDetailPayload = Object.freeze({
         role: 'requester',
         status: 'active',
         ldapSyncedAt: '2026-04-16T01:00:00.000Z',
+        orgSyncedAt: '2026-05-13T00:00:00.000Z',
+        orgSnapshot: Object.freeze({
+            division: Object.freeze({ id: 'div-1', name: 'CORPORATE SERVICES' }),
+            department: Object.freeze({ id: 'dept-1', code: 'IT', name: 'IT' }),
+            section: Object.freeze({ id: 'sec-1', name: 'INFRASTRUCTURE' }),
+            source: 'jkspulse',
+            matchedBy: 'email',
+            confidence: 'exact'
+        }),
         ldapFields: Object.freeze({ mail: 'jane@example.com', department: 'Finance' })
     }),
     fields: Object.freeze(['mail', 'department'])
@@ -137,6 +146,13 @@ describe('UserDetailPage', () => {
 
         expect(screen.getByRole('heading', { name: 'jane.doe' })).toBeInTheDocument();
         expect(screen.getByText('Identity')).toBeInTheDocument();
+        expect(screen.getByText('Division')).toBeInTheDocument();
+        expect(screen.getByText('CORPORATE SERVICES')).toBeInTheDocument();
+        expect(screen.getAllByText('Department').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText('IT').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByText('Section')).toBeInTheDocument();
+        expect(screen.getByText('INFRASTRUCTURE')).toBeInTheDocument();
+        expect(screen.getAllByText('Source: JKSPulse').length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText('Account Status')).toBeInTheDocument();
         expect(screen.getByText('Credential Generator Stub')).toBeInTheDocument();
         expect(screen.getByText('Recent Actions')).toBeInTheDocument();

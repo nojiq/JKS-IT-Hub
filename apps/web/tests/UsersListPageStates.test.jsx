@@ -175,6 +175,36 @@ describe('UsersListPage states', () => {
         expect(screen.getByText('Department')).toBeInTheDocument();
     });
 
+    it('prefers Pulse org department over LDAP department', () => {
+        useQuery.mockReturnValue({
+            data: {
+                users: [
+                    {
+                        id: '1',
+                        username: 'alice',
+                        role: 'requester',
+                        status: 'active',
+                        ldapFields: { mail: 'alice@example.com', department: 'Legacy LDAP' },
+                        orgSnapshot: {
+                            department: { id: 'dept-1', code: 'IT', name: 'IT' }
+                        }
+                    }
+                ],
+                fields: ['mail', 'department'],
+                meta: {}
+            },
+            isLoading: false,
+            error: null,
+            isFetching: false,
+            refetch: vi.fn()
+        });
+
+        renderPage();
+
+        expect(screen.getByText('IT')).toBeInTheDocument();
+        expect(screen.queryByText('Legacy LDAP')).not.toBeInTheDocument();
+    });
+
     it('keeps table layout at tablet width while hiding lower-priority columns', () => {
         window.matchMedia = createMatchMedia({ isMobile: false, isTablet: true, isDesktop: false });
         useQuery.mockReturnValue({
