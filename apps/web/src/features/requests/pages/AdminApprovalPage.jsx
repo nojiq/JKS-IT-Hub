@@ -9,6 +9,7 @@ import { DesktopFilterBar } from '../../../shared/workspace/DesktopFilterBar';
 import { BulkActionsBar } from '../../../shared/workspace/BulkActionsBar';
 import { DataStateBlock } from '../../../shared/workspace/DataStateBlock';
 import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel';
+import { formatDisplayDate } from '../../../shared/utils/date-format.js';
 import '../../../shared/workspace/workspace.css';
 import './AdminApprovalPage.css';
 
@@ -211,10 +212,10 @@ const AdminApprovalPage = () => {
                                     <td data-label="IT Reviewer">
                                         <div>
                                             {request.itReviewedBy?.ldapAttributes?.displayName || request.itReviewedBy?.username || 'Unknown'}
-                                            <div className="text-secondary">{request.itReviewedAt ? new Date(request.itReviewedAt).toLocaleDateString() : '-'}</div>
+                                            <div className="text-secondary">{formatDisplayDate(request.itReviewedAt, { fallback: '-' })}</div>
                                         </div>
                                     </td>
-                                    <td data-label="Date">{new Date(request.createdAt).toLocaleDateString()}</td>
+                                    <td data-label="Date">{formatDisplayDate(request.createdAt)}</td>
                                     <td data-label="Priority">
                                         {request.priority ? (
                                             <span className={priorityClass(request.priority)}>{request.priority}</span>

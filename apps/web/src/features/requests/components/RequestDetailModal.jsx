@@ -6,6 +6,7 @@ import InvoiceUploader from './InvoiceUploader';
 import { MobileModal } from '../../../shared/ui/MobileModal/MobileModal';
 import { useUploadInvoice } from '../hooks/useInvoiceUpload.js';
 import { useToast } from '../../../shared/hooks/useToast.js';
+import { formatDisplayDateTime } from '../../../shared/utils/date-format.js';
 import './RequestDetailModal.css';
 
 const RequestDetailModal = ({ request, isOpen = true, onClose }) => {
@@ -18,8 +19,7 @@ const RequestDetailModal = ({ request, isOpen = true, onClose }) => {
     if (!request) return null;
 
     const formatDate = (dateString) => {
-        if (!dateString) return 'N/A';
-        return new Date(dateString).toLocaleString();
+        return formatDisplayDateTime(dateString);
     };
 
     const canUploadInvoice = !request.invoiceFileUrl && request.status === 'SUBMITTED';

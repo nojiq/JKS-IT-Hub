@@ -4,6 +4,7 @@ import InvoiceDisplay from './InvoiceDisplay';
 import ReviewActionDialog from './ReviewActionDialog';
 import { MobileModal } from '../../../shared/ui/MobileModal/MobileModal';
 import { useToast } from '../../../shared/hooks/useToast.js';
+import { formatDisplayDateTime } from '../../../shared/utils/date-format.js';
 import './RequestReviewModal.css';
 
 const RequestReviewModal = ({ request, onClose }) => {
@@ -73,7 +74,7 @@ const RequestReviewModal = ({ request, onClose }) => {
                                     </div>
                                     <div className="detail-item">
                                         <label>Submitted</label>
-                                        <div>{new Date(request.createdAt).toLocaleString()}</div>
+                                        <div>{formatDisplayDateTime(request.createdAt)}</div>
                                     </div>
                                 </div>
                             </div>

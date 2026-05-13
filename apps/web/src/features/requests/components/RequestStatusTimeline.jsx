@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { formatDisplayDateTime } from '../../../shared/utils/date-format.js';
 
 const RequestStatusTimeline = ({ request }) => {
     if (!request) return null;
@@ -46,8 +47,7 @@ const RequestStatusTimeline = ({ request }) => {
     const steps = getTimelineSteps(request);
 
     const formatDate = (dateString) => {
-        if (!dateString) return '';
-        return new Date(dateString).toLocaleString();
+        return formatDisplayDateTime(dateString, { fallback: '' });
     };
 
     return (
