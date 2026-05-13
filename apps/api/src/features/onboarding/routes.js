@@ -248,7 +248,11 @@ export default async function onboardingRoutes(app, { config, userRepo, onboardi
         : { enabled: false, divisions: [], departments: [], sections: [] };
       reply.send({ data: hierarchy });
     } catch (error) {
-      handleOnboardingError(error, reply);
+      request.log.warn(
+        { err: error },
+        "pulse-org-hierarchy: Mongo lookup failed; responding with disabled hierarchy (use department bundles or fix PULSE_MONGO_URI)"
+      );
+      reply.send({ data: { enabled: false, divisions: [], departments: [], sections: [] } });
     }
   });
 

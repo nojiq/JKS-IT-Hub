@@ -24,12 +24,15 @@ Section is only reliable when a Pulse user match succeeds. Department-only fallb
 
 ```bash
 PULSE_ORG_SYNC_ENABLED=false
-PULSE_MONGO_URI="mongodb://localhost:27017/jkspulse"
+PULSE_MONGO_URI="mongodb://192.168.78.57:27017/jkspulse"
 PULSE_MONGO_DATABASE="jkspulse"
 PULSE_MONGO_TIMEOUT_MS=2000
 ```
 
 If Pulse sync is disabled or MongoDB is unavailable, LDAP sync continues. Existing org snapshots are left untouched when Pulse lookup fails.
+
+If MongoDB returns **authentication required**, add a user and password to `PULSE_MONGO_URI` (URL-encode special characters in the password) and set `authSource` when your admin user lives on another database, for example:  
+`mongodb://USER:PASSWORD@host:27017/jkspulse?authSource=admin`.
 
 ## Rollout
 

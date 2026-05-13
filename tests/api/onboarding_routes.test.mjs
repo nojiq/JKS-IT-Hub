@@ -105,6 +105,37 @@ test("GET /api/v1/onboarding/pulse-org-hierarchy returns JKSPulse org tree", asy
     assert.equal(data.sections[0].name, "Line A");
 });
 
+test("GET /api/v1/onboarding/pulse-org-hierarchy returns disabled tree when Mongo fails", async () => {
+    const actor = { id: randomUUID(), username: "it_user", role: "dev", status: "active" };
+    const app = await createTestApp({
+        userRepo: {
+            findUserByUsername: async (username) => (username === actor.username ? actor : null)
+        },
+        onboardingService: {},
+        pulseOrgClient: {
+            listOrgHierarchy: async () => {
+                const err = new Error("Command find requires authentication");
+                err.code = 13;
+                err.codeName = "Unauthorized";
+                throw err;
+            }
+        }
+    });
+
+    const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/onboarding/pulse-org-hierarchy",
+        headers: { cookie: await createSessionCookie(actor) }
+    });
+
+    assert.equal(response.statusCode, 200);
+    const data = response.json().data;
+    assert.equal(data.enabled, false);
+    assert.deepEqual(data.divisions, []);
+    assert.deepEqual(data.departments, []);
+    assert.deepEqual(data.sections, []);
+});
+
 test("POST /api/v1/onboarding/department-bundles creates a department bundle", async () => {
     const actor = { id: randomUUID(), username: "it_user", role: "dev", status: "active" };
     const app = await createTestApp({
