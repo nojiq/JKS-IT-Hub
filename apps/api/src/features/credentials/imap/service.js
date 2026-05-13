@@ -9,7 +9,8 @@ const IMAP_FIELDS = [
     { key: "lastName", ldapKey: "sn" },
     { key: "fullName", ldapKey: "cn" },
     { key: "dob", ldapKey: "birthDate" },
-    { key: "phone", ldapKey: "telephoneNumber" }
+    { key: "phone", ldapKey: "telephoneNumber" },
+    { key: "temporaryPassword", ldapKey: null }
 ];
 
 const normalizeImapValue = (field, value) => {

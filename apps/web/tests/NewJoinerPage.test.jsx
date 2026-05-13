@@ -10,9 +10,7 @@ vi.mock('../src/features/onboarding/onboarding-api.js', () => ({
     fetchPulseOrgHierarchy: vi.fn(),
     previewOnboardingSetup: vi.fn(),
     confirmOnboardingSetup: vi.fn(),
-    fetchUsersForOnboarding: vi.fn(),
-    fetchOnboardingDrafts: vi.fn(),
-    linkAndPromoteOnboardingDraft: vi.fn()
+    fetchUsersForOnboarding: vi.fn()
 }));
 
 vi.mock('../src/features/credentials/api/credentials.js', () => ({
@@ -23,11 +21,9 @@ vi.mock('../src/features/credentials/api/credentials.js', () => ({
 import {
     confirmOnboardingSetup,
     fetchCatalogItems,
-    fetchOnboardingDrafts,
     fetchDepartmentBundles,
     fetchPulseOrgHierarchy,
     fetchUsersForOnboarding,
-    linkAndPromoteOnboardingDraft,
     previewOnboardingSetup
 } from '../src/features/onboarding/onboarding-api.js';
 import { previewActualPassword, previewImapPassword } from '../src/features/credentials/api/credentials.js';
@@ -111,33 +107,6 @@ describe('NewJoinerPage', () => {
             }
         ]);
 
-        fetchOnboardingDrafts.mockResolvedValue([
-            {
-                id: 'draft-1',
-                fullName: 'Haziq Afendi',
-                email: 'haziq.afendi@jkseng.com',
-                department: 'Business Development',
-                dob: '1995-06-15',
-                createdAt: '2026-03-14T09:30:00.000Z',
-                linkedUserId: null,
-                linkedAt: null,
-                status: 'draft',
-                selectedCatalogItemKeys: ['sigma'],
-                setupSheet: {
-                    entries: [
-                        {
-                            systemId: 'sigma',
-                            label: 'Sigma',
-                            loginUrl: 'https://sigma.example',
-                            username: 'haziq.afendi',
-                            password: 'Haziqafendi@7189',
-                            notes: 'Analytics app'
-                        }
-                    ]
-                }
-            }
-        ]);
-
         previewOnboardingSetup.mockResolvedValue({
             previewToken: 'preview-1',
             recommendedItemKeys: ['sigma'],
@@ -156,7 +125,7 @@ describe('NewJoinerPage', () => {
         });
 
         confirmOnboardingSetup.mockResolvedValue({
-            draftId: 'draft-1',
+            userId: 'user-new',
             setupSheet: {
                 entries: [
                     {
@@ -169,25 +138,6 @@ describe('NewJoinerPage', () => {
                     }
                 ]
             }
-        });
-
-        linkAndPromoteOnboardingDraft.mockResolvedValue({
-            draft: {
-                id: 'draft-1',
-                status: 'completed',
-                linkedUserId: 'user-1',
-                linkedAt: '2026-03-14T10:15:00.000Z'
-            },
-            targetUser: {
-                id: 'user-1',
-                username: 'haziq.afendi'
-            },
-            promotedCredentials: [
-                {
-                    systemId: 'sigma',
-                    username: 'haziq.afendi'
-                }
-            ]
         });
     });
 
@@ -318,7 +268,7 @@ describe('NewJoinerPage', () => {
         expect(await screen.findByRole('heading', { name: 'Add New User' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Application access' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Onboarding package' })).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Draft recovery' })).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Draft recovery' })).not.toBeInTheDocument();
         expect(await screen.findByLabelText('Division (JKSPulse, optional)')).toBeInTheDocument();
         expect(await screen.findByRole('option', { name: 'Marketing' })).toBeInTheDocument();
 
@@ -353,7 +303,12 @@ describe('NewJoinerPage', () => {
         fireEvent.change(screen.getByLabelText(/Date of birth/), { target: { value: '1998-04-30' } });
 
         expect(previewBtn).not.toBeDisabled();
-        expect(addBtn).not.toBeDisabled();
+        expect(addBtn).toBeDisabled();
+        await waitFor(() => {
+            expect(screen.getByLabelText('Actual password')).toHaveValue('DeterministicPreview#1');
+            expect(screen.getByLabelText('IMAP app password')).toHaveValue('ImapPreview#1');
+            expect(addBtn).not.toBeDisabled();
+        });
     });
 
     it('previews and saves when Add User is clicked before manual preview', async () => {
@@ -362,6 +317,31 @@ describe('NewJoinerPage', () => {
         fireEvent.change(screen.getByLabelText('Name (required)'), { target: { value: 'Test User' } });
         fireEvent.change(screen.getByLabelText('Work email (required)'), { target: { value: 'test.user' } });
         fireEvent.change(screen.getByLabelText(/Date of birth/), { target: { value: '1998-04-30' } });
+        fireEvent.change(screen.getByLabelText(/Yahoo temporary password/), { target: { value: 'TempYahoo#1' } });
+        fireEvent.change(await screen.findByLabelText('Division (JKSPulse, optional)'), {
+            target: { value: 'div-corp' }
+        });
+        fireEvent.change(screen.getByLabelText('Department (JKSPulse, optional)'), {
+            target: { value: 'dept-mkt' }
+        });
+        fireEvent.change(screen.getByLabelText('Section (JKSPulse, optional)'), {
+            target: { value: 'sec-1' }
+        });
+        fireEvent.change(screen.getByLabelText(/Android password/), { target: { value: 'Android#1' } });
+        fireEvent.change(screen.getByLabelText(/iPhone mail/), { target: { value: 'iPhone Mail OK' } });
+        fireEvent.change(screen.getByLabelText(/iPad mail/), { target: { value: 'iPad Mail OK' } });
+        fireEvent.change(screen.getByLabelText(/Mac mail/), { target: { value: 'Mac Mail OK' } });
+        fireEvent.change(screen.getByLabelText(/Outlook iOS/), { target: { value: 'Outlook iOS OK' } });
+        fireEvent.change(screen.getByLabelText(/Outlook Android/), { target: { value: 'Outlook Android OK' } });
+        fireEvent.change(screen.getByLabelText('Outlook desktop'), { target: { value: 'Outlook Desktop OK' } });
+        fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'Active' } });
+        fireEvent.change(screen.getByLabelText('Category'), { target: { value: 'Staff' } });
+        fireEvent.change(screen.getByLabelText(/Remarks/), { target: { value: 'Ready for onboarding' } });
+
+        await waitFor(() => {
+            expect(screen.getByLabelText('Actual password')).toHaveValue('DeterministicPreview#1');
+            expect(screen.getByLabelText('IMAP app password')).toHaveValue('ImapPreview#1');
+        });
 
         fireEvent.click(screen.getByRole('button', { name: 'Add User' }));
 
@@ -372,7 +352,37 @@ describe('NewJoinerPage', () => {
                     manualIdentity: expect.objectContaining({
                         fullName: 'Test User',
                         email: 'test.user@jkseng.com',
-                        dob: '1998-04-30'
+                        dob: '1998-04-30',
+                        pulseOrg: {
+                            division: { id: 'div-corp', name: 'Corporate' },
+                            department: { id: 'dept-mkt', name: 'Marketing' },
+                            section: { id: 'sec-1', name: 'Brand' }
+                        }
+                    }),
+                    supplementalCredentials: expect.objectContaining({
+                        actualPassword: 'DeterministicPreview#1',
+                        profileFields: {
+                            name: 'Test User',
+                            email: 'test.user@jkseng.com',
+                            date: '1998-04-30',
+                            'temporary-password': 'TempYahoo#1',
+                            'actual-password': 'DeterministicPreview#1',
+                            'android-password': 'Android#1',
+                            'iphone-mail': 'iPhone Mail OK',
+                            'ipad-mail': 'iPad Mail OK',
+                            'mac-mail': 'Mac Mail OK',
+                            'outlook-ios': 'Outlook iOS OK',
+                            'outlook-android': 'Outlook Android OK',
+                            'outlook-desktop': 'Outlook Desktop OK',
+                            'active-directory': 'Testuser@7189',
+                            status: 'Active',
+                            category: 'Staff',
+                            remarks: 'Ready for onboarding'
+                        },
+                        imap: expect.objectContaining({
+                            username: 'haziq.afendi',
+                            password: 'ImapPreview#1'
+                        })
                     })
                 }),
                 expect.anything()
@@ -384,7 +394,7 @@ describe('NewJoinerPage', () => {
         });
 
         expect(await screen.findByText('User added')).toBeInTheDocument();
-        expect(screen.getByText('The onboarding draft was saved successfully.')).toBeInTheDocument();
+        expect(screen.getByText('The user and onboarding credentials were saved successfully.')).toBeInTheDocument();
     });
 
     it('shows a failed Add User toast with the backend reason', async () => {
@@ -395,6 +405,10 @@ describe('NewJoinerPage', () => {
         fireEvent.change(screen.getByLabelText('Name (required)'), { target: { value: 'Test User' } });
         fireEvent.change(screen.getByLabelText('Work email (required)'), { target: { value: 'test.user' } });
         fireEvent.change(screen.getByLabelText(/Date of birth/), { target: { value: '1998-04-30' } });
+
+        await waitFor(() => {
+            expect(screen.getByRole('button', { name: 'Add User' })).not.toBeDisabled();
+        });
 
         fireEvent.click(screen.getByRole('button', { name: 'Add User' }));
 
@@ -465,91 +479,12 @@ describe('NewJoinerPage', () => {
         });
     });
 
-    it('renders saved drafts, opens a draft into the form, copies the setup sheet, and links it to a directory user', async () => {
-        fetchOnboardingDrafts
-            .mockResolvedValueOnce([
-                {
-                    id: 'draft-1',
-                    fullName: 'Haziq Afendi',
-                    email: 'haziq.afendi@jkseng.com',
-                    department: 'Business Development',
-                    dob: '1995-06-15',
-                    createdAt: '2026-03-14T09:30:00.000Z',
-                    linkedUserId: null,
-                    linkedAt: null,
-                    status: 'draft',
-                    selectedCatalogItemKeys: ['sigma'],
-                    setupSheet: {
-                        entries: [
-                            {
-                                systemId: 'sigma',
-                                label: 'Sigma',
-                                loginUrl: 'https://sigma.example',
-                                username: 'haziq.afendi',
-                                password: 'Haziqafendi@7189',
-                                notes: 'Analytics app'
-                            }
-                        ]
-                    }
-                }
-            ])
-            .mockResolvedValueOnce([
-                {
-                    id: 'draft-1',
-                    fullName: 'Haziq Afendi',
-                    email: 'haziq.afendi@jkseng.com',
-                    department: 'Business Development',
-                    dob: '1995-06-15',
-                    createdAt: '2026-03-14T09:30:00.000Z',
-                    linkedUserId: 'user-1',
-                    linkedAt: '2026-03-14T10:15:00.000Z',
-                    status: 'completed',
-                    selectedCatalogItemKeys: ['sigma'],
-                    setupSheet: {
-                        entries: [
-                            {
-                                systemId: 'sigma',
-                                label: 'Sigma',
-                                loginUrl: 'https://sigma.example',
-                                username: 'haziq.afendi',
-                                password: 'Haziqafendi@7189',
-                                notes: 'Analytics app'
-                            }
-                        ]
-                    }
-                }
-            ]);
-
+    it('does not render draft recovery controls', async () => {
         renderPage();
 
-        expect(await screen.findByRole('heading', { name: 'Draft recovery' })).toBeInTheDocument();
-        expect(await screen.findByText((content) => content.includes('haziq.afendi@jkseng.com'))).toBeInTheDocument();
-
-        fireEvent.click(screen.getByRole('button', { name: 'Open draft' }));
-
-        await waitFor(() => {
-            expect(screen.getByLabelText('Name (required)')).toHaveValue('Haziq Afendi');
-            expect(screen.getByLabelText('Work email (required)')).toHaveValue('haziq.afendi');
-            expect(screen.getByLabelText(/Date of birth/)).toHaveValue('1995-06-15');
-            expect(screen.getByLabelText('Sigma')).toBeChecked();
-        });
-
-        fireEvent.click(screen.getByRole('button', { name: 'Copy setup sheet' }));
-
-        await waitFor(() => {
-            expect(window.navigator.clipboard.writeText).toHaveBeenCalled();
-            expect(window.navigator.clipboard.writeText.mock.calls[0][0]).toContain('Sigma');
-            expect(window.navigator.clipboard.writeText.mock.calls[0][0]).toContain('Haziqafendi@7189');
-        });
-
-        fireEvent.click(screen.getByRole('button', { name: 'Link to directory user' }));
-        fireEvent.change(screen.getByLabelText('Link draft to user'), { target: { value: 'user-1' } });
-        fireEvent.click(screen.getByRole('button', { name: 'Confirm link & promote' }));
-
-        await waitFor(() => {
-            expect(linkAndPromoteOnboardingDraft).toHaveBeenCalledWith('draft-1', 'user-1');
-        });
-
-        expect(await screen.findByText('Completed')).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: 'Add New User' })).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Draft recovery' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Open draft' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Link to directory user' })).not.toBeInTheDocument();
     });
 });

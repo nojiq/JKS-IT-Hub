@@ -1,6 +1,7 @@
 import { prisma } from "../../shared/db/prisma.js";
 import * as repo from "./repo.js";
 import * as userRepo from "../users/repo.js";
+import * as profileFieldsRepo from "../users/profileFieldsRepo.js";
 import * as credentialRepo from "../credentials/repo.js";
 import * as credentialService from "../credentials/service.js";
 import { OnboardingNotFoundError, OnboardingValidationError } from "./errors.js";
@@ -52,6 +53,99 @@ const deriveNameParts = (fullName) => {
     givenName: parts[0] ?? "",
     surname: parts.slice(1).join(" ")
   };
+};
+
+const deriveUsernameFromEmail = (email) => {
+  const normalized = String(email ?? "").trim().toLowerCase();
+  const [localPart] = normalized.split("@");
+  return localPart;
+};
+
+const deriveActiveDirectoryFromEmail = (email) => {
+  const normalized = String(email ?? "")
+    .trim()
+    .toLowerCase();
+  const [localPart] = normalized.split("@");
+  const cleaned = String(localPart ?? "")
+    .replace(/\./g, "")
+    .replace(/[^a-z0-9]/g, "");
+  if (!cleaned) {
+    return "";
+  }
+  return `${cleaned.charAt(0).toUpperCase()}${cleaned.slice(1).toLowerCase()}@7189`;
+};
+
+const normalizePulseOrgEntity = (entity) => {
+  if (!entity || typeof entity !== "object") {
+    return null;
+  }
+
+  const id = trimToNull(entity.id);
+  const name = trimToNull(entity.name);
+  if (!id && !name) {
+    return null;
+  }
+
+  return {
+    ...(id ? { id } : {}),
+    ...(name ? { name } : {})
+  };
+};
+
+const buildManualOrgSnapshot = (manualIdentity) => {
+  const pulseOrg = manualIdentity?.pulseOrg;
+  if (!pulseOrg || typeof pulseOrg !== "object") {
+    return undefined;
+  }
+
+  const division = normalizePulseOrgEntity(pulseOrg.division);
+  const department = normalizePulseOrgEntity(pulseOrg.department);
+  const section = normalizePulseOrgEntity(pulseOrg.section);
+  if (!division && !department && !section) {
+    return undefined;
+  }
+
+  return {
+    source: "manual_onboarding",
+    ...(division ? { division } : {}),
+    ...(department ? { department } : {}),
+    ...(section ? { section } : {})
+  };
+};
+
+export const createManualOnboardingUser = async (manualIdentity, deps = {}) => {
+  const userRepoApi = deps.userRepo ?? userRepo;
+  const fullName = String(manualIdentity?.fullName ?? "").trim();
+  const email = String(manualIdentity?.email ?? "").trim().toLowerCase();
+  const department = String(manualIdentity?.department ?? "").trim();
+  const dob = String(manualIdentity?.dob ?? "").trim();
+  const username = deriveUsernameFromEmail(email);
+  const samAccountName = deriveActiveDirectoryFromEmail(email);
+  const orgSnapshot = buildManualOrgSnapshot(manualIdentity);
+  const { givenName, surname } = deriveNameParts(fullName);
+
+  const existing = await userRepoApi.findUserByUsername(username);
+  if (existing) {
+    return existing;
+  }
+
+  return userRepoApi.createUser({
+    username,
+    role: "requester",
+    status: "active",
+    ldapSyncedAt: null,
+    ldapAttributes: {
+      cn: fullName,
+      displayName: fullName,
+      mail: email,
+      department,
+      givenName,
+      sn: surname,
+      ...(samAccountName ? { samAccountName } : {}),
+      ...(dob ? { birthDate: dob } : {})
+    },
+    ...(orgSnapshot ? { orgSnapshot, orgSyncedAt: new Date() } : {})
+  });
 };
 
 const getPulseOrgNames = (user) => {
@@ -200,22 +294,26 @@ const resolveSelectedCatalogItems = async (selectedCatalogItemKeys) => {
   return selectedCatalogItemKeys.map((key) => catalogItemMap.get(key));
 };
 
-const saveExistingUserCredentials = async (performedByUserId, previewSession) => {
-  return prisma.$transaction(async (tx) => {
+const saveExistingUserCredentials = async (performedByUserId, previewSession, deps = {}) => {
+  const credentialRepoApi = deps.credentialRepo ?? credentialRepo;
+  const profileFieldsRepoApi = deps.profileFieldsRepo ?? profileFieldsRepo;
+  const prismaClient = deps.prisma ?? prisma;
+
+  return prismaClient.$transaction(async (tx) => {
     const createdCredentials = [];
 
     for (const credential of previewSession.credentials) {
-      const existing = await credentialRepo.getUserCredentialBySystem(
+      const existing = await credentialRepoApi.getUserCredentialBySystem(
         previewSession.source.userId,
         credential.system,
         tx
       );
 
       if (existing) {
-        await credentialRepo.deactivateUserCredential(existing.id, tx);
+        await credentialRepoApi.deactivateUserCredential(existing.id, tx);
       }
 
-      const created = await credentialRepo.createUserCredential(
+      const created = await credentialRepoApi.createUserCredential(
         {
           userId: previewSession.source.userId,
           systemId: credential.system,
@@ -227,7 +325,7 @@ const saveExistingUserCredentials = async (performedByUserId, previewSession) =>
         tx
       );
 
-      await credentialRepo.createCredentialVersion(
+      await credentialRepoApi.createCredentialVersion(
         {
           credentialId: created.id,
           username: credential.username,
@@ -241,11 +339,150 @@ const saveExistingUserCredentials = async (performedByUserId, previewSession) =>
       createdCredentials.push(created);
     }
 
+    const profileFieldValues = getSupplementalProfileFieldValues(previewSession);
+    if (Object.keys(profileFieldValues).length) {
+      await profileFieldsRepoApi.updateProfileFieldValues({
+        userId: previewSession.source.userId,
+        values: profileFieldValues,
+        updatedBy: performedByUserId
+      });
+    }
+
     return {
       userId: previewSession.source.userId,
       credentials: createdCredentials
     };
   });
+};
+
+const getSupplementalProfileFieldValues = (previewSession) => {
+  const supplemental = previewSession.supplementalCredentials ?? {};
+  const rawProfileFields =
+    supplemental.profileFields && typeof supplemental.profileFields === "object" && !Array.isArray(supplemental.profileFields)
+      ? supplemental.profileFields
+      : {};
+  const values = Object.fromEntries(
+    Object.entries(rawProfileFields).filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== "")
+  );
+
+  if (supplemental.actualPassword && !values["actual-password"]) {
+    values["actual-password"] = supplemental.actualPassword;
+  }
+
+  return values;
+};
+
+const saveManualUserCredentials = async (performedByUserId, previewSession, deps = {}) => {
+  const credentialRepoApi = deps.credentialRepo ?? credentialRepo;
+  const profileFieldsRepoApi = deps.profileFieldsRepo ?? profileFieldsRepo;
+  const prismaClient = deps.prisma ?? prisma;
+  const user = await createManualOnboardingUser(previewSession.source.manualIdentity, deps);
+  const source = {
+    ...previewSession.source,
+    userId: user.id,
+    username: user.username
+  };
+
+  const persisted = await prismaClient.$transaction(async (tx) => {
+    const createdCredentials = [];
+
+    for (const credential of previewSession.credentials) {
+      const existing = await credentialRepoApi.getUserCredentialBySystem(
+        user.id,
+        credential.system,
+        tx
+      );
+
+      if (existing) {
+        await credentialRepoApi.deactivateUserCredential(existing.id, tx);
+      }
+
+      const created = await credentialRepoApi.createUserCredential(
+        {
+          userId: user.id,
+          systemId: credential.system,
+          username: credential.username,
+          password: credential.password,
+          templateVersion: credential.templateVersion ?? previewSession.templateVersion,
+          generatedBy: performedByUserId
+        },
+        tx
+      );
+
+      await credentialRepoApi.createCredentialVersion(
+        {
+          credentialId: created.id,
+          username: credential.username,
+          password: credential.password,
+          reason: "initial",
+          createdBy: performedByUserId
+        },
+        tx
+      );
+
+      createdCredentials.push(created);
+    }
+
+    const profileFieldValues = getSupplementalProfileFieldValues(previewSession);
+    if (Object.keys(profileFieldValues).length) {
+      await profileFieldsRepoApi.updateProfileFieldValues({
+        userId: user.id,
+        values: profileFieldValues,
+        updatedBy: performedByUserId
+      });
+    }
+
+    const imapCredential = previewSession.supplementalCredentials?.imap;
+    if (imapCredential?.username && imapCredential?.password) {
+      const existingImap = await credentialRepoApi.getUserCredentialBySystem(user.id, "imap", tx);
+      if (existingImap) {
+        await credentialRepoApi.deactivateUserCredential(existingImap.id, tx);
+      }
+
+      const createdImap = await credentialRepoApi.createUserCredential(
+        {
+          userId: user.id,
+          systemId: "imap",
+          username: imapCredential.username,
+          password: imapCredential.password,
+          templateVersion: previewSession.templateVersion ?? 1,
+          metadata: {
+            saveMode: "active",
+            source: "onboarding",
+            imapSnapshot: {
+              fields: imapCredential.inputs ?? {},
+              selectedFields: imapCredential.selectedFields ?? {}
+            }
+          },
+          isActive: true,
+          generatedBy: performedByUserId
+        },
+        tx
+      );
+
+      await credentialRepoApi.createCredentialVersion(
+        {
+          credentialId: createdImap.id,
+          username: imapCredential.username,
+          password: imapCredential.password,
+          reason: "initial",
+          createdBy: performedByUserId
+        },
+        tx
+      );
+
+      createdCredentials.push(createdImap);
+    }
+
+    return {
+      userId: user.id,
+      user,
+      source,
+      credentials: createdCredentials
+    };
+  });
+
+  return persisted;
 };
 
 const saveDraftCredentials = async (performedByUserId, previewSession) => {
@@ -450,6 +687,7 @@ export const previewOnboardingSetup = async (input) => {
         fullName: input.manualIdentity.fullName.trim(),
         email: input.manualIdentity.email.trim().toLowerCase(),
         department,
+        pulseOrg: input.manualIdentity.pulseOrg ?? null,
         dob: input.manualIdentity.dob.trim()
       }
     };
@@ -507,6 +745,7 @@ export const previewOnboardingSetup = async (input) => {
     selectedCatalogItemKeys: catalogItemKeys,
     recommendedItemKeys,
     credentials: preview.credentials,
+    supplementalCredentials: input.supplementalCredentials ?? {},
     templateVersion: preview.templateVersion,
     setupSheet,
     generatedAt: new Date().toISOString()
@@ -520,24 +759,25 @@ export const previewOnboardingSetup = async (input) => {
   };
 };
 
-export const confirmOnboardingSetup = async (performedByUserId, { previewToken }) => {
-  const previewSession = await credentialRepo.getPreviewSession(previewToken);
+export const confirmOnboardingSetup = async (performedByUserId, { previewToken }, deps = {}) => {
+  const credentialRepoApi = deps.credentialRepo ?? credentialRepo;
+  const previewSession = await credentialRepoApi.getPreviewSession(previewToken);
   if (!previewSession || previewSession.type !== "onboarding") {
     throw new OnboardingNotFoundError("Onboarding preview session has expired");
   }
 
   let persisted;
   if (previewSession.source.mode === "existing_user") {
-    persisted = await saveExistingUserCredentials(performedByUserId, previewSession);
+    persisted = await saveExistingUserCredentials(performedByUserId, previewSession, deps);
   } else {
-    persisted = await saveDraftCredentials(performedByUserId, previewSession);
+    persisted = await saveManualUserCredentials(performedByUserId, previewSession, deps);
   }
 
-  await credentialRepo.deletePreviewSession(previewToken);
+  await credentialRepoApi.deletePreviewSession(previewToken);
 
   return {
     ...persisted,
-    source: previewSession.source,
+    source: persisted.source ?? previewSession.source,
     setupSheet: previewSession.setupSheet
   };
 };

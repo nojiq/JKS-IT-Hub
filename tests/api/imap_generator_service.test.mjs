@@ -239,6 +239,40 @@ test("previewImapPassword uses a stable provisional subject key for manual mode"
     assert.equal(first.metadata.sources.dob, "manual");
 });
 
+test("previewImapPassword includes Yahoo temporary password in deterministic seed", async () => {
+    const input = {
+        manualIdentity: {
+            fullName: "Haziq Afendi",
+            email: "haziq.afendi@jkseng.com"
+        },
+        username: "haziq.afendi@jkseng.com",
+        inputs: {
+            email: "haziq.afendi@jkseng.com",
+            fullName: "Haziq Afendi",
+            dob: "1995-06-15",
+            temporaryPassword: "TempYahoo#1"
+        },
+        selectedFields: {
+            email: true,
+            fullName: true,
+            dob: true,
+            temporaryPassword: true
+        }
+    };
+
+    const first = await previewImapPassword(input, {});
+    const changed = await previewImapPassword({
+        ...input,
+        inputs: {
+            ...input.inputs,
+            temporaryPassword: "TempYahoo#2"
+        }
+    }, {});
+
+    assert.notEqual(first.proposedCredential.password, changed.proposedCredential.password);
+    assert.deepEqual(first.metadata.selectedFields, ["dob", "email", "fullName", "temporaryPassword"]);
+});
+
 test("saveImapPassword stores history-only IMAP records without replacing the active credential", async () => {
     const calls = {
         profile: null,

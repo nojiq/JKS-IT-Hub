@@ -22,8 +22,6 @@ vi.mock('../src/features/onboarding/onboarding-api.js', () => ({
     previewOnboardingSetup: vi.fn(),
     confirmOnboardingSetup: vi.fn(),
     fetchUsersForOnboarding: vi.fn(),
-    fetchOnboardingDrafts: vi.fn(),
-    linkAndPromoteOnboardingDraft: vi.fn(),
     createCatalogItem: vi.fn(),
     createDepartmentBundle: vi.fn(),
     deleteCatalogItem: vi.fn(),
@@ -36,7 +34,6 @@ import { fetchSession } from '../src/features/users/auth-api';
 import {
     fetchCatalogItems,
     fetchDepartmentBundles,
-    fetchOnboardingDrafts,
     fetchUsersForOnboarding
 } from '../src/features/onboarding/onboarding-api.js';
 
@@ -133,27 +130,6 @@ describe('OnboardingHomePage route', () => {
                 department: 'Business Development'
             }
         ]);
-
-        fetchOnboardingDrafts.mockResolvedValue([
-            {
-                id: 'draft-1',
-                fullName: 'Haziq Afendi',
-                email: 'haziq.afendi@jkseng.com',
-                department: 'Business Development',
-                status: 'draft',
-                linkedUserId: null,
-                setupSheet: { entries: [{ systemId: 'sigma' }] }
-            },
-            {
-                id: 'draft-2',
-                fullName: 'Nur Aina',
-                email: 'nur.aina@jkseng.com',
-                department: 'Marketing',
-                status: 'completed',
-                linkedUserId: 'user-2',
-                setupSheet: { entries: [{ systemId: 'basecamp' }] }
-            }
-        ]);
     });
 
     it('opens /onboarding on an overview page with module-local nav', async () => {
@@ -165,8 +141,8 @@ describe('OnboardingHomePage route', () => {
         expect(screen.getByRole('link', { name: /review reusable defaults/i })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /open app catalog/i })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Start New Joiner' })).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'In Progress' })).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Ready for Credential Generation' })).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Completed Recently' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Direct User Creation' })).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'In Progress' })).not.toBeInTheDocument();
+        expect(screen.queryByText(/draft/i)).not.toBeInTheDocument();
     });
 });

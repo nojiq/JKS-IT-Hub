@@ -105,12 +105,30 @@ export const findUsersByIds = async (ids = []) => {
   });
 };
 
-export const createUser = async ({ username, role = "requester", status = "active" }) => {
+export const createUser = async ({
+  username,
+  role = "requester",
+  status = "active",
+  ldapDn = undefined,
+  ldapAttributes = undefined,
+  ldapSyncedAt = undefined,
+  orgSnapshot = undefined,
+  orgSyncedAt = undefined
+}) => {
+  const optionalData = {
+    ...(ldapDn !== undefined ? { ldapDn } : {}),
+    ...(ldapAttributes !== undefined ? { ldapAttributes } : {}),
+    ...(ldapSyncedAt !== undefined ? { ldapSyncedAt } : {}),
+    ...(orgSnapshot !== undefined ? { orgSnapshot } : {}),
+    ...(orgSyncedAt !== undefined ? { orgSyncedAt } : {})
+  };
+
   return prisma.user.create({
     data: {
       username,
       role,
-      status
+      status,
+      ...optionalData
     }
   });
 };

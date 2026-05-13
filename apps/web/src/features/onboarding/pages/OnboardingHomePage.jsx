@@ -1,38 +1,18 @@
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
   fetchCatalogItems,
-  fetchDepartmentBundles,
-  fetchOnboardingDrafts
+  fetchDepartmentBundles
 } from "../onboarding-api.js";
 import { WorkspacePanel } from "../../../shared/workspace/WorkspacePanel.jsx";
 import "../onboarding.css";
 
-const EMPTY_DRAFTS = [];
 const EMPTY_BUNDLES = [];
 const EMPTY_ITEMS = [];
 
 const formatDepartmentLabel = (department) => department || "No department selected";
 
-const formatDraftLabel = (draft) => {
-  if (!draft?.fullName) {
-    return "Untitled draft";
-  }
-
-  if (!draft?.department) {
-    return draft.fullName;
-  }
-
-  return `${draft.fullName} • ${draft.department}`;
-};
-
 export default function OnboardingHomePage() {
-  const draftsQuery = useQuery({
-    queryKey: ["onboarding", "drafts"],
-    queryFn: () => fetchOnboardingDrafts("all")
-  });
-
   const bundlesQuery = useQuery({
     queryKey: ["onboarding", "department-bundles"],
     queryFn: fetchDepartmentBundles
@@ -43,34 +23,8 @@ export default function OnboardingHomePage() {
     queryFn: fetchCatalogItems
   });
 
-  const drafts = draftsQuery.data ?? EMPTY_DRAFTS;
   const bundles = bundlesQuery.data ?? EMPTY_BUNDLES;
   const catalogItems = catalogItemsQuery.data ?? EMPTY_ITEMS;
-
-  const { inProgressDrafts, readyDrafts, completedDrafts } = useMemo(() => {
-    const inProgress = [];
-    const ready = [];
-    const completed = [];
-
-    drafts.forEach((draft) => {
-      if (draft.status === "completed" || draft.linkedUserId) {
-        completed.push(draft);
-        return;
-      }
-
-      if ((draft.setupSheet?.entries?.length ?? 0) > 0) {
-        ready.push(draft);
-      }
-
-      inProgress.push(draft);
-    });
-
-    return {
-      inProgressDrafts: inProgress.slice(0, 3),
-      readyDrafts: ready.slice(0, 3),
-      completedDrafts: completed.slice(0, 3)
-    };
-  }, [drafts]);
 
   const activeBundles = bundles.filter((bundle) => bundle.isActive);
 
@@ -104,50 +58,12 @@ export default function OnboardingHomePage() {
 
         <WorkspacePanel
           variant="detail"
-          title="In Progress"
-          meta={inProgressDrafts.length ? `${inProgressDrafts.length} active draft${inProgressDrafts.length === 1 ? "" : "s"}` : "No active drafts"}
+          title="Direct User Creation"
+          meta="Manual joiners are created as real users immediately"
         >
-          {inProgressDrafts.length ? (
-            <ul className="onboarding-home-list">
-              {inProgressDrafts.map((draft) => (
-                <li key={draft.id}>{formatDraftLabel(draft)}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="onboarding-muted">Manual onboarding drafts will appear here after the first preview or save.</p>
-          )}
-        </WorkspacePanel>
-
-        <WorkspacePanel
-          variant="detail"
-          title="Ready for Credential Generation"
-          meta={readyDrafts.length ? `${readyDrafts.length} draft${readyDrafts.length === 1 ? "" : "s"} already have a setup sheet` : "No setup sheets waiting"}
-        >
-          {readyDrafts.length ? (
-            <ul className="onboarding-home-list">
-              {readyDrafts.map((draft) => (
-                <li key={draft.id}>{formatDraftLabel(draft)}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="onboarding-muted">Preview a setup sheet to stage usernames, passwords, and app notes before saving.</p>
-          )}
-        </WorkspacePanel>
-
-        <WorkspacePanel
-          variant="detail"
-          title="Completed Recently"
-          meta={completedDrafts.length ? `${completedDrafts.length} recent completion${completedDrafts.length === 1 ? "" : "s"}` : "No completed onboarding records yet"}
-        >
-          {completedDrafts.length ? (
-            <ul className="onboarding-home-list">
-              {completedDrafts.map((draft) => (
-                <li key={draft.id}>{formatDraftLabel(draft)}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="onboarding-muted">Completed onboarding runs will surface here after they are linked or promoted.</p>
-          )}
+          <p className="onboarding-muted">
+            Saving a new joiner now creates the user record and stores generated credentials in one flow.
+          </p>
         </WorkspacePanel>
       </div>
 

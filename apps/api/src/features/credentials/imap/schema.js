@@ -6,7 +6,8 @@ const imapInputFieldsSchema = z.object({
     lastName: z.string().max(191).optional(),
     fullName: z.string().max(191).optional(),
     dob: z.string().max(191).optional(),
-    phone: z.string().max(191).optional()
+    phone: z.string().max(191).optional(),
+    temporaryPassword: z.string().max(500).optional()
 });
 
 const imapSelectedFieldsSchema = z.object({
@@ -15,7 +16,8 @@ const imapSelectedFieldsSchema = z.object({
     lastName: z.boolean().optional(),
     fullName: z.boolean().optional(),
     dob: z.boolean().optional(),
-    phone: z.boolean().optional()
+    phone: z.boolean().optional(),
+    temporaryPassword: z.boolean().optional()
 });
 
 export const previewImapGeneratorSchema = z.object({

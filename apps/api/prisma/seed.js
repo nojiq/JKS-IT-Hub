@@ -15,7 +15,9 @@ const DEFAULT_USER_FIELDS = [
     { fieldKey: 'outlook-android', label: 'Outlook Android', fieldType: 'text', required: false, sensitive: false, sortOrder: 110 },
     { fieldKey: 'outlook-desktop', label: 'Outlook Desktop', fieldType: 'text', required: false, sensitive: false, sortOrder: 120 },
     { fieldKey: 'active-directory', label: 'Active Directory', fieldType: 'text', required: false, sensitive: false, sortOrder: 130 },
-    { fieldKey: 'remarks', label: 'Remarks', fieldType: 'textarea', required: false, sensitive: false, sortOrder: 140 }
+    { fieldKey: 'status', label: 'Status', fieldType: 'text', required: false, sensitive: false, sortOrder: 140 },
+    { fieldKey: 'category', label: 'Category', fieldType: 'text', required: false, sensitive: false, sortOrder: 150 },
+    { fieldKey: 'remarks', label: 'Remarks', fieldType: 'textarea', required: false, sensitive: false, sortOrder: 160 }
 ];
 
 async function main() {

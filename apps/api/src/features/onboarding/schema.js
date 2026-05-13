@@ -7,6 +7,32 @@ const itemKeySchema = z
 
 const idSchema = z.string().trim().min(1, "ID is required");
 
+const pulseOrgSelectionSchema = z
+  .object({
+    division: z
+      .object({
+        id: z.string().trim().max(191),
+        name: z.string().trim().max(191)
+      })
+      .nullable()
+      .optional(),
+    department: z
+      .object({
+        id: z.string().trim().max(191),
+        name: z.string().trim().max(191)
+      })
+      .nullable()
+      .optional(),
+    section: z
+      .object({
+        id: z.string().trim().max(191),
+        name: z.string().trim().max(191)
+      })
+      .nullable()
+      .optional()
+  })
+  .optional();
+
 export const createCatalogItemSchema = z.object({
   itemKey: itemKeySchema,
   label: z.string().trim().min(1, "Label is required").max(191),
@@ -42,10 +68,25 @@ export const previewOnboardingSchema = z.object({
         .string()
         .trim()
         .regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth is required (YYYY-MM-DD)")
-        .max(10)
+        .max(10),
+      pulseOrg: pulseOrgSelectionSchema
     })
     .optional(),
-  selectedCatalogItemKeys: z.preprocess((val) => (Array.isArray(val) ? val : []), z.array(itemKeySchema))
+  selectedCatalogItemKeys: z.preprocess((val) => (Array.isArray(val) ? val : []), z.array(itemKeySchema)),
+  supplementalCredentials: z
+    .object({
+      actualPassword: z.string().max(500).optional().or(z.literal("")),
+      profileFields: z.record(z.string(), z.unknown()).optional(),
+      imap: z
+        .object({
+          username: z.string().max(191).optional().or(z.literal("")),
+          password: z.string().max(500).optional().or(z.literal("")),
+          inputs: z.record(z.string(), z.unknown()).optional(),
+          selectedFields: z.record(z.string(), z.boolean()).optional()
+        })
+        .optional()
+    })
+    .optional()
 }).superRefine((value, ctx) => {
   if (value.mode === "existing_user" && !value.userId) {
     ctx.addIssue({

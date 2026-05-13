@@ -256,7 +256,7 @@ const generatePassword = (pattern, fieldValues, deterministicSeed) => {
     .join('');
 };
 
-const IMAP_DETERMINISTIC_FIELDS = ['email', 'firstName', 'lastName', 'fullName', 'dob', 'phone'];
+const IMAP_DETERMINISTIC_FIELDS = ['email', 'firstName', 'lastName', 'fullName', 'dob', 'phone', 'temporaryPassword'];
 const IMAP_DETERMINISTIC_MODE = 'imap_deterministic';
 const IMAP_DETERMINISTIC_ALGORITHM_VERSION = 1;
 
@@ -399,6 +399,48 @@ const deriveDeterministicFromPool = (seed, length, pool) => {
 };
 
 /**
+ * Map common DOB text shapes to one string so the Yahoo actual seed matches across UIs
+ * (native `<input type="date">` uses ISO; credential generator uses `dd/mm/yyyy`).
+ * Always normalizes to zero-padded `dd/mm/yyyy` (day-first for slash forms), matching
+ * `IsoDatePopoverField` calendar output and preserving legacy seeds for existing previews.
+ */
+const formatDdMmYyyyPadded = (day, month, year) =>
+  `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year}`;
+
+const canonicalDobForYahooActual = (raw) => {
+  const s = String(raw ?? "").trim();
+  if (!s) {
+    return "";
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [y, mo, d] = s.split("-").map(Number);
+    const dt = new Date(y, mo - 1, d);
+    if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) {
+      return s;
+    }
+    return formatDdMmYyyyPadded(d, mo, y);
+  }
+  const m = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/);
+  if (!m) {
+    return s;
+  }
+  const day = Number(m[1]);
+  const month = Number(m[2]);
+  let year = Number(m[3]);
+  if (year < 100) {
+    year = year <= 30 ? 2000 + year : 1900 + year;
+  }
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    return s;
+  }
+  const dt = new Date(year, month - 1, day);
+  if (dt.getFullYear() !== year || dt.getMonth() !== month - 1 || dt.getDate() !== day) {
+    return s;
+  }
+  return formatDdMmYyyyPadded(day, month, year);
+};
+
+/**
  * Deterministic Yahoo "actual" password from identity + Yahoo temp password.
  * Same normalized inputs + length + charset flags always yield same password (v1).
  */
@@ -413,7 +455,7 @@ export const generateActualDeterministicPassword = ({
   const normalized = {
     fullName: normalizeImapInputValue('fullName', fullName),
     email: normalizeImapInputValue('email', email),
-    dob: String(dob ?? '').trim(),
+    dob: canonicalDobForYahooActual(dob),
     temporaryPassword: String(temporaryPassword ?? '').trim()
   };
 

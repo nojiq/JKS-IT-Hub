@@ -5,10 +5,8 @@ import {
   confirmOnboardingSetup,
   fetchCatalogItems,
   fetchDepartmentBundles,
-  fetchOnboardingDrafts,
   fetchPulseOrgHierarchy,
   fetchUsersForOnboarding,
-  linkAndPromoteOnboardingDraft,
   previewOnboardingSetup
 } from "../onboarding-api.js";
 import { previewImapPassword } from "../../credentials/api/credentials.js";
@@ -123,26 +121,16 @@ const syncSelection = (currentSelection, nextKeys) => {
   return nextSelection;
 };
 
-const formatDraftDate = (value) => {
-  if (!value) {
-    return "-";
-  }
+const getSelectedPulseOrg = ({ hierarchy, divisionId, departmentId, sectionId }) => {
+  const division = (hierarchy.divisions ?? []).find((entry) => entry.id === divisionId);
+  const department = (hierarchy.departments ?? []).find((entry) => entry.id === departmentId);
+  const section = (hierarchy.sections ?? []).find((entry) => entry.id === sectionId);
 
-  return new Date(value).toLocaleString();
-};
-
-const buildSetupSheetCopy = (setupSheet) => {
-  return (setupSheet?.entries ?? [])
-    .map((entry) =>
-      [
-        entry.label,
-        `URL: ${entry.loginUrl}`,
-        `Username: ${entry.username}`,
-        `Password: ${entry.password}`,
-        `Notes: ${entry.notes || "-"}`
-      ].join("\n")
-    )
-    .join("\n\n");
+  return {
+    division: division ? { id: division.id, name: division.name } : null,
+    department: department ? { id: department.id, name: department.name } : null,
+    section: section ? { id: section.id, name: section.name } : null
+  };
 };
 
 export function NewJoinerPage() {
@@ -150,9 +138,6 @@ export function NewJoinerPage() {
   const toast = useToast();
   const [mode, setMode] = useState("manual");
   const [selectedUserId, setSelectedUserId] = useState("");
-  const [activeDraftId, setActiveDraftId] = useState(null);
-  const [linkingDraftId, setLinkingDraftId] = useState(null);
-  const [linkTargetUserId, setLinkTargetUserId] = useState("");
 
   const [status, setStatus] = useState("");
   const [category, setCategory] = useState("");
@@ -169,6 +154,7 @@ export function NewJoinerPage() {
   const [remarks, setRemarks] = useState("");
 
   const [imapPassword, setImapPassword] = useState("");
+  const [imapUsername, setImapUsername] = useState("");
   const [credentialError, setCredentialError] = useState("");
   const [imapPreviewBusy, setImapPreviewBusy] = useState(false);
 
@@ -206,11 +192,6 @@ export function NewJoinerPage() {
     queryFn: () => fetchUsersForOnboarding("")
   });
 
-  const draftsQuery = useQuery({
-    queryKey: ["onboarding", "drafts"],
-    queryFn: () => fetchOnboardingDrafts("all")
-  });
-
   const previewMutation = useMutation({
     mutationFn: previewOnboardingSetup,
     onSuccess: (data) => {
@@ -223,23 +204,12 @@ export function NewJoinerPage() {
     mutationFn: confirmOnboardingSetup,
     onSuccess: (data) => {
       setConfirmedResult(data);
-      if (data?.draftId) {
-        setActiveDraftId(data.draftId);
-      }
-      queryClient.invalidateQueries({ queryKey: ["onboarding", "drafts"] });
-      toast.success("User added", "The onboarding draft was saved successfully.");
+      queryClient.invalidateQueries({ queryKey: ["onboarding", "directory-users"] });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast.success("User added", "The user and onboarding credentials were saved successfully.");
     },
     onError: (error) => {
-      toast.error("Add user failed", getErrorMessage(error, "Unable to save onboarding draft."));
-    }
-  });
-
-  const linkMutation = useMutation({
-    mutationFn: ({ draftId, userId }) => linkAndPromoteOnboardingDraft(draftId, userId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["onboarding", "drafts"] });
-      setLinkingDraftId(null);
-      setLinkTargetUserId("");
+      toast.error("Add user failed", getErrorMessage(error, "Unable to save onboarding user."));
     }
   });
 
@@ -253,7 +223,6 @@ export function NewJoinerPage() {
   const catalogItems = catalogItemsQuery.data ?? [];
   const bundles = bundlesQuery.data ?? [];
   const users = usersQuery.data ?? [];
-  const drafts = draftsQuery.data ?? [];
   const pulseHierarchy = useMemo(
     () =>
       pulseOrgQuery.data ?? {
@@ -296,10 +265,24 @@ export function NewJoinerPage() {
   }, [mode, manualIdentity.fullName, manualIdentity.email, dob]);
   const canSubmitOnboarding = useMemo(() => {
     if (mode === "manual") {
-      return manualPreviewReady;
+      return (
+        manualPreviewReady &&
+        Boolean(actualPassword) &&
+        Boolean(imapPassword) &&
+        !actualPreviewMutation.isPending &&
+        !imapPreviewBusy
+      );
     }
     return Boolean(selectedUserId);
-  }, [manualPreviewReady, mode, selectedUserId]);
+  }, [
+    actualPassword,
+    actualPreviewMutation.isPending,
+    imapPassword,
+    imapPreviewBusy,
+    manualPreviewReady,
+    mode,
+    selectedUserId
+  ]);
 
   const resolvedDepartment = mode === "existing_user" ? department : manualIdentity.department;
   const setupSheet = confirmedResult?.setupSheet ?? previewResult?.setupSheet ?? null;
@@ -424,6 +407,7 @@ export function NewJoinerPage() {
   useEffect(() => {
     if (!canPreviewImapPassword) {
       setImapPassword("");
+      setImapUsername("");
       setCredentialError("");
       setImapPreviewBusy(false);
       return;
@@ -440,11 +424,13 @@ export function NewJoinerPage() {
         }
         const proposed = body?.data?.proposedCredential;
         setImapPassword(proposed?.password || "");
+        setImapUsername(proposed?.username || "");
       } catch (e) {
         if (cancelled) {
           return;
         }
         setImapPassword("");
+        setImapUsername("");
         setCredentialError(e.message || "Could not preview IMAP app password.");
       } finally {
         if (!cancelled) {
@@ -583,6 +569,7 @@ export function NewJoinerPage() {
     setTemporaryPassword("");
     setActualPassword("");
     setImapPassword("");
+    setImapUsername("");
     setIpadMail("");
     setMacMail("");
     setIphoneMail("");
@@ -595,21 +582,52 @@ export function NewJoinerPage() {
   };
 
   const buildPreviewPayload = () => {
+    const profileFields = {
+      name: manualIdentity.fullName.trim(),
+      email: manualIdentity.email.trim(),
+      date: dob.trim(),
+      "temporary-password": temporaryPassword,
+      "actual-password": actualPassword,
+      "android-password": androidPassword,
+      "iphone-mail": iphoneMail,
+      "ipad-mail": ipadMail,
+      "mac-mail": macMail,
+      "outlook-ios": outlookIos,
+      "outlook-android": outlookAndroid,
+      "outlook-desktop": outlookDesktop,
+      "active-directory": derivedActiveDirectory,
+      status,
+      category,
+      remarks
+    };
     const payload = {
       mode,
-      selectedCatalogItemKeys: [...selectedItemKeys]
+      selectedCatalogItemKeys: [...selectedItemKeys],
+      supplementalCredentials: {
+        actualPassword,
+        profileFields,
+        imap: {
+          username: imapUsername || manualIdentity.email.trim(),
+          password: imapPassword,
+          inputs: imapPreviewPayload.inputs,
+          selectedFields: imapPreviewPayload.selectedFields
+        }
+      }
     };
 
     if (mode === "existing_user") {
       payload.userId = selectedUserId;
     } else {
-      if (activeDraftId) {
-        payload.draftId = activeDraftId;
-      }
       payload.manualIdentity = {
         ...manualIdentity,
         department: manualIdentity.department,
-        dob: dob.trim()
+        dob: dob.trim(),
+        pulseOrg: getSelectedPulseOrg({
+          hierarchy: pulseHierarchy,
+          divisionId: manualPulseDivisionId,
+          departmentId: manualPulseDepartmentId,
+          sectionId: manualPulseSectionId
+        })
       };
     }
 
@@ -647,57 +665,9 @@ export function NewJoinerPage() {
     });
   };
 
-  const handleOpenDraft = (draft) => {
-    setMode("manual");
-    setSelectedUserId("");
-    setActiveDraftId(draft.id);
-    setDob(draft.dob ?? "");
-    setManualIdentity({
-      fullName: draft.fullName,
-      email: draft.email,
-      department: draft.department
-    });
-    setWorkEmailError("");
-    setManualPulseDivisionId("");
-    setManualPulseDepartmentId("");
-    setManualPulseSectionId("");
-    setDepartment(draft.department);
-    setSelectedItemKeys(new Set(draft.selectedCatalogItemKeys ?? []));
-    setPreviewResult({
-      previewToken: null,
-      recommendedItemKeys: draft.selectedCatalogItemKeys ?? [],
-      setupSheet: draft.setupSheet
-    });
-    setConfirmedResult({
-      draftId: draft.id,
-      setupSheet: draft.setupSheet
-    });
-  };
-
-  const handleCopySetupSheet = async (setupSheetToCopy) => {
-    const copyValue = buildSetupSheetCopy(setupSheetToCopy);
-    if (!copyValue) {
-      return;
-    }
-
-    await navigator.clipboard?.writeText?.(copyValue);
-  };
-
-  const handleLinkDraft = (draftId) => {
-    if (!linkTargetUserId) {
-      return;
-    }
-
-    linkMutation.mutate({
-      draftId,
-      userId: linkTargetUserId
-    });
-  };
-
   const handleCancel = () => {
     setMode("manual");
     setSelectedUserId("");
-    setActiveDraftId(null);
     setManualIdentity({ fullName: "", email: "", department: "" });
     setWorkEmailError("");
     setDepartment("");
@@ -740,7 +710,6 @@ export function NewJoinerPage() {
                 checked={mode === "existing_user"}
                 onChange={() => {
                   setMode("existing_user");
-                  setActiveDraftId(null);
                   setWorkEmailError("");
                   setPreviewResult(null);
                   setConfirmedResult(null);
@@ -1176,7 +1145,7 @@ export function NewJoinerPage() {
 
       <section className="nj-section">
         <h2>Onboarding package</h2>
-        <p className="nj-section-sub">Preview generated app credentials, then save the package as a draft.</p>
+        <p className="nj-section-sub">Preview generated app credentials, then create the user and save the credentials.</p>
         <div className="nj-setup-actions">
           <button
             className="nj-btn nj-btn-secondary"
@@ -1192,7 +1161,6 @@ export function NewJoinerPage() {
         </div>
         {previewMutation.error ? <p className="nj-cred-error">{previewMutation.error.message}</p> : null}
         {confirmMutation.error ? <p className="nj-cred-error">{confirmMutation.error.message}</p> : null}
-        {linkMutation.error ? <p className="nj-cred-error">{linkMutation.error.message}</p> : null}
 
         {!setupSheet?.entries?.length ? (
           <div className="nj-empty">Run preview to fill usernames, passwords, and handoff notes for each app.</div>
@@ -1219,105 +1187,6 @@ export function NewJoinerPage() {
               ))}
             </tbody>
           </table>
-        )}
-      </section>
-
-      <section className="nj-section">
-        <div className="nj-list-head" style={{ marginBottom: 0 }}>
-          <h2 style={{ margin: 0 }}>Draft recovery</h2>
-          <span className="nj-badge">{drafts.length} drafts</span>
-        </div>
-        <p className="nj-section-sub">Reopen packages, copy setup sheets, or link a manual draft to a directory account.</p>
-
-        {!drafts.length ? (
-          <div className="nj-empty">No saved drafts yet. Saving an onboarding package creates a draft you can return to.</div>
-        ) : (
-          <div className="nj-list">
-            {drafts.map((draft) => (
-              <div key={draft.id} className="nj-list-item">
-                <div className="nj-list-head">
-                  <div>
-                    <p className="onboarding-list-item-title" style={{ margin: 0 }}>
-                      {draft.fullName}
-                    </p>
-                    <p className="onboarding-list-item-meta" style={{ margin: "0.25rem 0 0" }}>
-                      {draft.email} • {draft.department} • {formatDraftDate(draft.createdAt)}
-                    </p>
-                  </div>
-                  <span className={`nj-badge${draft.status === "completed" ? "" : " nj-badge-muted"}`}>
-                    {draft.status === "completed" ? "Completed" : "Draft"}
-                  </span>
-                </div>
-
-                <div className="nj-setup-actions">
-                  <button className="nj-btn nj-btn-secondary" type="button" onClick={() => handleOpenDraft(draft)}>
-                    Open draft
-                  </button>
-                  <button
-                    className="nj-btn nj-btn-secondary"
-                    type="button"
-                    onClick={() => handleCopySetupSheet(draft.setupSheet)}
-                  >
-                    Copy setup sheet
-                  </button>
-                  {draft.status !== "completed" ? (
-                    <button
-                      className="nj-btn nj-btn-primary"
-                      type="button"
-                      onClick={() => {
-                        setLinkingDraftId(draft.id);
-                        setLinkTargetUserId("");
-                      }}
-                    >
-                      Link to directory user
-                    </button>
-                  ) : null}
-                </div>
-
-                {linkingDraftId === draft.id ? (
-                  <div className="nj-inline-panel">
-                    <div className="nj-field">
-                      <label htmlFor={`nj-link-draft-${draft.id}`}>Link draft to user</label>
-                      <select
-                        id={`nj-link-draft-${draft.id}`}
-                        aria-label="Link draft to user"
-                        value={linkTargetUserId}
-                        onChange={(event) => setLinkTargetUserId(event.target.value)}
-                      >
-                        <option value="">Select directory user</option>
-                        {users.map((entry) => (
-                          <option key={entry.id} value={entry.id}>
-                            {entry.displayName || entry.username}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="nj-setup-actions">
-                      <button
-                        className="nj-btn nj-btn-primary"
-                        type="button"
-                        onClick={() => handleLinkDraft(draft.id)}
-                        disabled={linkMutation.isPending || !linkTargetUserId}
-                      >
-                        Confirm link & promote
-                      </button>
-                      <button
-                        className="nj-btn nj-btn-secondary"
-                        type="button"
-                        onClick={() => {
-                          setLinkingDraftId(null);
-                          setLinkTargetUserId("");
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            ))}
-          </div>
         )}
       </section>
     </div>
