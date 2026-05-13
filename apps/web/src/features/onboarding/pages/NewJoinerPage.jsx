@@ -799,7 +799,7 @@ export function NewJoinerPage() {
                     <label htmlFor="nj-temp-pw">Yahoo temporary password (optional)</label>
                     <input
                       id="nj-temp-pw"
-                      type="password"
+                      type="text"
                       autoComplete="new-password"
                       value={temporaryPassword}
                       onChange={(e) => setTemporaryPassword(e.target.value)}
@@ -828,6 +828,9 @@ export function NewJoinerPage() {
                       aria-busy={actualPreviewMutation.isPending}
                       aria-live="polite"
                     />
+                    <p className="nj-field-helper">
+                      IMAP app password generated separately (shown next). Stored as IT-only credential; excluded from exports.
+                    </p>
                   </div>
                   <div className="nj-field">
                     <label htmlFor="nj-imap-password">IMAP app password</label>

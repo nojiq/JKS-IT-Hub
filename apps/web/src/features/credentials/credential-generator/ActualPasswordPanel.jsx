@@ -378,7 +378,7 @@ const ActualPasswordPanel = () => {
                                 autoComplete="off"
                                 className="imap-generator-input"
                                 onChange={(event) => setTemporaryPassword(event.target.value)}
-                                type="password"
+                                type="text"
                                 value={temporaryPassword}
                             />
                         </label>
