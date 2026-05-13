@@ -222,7 +222,13 @@ export function WorkspaceLayout() {
         aria-label="Workspace sections"
       >
         <div className="workspace-brand">
-          <span className="workspace-brand-mark">ITH</span>
+          <img
+            alt="IT Hub"
+            className="workspace-brand-logo"
+            height={1024}
+            src="/brand/it-hub-logo.png"
+            width={1024}
+          />
           <strong className="workspace-brand-name">IT Hub</strong>
           {showExpandedSidebarChrome ? <p className="workspace-brand-subtitle">IT Operations Console</p> : null}
         </div>

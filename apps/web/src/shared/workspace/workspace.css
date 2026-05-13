@@ -29,18 +29,20 @@
   border-bottom: 1px solid var(--ui-border-subtle);
 }
 
-.workspace-brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 2.4rem;
-  min-height: 2.4rem;
-  border-radius: var(--radius-control);
-  background: var(--ui-accent-primary);
-  color: var(--ui-text-inverse);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  font-size: 0.75rem;
+.workspace-brand-logo {
+  display: block;
+  align-self: center;
+  width: auto;
+  max-width: min(15rem, 100%);
+  height: auto;
+  max-height: 3.35rem;
+  object-fit: contain;
+  object-position: center center;
+}
+
+.workspace-sidebar.is-collapsed .workspace-brand-logo {
+  max-width: 100%;
+  max-height: 2.35rem;
 }
 
 .workspace-brand-name {

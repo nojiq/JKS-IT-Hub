@@ -37,13 +37,13 @@ export default function LoginPage() {
         <section className="auth-card">
           <header className="auth-header">
             <div className="auth-company-logo">
-              <img
-                alt="JKS — Justification Knowledge Skills"
-                className="auth-company-logo-img"
-                height={570}
-                src="/brand/jks-logo.png"
-                width={810}
-              />
+            <img
+              alt="IT Hub"
+              className="auth-company-logo-img"
+              height={1024}
+              src="/brand/it-hub-logo.png"
+              width={1024}
+            />
             </div>
             <h1>IT Hub</h1>
             <p className="auth-subtitle">Sign in using JKS credential</p>
