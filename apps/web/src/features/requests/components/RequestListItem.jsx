@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from 'react';
 import RequestStatusBadge from './RequestStatusBadge';
+import { formatDisplayDate } from '../../../shared/utils/date-format.js';
 
 const RequestListItem = ({ request, onClick }) => {
     return (
@@ -12,9 +13,9 @@ const RequestListItem = ({ request, onClick }) => {
 
             <div className="request-body">
                 <p className="meta">
-                    Submitted: {new Date(request.createdAt).toLocaleDateString()}
+                    Submitted: {formatDisplayDate(request.createdAt)}
                     {request.priority && <span className={`priority ${request.priority.toLowerCase()}`}> • {request.priority} Priority</span>}
-                    <span className="updated-at"> • Updated: {new Date(request.updatedAt).toLocaleDateString()}</span>
+                    <span className="updated-at"> • Updated: {formatDisplayDate(request.updatedAt)}</span>
                 </p>
                 <p className="preview">{request.justification ? request.justification.substring(0, 100) : 'No justification provided'}...</p>
             </div>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAdminApproval } from '../hooks/useAdminApproval';
 import InvoiceDisplay from './InvoiceDisplay';
 import { MobileModal } from '../../../shared/ui/MobileModal/MobileModal';
+import { formatDisplayDate, formatDisplayDateTime } from '../../../shared/utils/date-format.js';
 import './AdminApprovalModal.css';
 
 const AdminApprovalModal = ({ request, onClose }) => {
@@ -49,7 +50,7 @@ const AdminApprovalModal = ({ request, onClose }) => {
                             </div>
                             <div className="detail-item">
                                 <label>Submitted</label>
-                                <div>{new Date(request.createdAt).toLocaleDateString()}</div>
+                                <div>{formatDisplayDate(request.createdAt)}</div>
                             </div>
                         </div>
                     </div>
@@ -69,7 +70,7 @@ const AdminApprovalModal = ({ request, onClose }) => {
                         <div className="detail-section review-box">
                             <label className="section-label">IT Review Notes</label>
                             <div className="review-meta">
-                                Reviewed by <strong>{request.itReviewedBy?.ldapAttributes?.displayName || request.itReviewedBy?.username}</strong> on {new Date(request.itReviewedAt).toLocaleString()}
+                                Reviewed by <strong>{request.itReviewedBy?.ldapAttributes?.displayName || request.itReviewedBy?.username}</strong> on {formatDisplayDateTime(request.itReviewedAt)}
                             </div>
                             <p className="review-content">{request.itReview}</p>
                         </div>
