@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { fetchSession } from "./auth-api.js";
-import { fetchUserDetail, fetchUserHistory, updateUserProfileFields, updateUserRole, updateUserStatus } from "./users-api.js";
+import { fetchUserDetail, fetchUserHistory, updateUserProfileFields, updateUserPulseOrg, updateUserRole, updateUserStatus } from "./users-api.js";
+import { fetchPulseOrgHierarchy } from "../onboarding/onboarding-api.js";
 import { ROLE_LABELS } from "./roleLabels.js";
 import { assertCanAssignRole, getAssignableRoles, ROLE_RANK } from "../../shared/auth/roleAssignment.js";
 import { CredentialRegeneration } from "../credentials/regeneration";
@@ -30,23 +31,27 @@ const formatValue = (value) => {
   return String(value);
 };
 
-const formatDdMmYyyy = (value) => {
-  const text = String(value ?? "").trim();
-  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) {
-    return formatValue(value);
-  }
+const formatLdapValue = (_field, value) => formatValue(value);
 
-  const [, year, month, day] = match;
-  return `${day}/${month}/${year}`;
+/** Omit LDAP rows duplicated on this page (Pulse org, profile Date / telephone, etc.). */
+const LDAP_FIELD_KEYS_HIDDEN_ON_USER_DETAIL = new Set([
+  "birthdate",
+  "cn",
+  "department",
+  "employeenumber",
+  "telephonenumber"
+]);
+
+/** Friendly labels for raw LDAP attribute names in the read-only list. */
+const LDAP_FIELD_LABELS = {
+  givenname: "First name",
+  samaccountname: "Username",
+  sn: "Last name"
 };
 
-const formatLdapValue = (field, value) => {
-  if (String(field).toLowerCase() === "birthdate") {
-    return formatDdMmYyyy(value);
-  }
-
-  return formatValue(value);
+const formatLdapFieldLabel = (field) => {
+  const key = String(field ?? "").toLowerCase();
+  return LDAP_FIELD_LABELS[key] ?? String(field ?? "");
 };
 
 const formatDate = (value) => {
@@ -87,6 +92,11 @@ const getProfileFieldFallback = (field, user) => {
     return value ? { value, source: "ldap" } : null;
   }
 
+  if (field.key === "telephone-number") {
+    const value = getLdapValue(user?.ldapFields, ["telephoneNumber", "mobile", "telephone"]);
+    return value ? { value: String(value), source: "ldap" } : null;
+  }
+
   return null;
 };
 
@@ -105,7 +115,11 @@ const buildProfileFieldDraft = (fields = [], user) => {
   return Object.fromEntries(fields.map((field) => [field.key, getEditableProfileValue(field, user)]));
 };
 
-const profileFieldInputType = (type) => {
+const profileFieldInputType = (type, fieldKey) => {
+  /** Yahoo vendor temp is not a secret login password — show plain while editing. */
+  if (fieldKey === "temporary-password") {
+    return "text";
+  }
   if (type === "email" || type === "date" || type === "password") {
     return type;
   }
@@ -119,6 +133,18 @@ const formatProfileFieldValue = (field, value, canRevealSensitive = false) => {
   return formatValue(value);
 };
 
+const getSelectedPulseOrg = ({ hierarchy, divisionId, departmentId, sectionId }) => {
+  const division = (hierarchy.divisions ?? []).find((entry) => entry.id === divisionId);
+  const department = (hierarchy.departments ?? []).find((entry) => entry.id === departmentId);
+  const section = (hierarchy.sections ?? []).find((entry) => entry.id === sectionId);
+
+  return {
+    division: division ? { id: division.id, name: division.name } : null,
+    department: department ? { id: department.id, name: department.name } : null,
+    section: section ? { id: section.id, name: section.name } : null
+  };
+};
+
 const EMPTY_PROFILE_FIELDS = [];
 
 export default function UserDetailPage() {
@@ -128,6 +154,9 @@ export default function UserDetailPage() {
   const [isEditingIdentity, setIsEditingIdentity] = useState(false);
   const [profileFieldDraft, setProfileFieldDraft] = useState({});
   const [roleDraft, setRoleDraft] = useState("");
+  const [pulseDivisionId, setPulseDivisionId] = useState("");
+  const [pulseDepartmentId, setPulseDepartmentId] = useState("");
+  const [pulseSectionId, setPulseSectionId] = useState("");
   const queryClient = useQueryClient();
 
   const sessionQuery = useQuery({
@@ -157,6 +186,40 @@ export default function UserDetailPage() {
   const canEditProfileFields = sessionUser?.role && ['dev', 'it', 'admin', 'head_it'].includes(sessionUser.role);
   const canEnableUsers = sessionUser?.role && ['dev', 'admin', 'head_it'].includes(sessionUser.role);
 
+  const pulseOrgQuery = useQuery({
+    queryKey: ["onboarding", "pulse-org-hierarchy"],
+    queryFn: fetchPulseOrgHierarchy,
+    enabled: Boolean(sessionQuery.data && canEditProfileFields)
+  });
+
+  const pulseHierarchy = useMemo(
+    () =>
+      pulseOrgQuery.data ?? {
+        enabled: false,
+        divisions: [],
+        departments: [],
+        sections: []
+      },
+    [pulseOrgQuery.data]
+  );
+
+  const departmentsInSelectedDivision = useMemo(() => {
+    const all = pulseHierarchy.departments ?? [];
+    if (!pulseDivisionId) {
+      return all;
+    }
+    return all.filter((d) => d.divisionId === pulseDivisionId);
+  }, [pulseHierarchy.departments, pulseDivisionId]);
+
+  const sectionsInSelectedDepartment = useMemo(() => {
+    if (!pulseDepartmentId) {
+      return [];
+    }
+    return (pulseHierarchy.sections ?? []).filter((s) => s.departmentId === pulseDepartmentId);
+  }, [pulseHierarchy.sections, pulseDepartmentId]);
+
+  const canEditPulseOrg = Boolean(canEditProfileFields && pulseHierarchy.enabled);
+
   const canAssignRoleOnTarget = useMemo(() => {
     if (!sessionUser || !userQuery.data?.user) return false;
     const target = userQuery.data.user;
@@ -180,7 +243,11 @@ export default function UserDetailPage() {
 
   const canEditIdentity =
     Boolean(canEditProfileFields) &&
-    Boolean((userQuery.data?.user?.profileFields?.length ?? 0) > 0 || canAssignRoleOnTarget);
+    Boolean(
+      (userQuery.data?.user?.profileFields?.length ?? 0) > 0 ||
+        canAssignRoleOnTarget ||
+        canEditPulseOrg
+    );
 
   const updateProfileFieldsMutation = useMutation({
     mutationFn: ({ userId, values }) => updateUserProfileFields(userId, values),
@@ -192,6 +259,14 @@ export default function UserDetailPage() {
 
   const updateUserRoleMutation = useMutation({
     mutationFn: ({ userId, role }) => updateUserRole(userId, role),
+    onSuccess: async () => {
+      await userQuery.refetch();
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    }
+  });
+
+  const updatePulseOrgMutation = useMutation({
+    mutationFn: ({ userId, pulseOrg }) => updateUserPulseOrg(userId, pulseOrg),
     onSuccess: async () => {
       await userQuery.refetch();
       queryClient.invalidateQueries({ queryKey: ["users"] });
@@ -214,8 +289,14 @@ export default function UserDetailPage() {
   const historyEntries = historyQuery.data ?? [];
   const profileFields = user?.profileFields ?? EMPTY_PROFILE_FIELDS;
 
-  // Deduplicate fields to prevent duplicate React keys
-  const uniqueFields = useMemo(() => [...new Set(fields)], [fields]);
+  // Deduplicate fields to prevent duplicate React keys; drop LDAP keys duplicated elsewhere on this page
+  const uniqueFields = useMemo(
+    () =>
+      [...new Set(fields)].filter(
+        (fieldName) => !LDAP_FIELD_KEYS_HIDDEN_ON_USER_DETAIL.has(String(fieldName).toLowerCase())
+      ),
+    [fields]
+  );
 
   const rows = useMemo(
     () =>
@@ -247,6 +328,10 @@ export default function UserDetailPage() {
   useEffect(() => {
     if (user && !isEditingIdentity) {
       setProfileFieldDraft(buildProfileFieldDraft(profileFields, user));
+      const snap = user.orgSnapshot;
+      setPulseDivisionId(snap?.division?.id ? String(snap.division.id) : "");
+      setPulseDepartmentId(snap?.department?.id ? String(snap.department.id) : "");
+      setPulseSectionId(snap?.section?.id ? String(snap.section.id) : "");
     }
   }, [isEditingIdentity, profileFields, user]);
 
@@ -258,13 +343,36 @@ export default function UserDetailPage() {
   const handleStartEditIdentity = () => {
     setProfileFieldDraft(buildProfileFieldDraft(profileFields, user));
     setRoleDraft(user.role);
+    const snap = user?.orgSnapshot;
+    setPulseDivisionId(snap?.division?.id ? String(snap.division.id) : "");
+    setPulseDepartmentId(snap?.department?.id ? String(snap.department.id) : "");
+    setPulseSectionId(snap?.section?.id ? String(snap.section.id) : "");
     setIsEditingIdentity(true);
   };
 
   const handleCancelEditIdentity = () => {
     setProfileFieldDraft(buildProfileFieldDraft(profileFields, user));
     setRoleDraft(user.role);
+    const snap = user?.orgSnapshot;
+    setPulseDivisionId(snap?.division?.id ? String(snap.division.id) : "");
+    setPulseDepartmentId(snap?.department?.id ? String(snap.department.id) : "");
+    setPulseSectionId(snap?.section?.id ? String(snap.section.id) : "");
     setIsEditingIdentity(false);
+  };
+
+  const handlePulseDivisionChange = (nextDivisionId) => {
+    setPulseDivisionId(nextDivisionId);
+    setPulseDepartmentId("");
+    setPulseSectionId("");
+  };
+
+  const handlePulseDepartmentChange = (nextDepartmentId) => {
+    setPulseDepartmentId(nextDepartmentId);
+    setPulseSectionId("");
+  };
+
+  const handlePulseSectionChange = (nextSectionId) => {
+    setPulseSectionId(nextSectionId);
   };
 
   const handleProfileFieldChange = (key, value) => {
@@ -275,7 +383,9 @@ export default function UserDetailPage() {
   };
 
   const identitySavePending =
-    updateProfileFieldsMutation.isPending || updateUserRoleMutation.isPending;
+    updateProfileFieldsMutation.isPending ||
+    updateUserRoleMutation.isPending ||
+    updatePulseOrgMutation.isPending;
 
   const handleSaveIdentity = async (event) => {
     event.preventDefault();
@@ -298,6 +408,15 @@ export default function UserDetailPage() {
           userId: id,
           values: profileFieldDraft
         });
+      }
+      if (canEditPulseOrg) {
+        const pulseOrg = getSelectedPulseOrg({
+          hierarchy: pulseHierarchy,
+          divisionId: pulseDivisionId,
+          departmentId: pulseDepartmentId,
+          sectionId: pulseSectionId
+        });
+        await updatePulseOrgMutation.mutateAsync({ userId: id, pulseOrg });
       }
       setIsEditingIdentity(false);
       await historyQuery.refetch();
@@ -405,7 +524,7 @@ export default function UserDetailPage() {
           title="Identity"
           meta={
             isEditingIdentity
-              ? "Edit role and manual profile fields where permitted. LDAP rows remain read-only below."
+              ? "Edit profile fields first, then role and JKSPulse org (when enabled), then save. LDAP rows stay read-only."
               : canAssignRoleOnTarget
                 ? "Manual profile fields, role, and read-only LDAP snapshot from the latest sync."
                 : "Manual profile fields and read-only LDAP snapshot from the latest sync."
@@ -453,12 +572,35 @@ export default function UserDetailPage() {
                 className="user-detail-identity-form user-detail-field-list"
                 onSubmit={handleSaveIdentity}
               >
+                {profileFields.map((field) => (
+                  <label className="user-detail-field user-detail-field--editable" key={field.key}>
+                    <span className="user-detail-field-label">{field.label}</span>
+                    {field.type === "textarea" ? (
+                      <textarea
+                        className="user-detail-input"
+                        value={profileFieldDraft[field.key] ?? ""}
+                        onChange={(event) => handleProfileFieldChange(field.key, event.target.value)}
+                        required={field.required}
+                        rows={3}
+                      />
+                    ) : (
+                      <input
+                        className="user-detail-input"
+                        type={profileFieldInputType(field.type, field.key)}
+                        autoComplete={field.key === "temporary-password" ? "off" : undefined}
+                        value={profileFieldDraft[field.key] ?? ""}
+                        onChange={(event) => handleProfileFieldChange(field.key, event.target.value)}
+                        required={field.required}
+                      />
+                    )}
+                  </label>
+                ))}
                 {canAssignRoleOnTarget ? (
-                  <label className="user-detail-field" htmlFor="user-role-select">
+                  <label className="user-detail-field user-detail-field--editable" htmlFor="user-role-select">
                     <span className="user-detail-field-label">Role</span>
                     <select
                       id="user-role-select"
-                      className="form-control"
+                      className="user-detail-input"
                       value={roleDraft}
                       onChange={(event) => setRoleDraft(event.target.value)}
                       aria-label="Assign user role"
@@ -471,31 +613,84 @@ export default function UserDetailPage() {
                     </select>
                   </label>
                 ) : null}
-                {profileFields.map((field) => (
-                  <label className="user-detail-field" key={field.key}>
-                    <span className="user-detail-field-label">{field.label}</span>
-                    {field.type === "textarea" ? (
-                      <textarea
-                        className="form-control"
-                        value={profileFieldDraft[field.key] ?? ""}
-                        onChange={(event) => handleProfileFieldChange(field.key, event.target.value)}
-                        required={field.required}
-                        rows={3}
-                      />
-                    ) : (
-                      <input
-                        className="form-control"
-                        type={profileFieldInputType(field.type)}
-                        value={profileFieldDraft[field.key] ?? ""}
-                        onChange={(event) => handleProfileFieldChange(field.key, event.target.value)}
-                        required={field.required}
-                      />
-                    )}
-                  </label>
-                ))}
-                {updateProfileFieldsMutation.error || updateUserRoleMutation.error ? (
+                {canEditPulseOrg ? (
+                  <>
+                    <label className="user-detail-field user-detail-field--editable" htmlFor="ud-pulse-division">
+                      <span className="user-detail-field-label">Division (JKSPulse)</span>
+                      <select
+                        id="ud-pulse-division"
+                        className="user-detail-input"
+                        value={pulseDivisionId}
+                        onChange={(event) => handlePulseDivisionChange(event.target.value)}
+                        disabled={pulseOrgQuery.isLoading}
+                        aria-label="JKSPulse division"
+                      >
+                        <option value="">Select division</option>
+                        {(pulseHierarchy.divisions ?? []).map((entry) => (
+                          <option key={entry.id} value={entry.id}>
+                            {entry.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="user-detail-field user-detail-field--editable" htmlFor="ud-pulse-department">
+                      <span className="user-detail-field-label">Department (JKSPulse)</span>
+                      <select
+                        id="ud-pulse-department"
+                        className="user-detail-input"
+                        value={pulseDepartmentId}
+                        onChange={(event) => handlePulseDepartmentChange(event.target.value)}
+                        disabled={pulseOrgQuery.isLoading || !departmentsInSelectedDivision.length}
+                        aria-label="JKSPulse department"
+                      >
+                        <option value="">Select department</option>
+                        {departmentsInSelectedDivision.map((entry) => (
+                          <option key={entry.id} value={entry.id}>
+                            {entry.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="user-detail-field user-detail-field--editable" htmlFor="ud-pulse-section">
+                      <span className="user-detail-field-label">Section (JKSPulse)</span>
+                      <select
+                        id="ud-pulse-section"
+                        className="user-detail-input"
+                        value={pulseSectionId}
+                        onChange={(event) => handlePulseSectionChange(event.target.value)}
+                        disabled={
+                          pulseOrgQuery.isLoading ||
+                          !pulseDepartmentId ||
+                          !sectionsInSelectedDepartment.length
+                        }
+                        aria-label="JKSPulse section"
+                      >
+                        <option value="">
+                          {!pulseDepartmentId
+                            ? "Select department first"
+                            : sectionsInSelectedDepartment.length
+                              ? "Select section"
+                              : "No sections"}
+                        </option>
+                        {sectionsInSelectedDepartment.map((entry) => (
+                          <option key={entry.id} value={entry.id}>
+                            {entry.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {pulseOrgQuery.isError ? (
+                      <p className="credentials-error" role="alert">
+                        Could not load JKSPulse hierarchy. Try again or check Pulse configuration.
+                      </p>
+                    ) : null}
+                  </>
+                ) : null}
+                {updateProfileFieldsMutation.error || updateUserRoleMutation.error || updatePulseOrgMutation.error ? (
                   <p className="credentials-error">
-                    {(updateUserRoleMutation.error || updateProfileFieldsMutation.error)?.message}
+                    {(updateUserRoleMutation.error ||
+                      updateProfileFieldsMutation.error ||
+                      updatePulseOrgMutation.error)?.message}
                   </p>
                 ) : null}
               </form>
@@ -547,7 +742,9 @@ export default function UserDetailPage() {
             </div>
           ) : null}
 
-          {pulseOrgRows.length ? (
+          {isEditingIdentity && pulseHierarchy.enabled
+            ? null
+            : pulseOrgRows.length ? (
             <div className="user-detail-field-list">
               {pulseOrgRows.map((row) => (
                 <div className="user-detail-field" key={row.key}>
@@ -562,7 +759,7 @@ export default function UserDetailPage() {
           <div className="user-detail-field-list">
             {rows.map((row) => (
               <div className="user-detail-field" key={row.key}>
-                <span className="user-detail-field-label">{row.field}</span>
+                <span className="user-detail-field-label">{formatLdapFieldLabel(row.field)}</span>
                 <span className="user-detail-field-value">{formatLdapValue(row.field, row.value)}</span>
                 <span className="user-detail-field-source">Source: LDAP</span>
               </div>
