@@ -111,33 +111,6 @@ export const compareVersionsSchema = z.object({
 
 const overrideReasonSchema = z.string().min(10, "Reason must be at least 10 characters").max(500);
 
-const imapInputFieldsSchema = z.object({
-    email: z.string().max(191).optional(),
-    firstName: z.string().max(191).optional(),
-    lastName: z.string().max(191).optional(),
-    fullName: z.string().max(191).optional(),
-    dob: z.string().max(191).optional(),
-    phone: z.string().max(191).optional()
-});
-
-const imapSelectedFieldsSchema = z.object({
-    email: z.boolean().optional(),
-    firstName: z.boolean().optional(),
-    lastName: z.boolean().optional(),
-    fullName: z.boolean().optional(),
-    dob: z.boolean().optional(),
-    phone: z.boolean().optional()
-});
-
-const imapOriginsSchema = z.object({
-    email: z.enum(["ldap", "manual"]).optional(),
-    firstName: z.enum(["ldap", "manual"]).optional(),
-    lastName: z.enum(["ldap", "manual"]).optional(),
-    fullName: z.enum(["ldap", "manual"]).optional(),
-    dob: z.enum(["ldap", "manual"]).optional(),
-    phone: z.enum(["ldap", "manual"]).optional()
-});
-
 const manualOverridePreviewSchema = z.object({
     username: z.string().min(1).max(191).optional(),
     password: z.string().min(1).optional(),
@@ -147,21 +120,7 @@ const manualOverridePreviewSchema = z.object({
     { message: "At least one of username or password must be provided" }
 );
 
-const imapDeterministicOverridePreviewSchema = z.object({
-    mode: z.literal("imap_deterministic"),
-    reason: overrideReasonSchema,
-    inputs: imapInputFieldsSchema,
-    selectedFields: imapSelectedFieldsSchema,
-    origins: imapOriginsSchema.optional().default({})
-}).refine(
-    (data) => Object.values(data.selectedFields).some(Boolean),
-    { message: "At least one selected field is required" }
-);
-
-export const overridePreviewSchema = z.union([
-    manualOverridePreviewSchema,
-    imapDeterministicOverridePreviewSchema
-]);
+export const overridePreviewSchema = manualOverridePreviewSchema;
 
 export const confirmOverrideSchema = z.object({
     previewToken: z.string().min(1, "Preview token is required"),

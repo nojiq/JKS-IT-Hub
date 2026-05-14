@@ -7,11 +7,11 @@ const CredentialList = ({ credentials, onViewHistory, onRegenerate, onOverride }
     const [showPassword, setShowPassword] = useState({});
 
     const getOverrideActionLabel = (system) => {
-        return system === 'imap' ? 'Generate IMAP Password' : 'Override';
+        return system === 'imap' ? 'Record IMAP Password' : 'Override';
     };
 
     const getOverrideActionTitle = (system) => {
-        return system === 'imap' ? 'Generate Deterministic IMAP Password' : 'Override Credential';
+        return system === 'imap' ? 'Record Provider IMAP Password' : 'Override Credential';
     };
 
     const toggleExpand = (id) => {

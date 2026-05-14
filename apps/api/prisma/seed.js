@@ -4,6 +4,7 @@ import { prisma } from '../src/shared/db/prisma.js';
 const DEFAULT_USER_FIELDS = [
     { fieldKey: 'name', label: 'Name', fieldType: 'text', required: true, sensitive: false, sortOrder: 10 },
     { fieldKey: 'email', label: 'Email', fieldType: 'email', required: true, sensitive: false, sortOrder: 20 },
+    { fieldKey: 'telephone-number', label: 'Telephone number', fieldType: 'text', required: false, sensitive: false, sortOrder: 25 },
     { fieldKey: 'date', label: 'Date', fieldType: 'date', required: false, sensitive: false, sortOrder: 30 },
     { fieldKey: 'temporary-password', label: 'Temporary Password', fieldType: 'password', required: false, sensitive: true, sortOrder: 40 },
     { fieldKey: 'actual-password', label: 'Actual Password', fieldType: 'password', required: false, sensitive: true, sortOrder: 50 },

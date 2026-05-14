@@ -77,13 +77,13 @@ describe("IMAP credentials UI", () => {
             />
         );
 
-        const action = screen.getByRole('button', { name: /generate imap password/i });
+        const action = screen.getByRole('button', { name: /record imap password/i });
         fireEvent.click(action);
 
         expect(onOverride).toHaveBeenCalledWith(expect.objectContaining({ system: 'imap' }));
     });
 
-    it("shows deterministic IMAP inputs and live preview in the override modal", async () => {
+    it("IMAP override modal uses manual provider username/password like other systems", async () => {
         const onPreview = vi.fn().mockResolvedValue({
             data: {
                 previewToken: 'preview-imap-1',
@@ -93,21 +93,11 @@ describe("IMAP credentials UI", () => {
                 },
                 proposedCredential: {
                     username: 'person@example.com',
-                    password: 'StablePass1234XY'
+                    password: 'AppPasswordFromHost99'
                 },
                 changes: {
                     usernameChanged: false,
-                    passwordChanged: true,
-                    changedFields: ['phone']
-                },
-                metadata: {
-                    mode: 'imap_deterministic',
-                    selectedFields: ['email', 'phone'],
-                    changedFields: ['phone'],
-                    origins: {
-                        email: 'ldap',
-                        phone: 'manual'
-                    }
+                    passwordChanged: true
                 }
             }
         });
@@ -120,12 +110,7 @@ describe("IMAP credentials UI", () => {
                     id: 'cred-imap',
                     system: 'imap',
                     username: 'person@example.com',
-                    metadata: {
-                        mode: 'imap_deterministic',
-                        selectedFields: ['email'],
-                        changedFields: [],
-                        origins: { email: 'ldap' }
-                    }
+                    metadata: { mode: 'provider_recorded' }
                 }}
                 userId="user-1"
                 userStatus="active"
@@ -133,48 +118,34 @@ describe("IMAP credentials UI", () => {
                 onConfirm={vi.fn()}
                 isLoading={false}
                 ldapFields={{
-                    mail: 'person@example.com',
-                    givenName: 'Alya',
-                    sn: 'Rahman',
-                    cn: 'Alya Rahman',
-                    telephoneNumber: '012-333-4444',
-                    birthDate: '1995-10-03'
+                    mail: 'person@example.com'
                 }}
             />
         );
 
-        expect(screen.getByRole('heading', { name: /generate deterministic imap password/i })).toBeInTheDocument();
-        expect(screen.getByRole('textbox', { name: /^email$/i })).toHaveValue('person@example.com');
-        expect(screen.getByRole('checkbox', { name: /use phone number/i })).not.toBeChecked();
+        expect(screen.getByRole('heading', { name: /override credential: imap/i })).toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('checkbox', { name: /use phone number/i }));
-        fireEvent.change(screen.getByRole('textbox', { name: /phone number/i }), { target: { value: '012-999-0000' } });
+        fireEvent.change(screen.getByLabelText(/^Password:/i), {
+            target: { value: 'AppPasswordFromHost99' }
+        });
+        fireEvent.change(screen.getByPlaceholderText(/minimum 10 characters required/i), {
+            target: { value: 'User received new app password from Yahoo; recording for mailbox access' }
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: /preview changes/i }));
 
         await waitFor(() => {
             expect(onPreview).toHaveBeenCalledWith(
                 'user-1',
                 'imap',
                 expect.objectContaining({
-                    mode: 'imap_deterministic',
-                    inputs: expect.objectContaining({
-                        email: 'person@example.com',
-                        phone: '012-999-0000'
-                    }),
-                    selectedFields: expect.objectContaining({
-                        email: true,
-                        phone: true
-                    }),
-                    origins: expect.objectContaining({
-                        email: 'ldap',
-                        phone: 'manual'
-                    })
+                    password: 'AppPasswordFromHost99',
+                    reason: 'User received new app password from Yahoo; recording for mailbox access'
                 })
             );
         });
 
-        expect(screen.getByText(/stablepass1234xy/i)).toBeInTheDocument();
-        expect(screen.getByText(/information changed/i)).toBeInTheDocument();
-        expect(screen.getByText(/^Phone Number$/i, { selector: '.imap-changed-fields' })).toBeInTheDocument();
+        expect(screen.getByText(/AppPasswordFromHost99/i)).toBeInTheDocument();
     });
 
     it("shows changed information names for deterministic IMAP history without raw values", () => {
@@ -206,5 +177,31 @@ describe("IMAP credentials UI", () => {
         expect(screen.getByText('Email address')).toBeInTheDocument();
         expect(screen.getByText('Phone number')).toBeInTheDocument();
         expect(screen.queryByText('new@example.com')).not.toBeInTheDocument();
+    });
+
+    it("shows provider-recorded note for IMAP history entries", () => {
+        render(
+            <CredentialHistoryCard
+                entry={{
+                    id: 'version-33',
+                    system: 'imap',
+                    reason: 'override',
+                    timestamp: '2026-04-19T12:00:00.000Z',
+                    username: 'person@example.com',
+                    templateVersion: null,
+                    createdBy: { name: 'IT Admin' },
+                    metadata: {
+                        mode: 'provider_recorded',
+                        saveMode: 'active'
+                    }
+                }}
+                isSelected={false}
+                onSelect={vi.fn()}
+                canSelect
+            />
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /show details/i }));
+        expect(screen.getByText(/Password recorded by IT from the email provider/i)).toBeInTheDocument();
     });
 });

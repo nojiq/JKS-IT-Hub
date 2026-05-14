@@ -9,14 +9,13 @@ import {
   fetchUsersForOnboarding,
   previewOnboardingSetup
 } from "../onboarding-api.js";
-import { previewImapPassword } from "../../credentials/api/credentials.js";
 import { useActualPasswordPreview } from "../../credentials/hooks/useImapGenerator.js";
 import { useToast } from "../../../shared/hooks/useToast.js";
 import "../onboarding.css";
 import "../new-joiner-page.css";
 
 const STATUS_OPTIONS = ["", "Active", "Pending", "Suspended"];
-const CATEGORY_OPTIONS = ["", "Staff", "Contractor", "Vendor"];
+const CATEGORY_OPTIONS = ["", "Staff", "Group", "Partner", "Unknown"];
 const WORK_EMAIL_DOMAIN = "jkseng.com";
 const WORK_EMAIL_SUFFIX = `@${WORK_EMAIL_DOMAIN}`;
 
@@ -28,15 +27,6 @@ const defaultActualCharset = {
 };
 
 const ACTUAL_PASSWORD_LENGTH = 12;
-
-/** Empty allowed; non-empty must match API email validation. */
-const isOptionalEmailValid = (raw) => {
-  const value = String(raw ?? "").trim();
-  if (!value) {
-    return true;
-  }
-  return z.string().email().safeParse(value).success;
-};
 
 const getErrorMessage = (error, fallback = "Something went wrong.") => {
   return error?.problemDetails?.detail || error?.message || fallback;
@@ -153,11 +143,6 @@ export function NewJoinerPage() {
   const [androidPassword, setAndroidPassword] = useState("");
   const [remarks, setRemarks] = useState("");
 
-  const [imapPassword, setImapPassword] = useState("");
-  const [imapUsername, setImapUsername] = useState("");
-  const [credentialError, setCredentialError] = useState("");
-  const [imapPreviewBusy, setImapPreviewBusy] = useState(false);
-
   const [manualIdentity, setManualIdentity] = useState({
     fullName: "",
     email: "",
@@ -214,11 +199,11 @@ export function NewJoinerPage() {
   });
 
   const actualPreviewMutation = useActualPasswordPreview();
-  const actualPreviewMutateRef = useRef(actualPreviewMutation.mutate);
+  const actualPreviewMutateAsyncRef = useRef(actualPreviewMutation.mutateAsync);
 
   useEffect(() => {
-    actualPreviewMutateRef.current = actualPreviewMutation.mutate;
-  }, [actualPreviewMutation.mutate]);
+    actualPreviewMutateAsyncRef.current = actualPreviewMutation.mutateAsync;
+  }, [actualPreviewMutation.mutateAsync]);
 
   const catalogItems = catalogItemsQuery.data ?? [];
   const bundles = bundlesQuery.data ?? [];
@@ -263,25 +248,27 @@ export function NewJoinerPage() {
       /^\d{4}-\d{2}-\d{2}$/.test(dob.trim())
     );
   }, [mode, manualIdentity.fullName, manualIdentity.email, dob]);
+  const yahooTemporaryPasswordKeyed = useMemo(
+    () => temporaryPassword.trim().length > 0,
+    [temporaryPassword]
+  );
   const canSubmitOnboarding = useMemo(() => {
     if (mode === "manual") {
       return (
         manualPreviewReady &&
+        yahooTemporaryPasswordKeyed &&
         Boolean(actualPassword) &&
-        Boolean(imapPassword) &&
-        !actualPreviewMutation.isPending &&
-        !imapPreviewBusy
+        !actualPreviewMutation.isPending
       );
     }
     return Boolean(selectedUserId);
   }, [
     actualPassword,
     actualPreviewMutation.isPending,
-    imapPassword,
-    imapPreviewBusy,
     manualPreviewReady,
     mode,
-    selectedUserId
+    selectedUserId,
+    yahooTemporaryPasswordKeyed
   ]);
 
   const resolvedDepartment = mode === "existing_user" ? department : manualIdentity.department;
@@ -315,12 +302,51 @@ export function NewJoinerPage() {
     []
   );
 
+  const actualPreviewHasInput = useMemo(() => {
+    if (mode !== "manual") {
+      return false;
+    }
+    return Boolean(
+      manualIdentity.fullName.trim() ||
+        manualIdentity.email.trim() ||
+        dob.trim() ||
+        temporaryPassword.trim()
+    );
+  }, [dob, manualIdentity.email, manualIdentity.fullName, mode, temporaryPassword]);
+
   const canPreviewActualPassword = useMemo(() => {
+    if (mode !== "manual") {
+      return false;
+    }
     if (actualCharsetEnabledCount <= 0 || ACTUAL_PASSWORD_LENGTH < actualCharsetEnabledCount) {
       return false;
     }
-    return isOptionalEmailValid(manualIdentity.email);
-  }, [manualIdentity.email, actualCharsetEnabledCount]);
+    if (!actualPreviewHasInput) {
+      return false;
+    }
+    return true;
+  }, [mode, actualPreviewHasInput, actualCharsetEnabledCount]);
+
+  const actualPasswordPlaceholder = useMemo(() => {
+    if (mode !== "manual") {
+      return "—";
+    }
+    if (actualPreviewMutation.isPending) {
+      return "Generating…";
+    }
+    if (workEmailError) {
+      return workEmailError;
+    }
+    if (!actualPreviewHasInput) {
+      return "Start typing name, work email, date of birth, or Yahoo temporary password";
+    }
+    return "—";
+  }, [
+    mode,
+    workEmailError,
+    actualPreviewHasInput,
+    actualPreviewMutation.isPending
+  ]);
 
   const actualPreviewPayload = useMemo(
     () => ({
@@ -334,116 +360,35 @@ export function NewJoinerPage() {
     [manualIdentity.fullName, manualIdentity.email, dob, temporaryPassword]
   );
 
-  const canPreviewImapPassword = useMemo(() => {
-    const hasIdentity =
-      Boolean(manualIdentity.fullName.trim()) &&
-      Boolean(manualIdentity.email.trim()) &&
-      isOptionalEmailValid(manualIdentity.email);
-    const hasDob = /^\d{4}-\d{2}-\d{2}$/.test(dob.trim());
-    if (mode === "existing_user") {
-      return Boolean(selectedUserId) && hasIdentity && hasDob;
-    }
-    return hasIdentity && hasDob;
-  }, [dob, manualIdentity.email, manualIdentity.fullName, mode, selectedUserId]);
-
-  const imapPreviewPayload = useMemo(() => {
-    const baseInputs = {
-      email: manualIdentity.email.trim(),
-      fullName: manualIdentity.fullName.trim(),
-      dob: dob || "",
-      temporaryPassword,
-      firstName: "",
-      lastName: "",
-      phone: ""
-    };
-
-    const selectedFields = {
-      email: true,
-      fullName: true,
-      dob: true,
-      temporaryPassword: true
-    };
-
-    if (mode === "existing_user" && selectedUserId) {
-      return {
-        userId: selectedUserId,
-        inputs: baseInputs,
-        selectedFields
-      };
-    }
-
-    return {
-      manualIdentity: {
-        fullName: manualIdentity.fullName.trim(),
-        email: manualIdentity.email.trim()
-      },
-      inputs: baseInputs,
-      selectedFields
-    };
-  }, [dob, manualIdentity.email, manualIdentity.fullName, mode, selectedUserId, temporaryPassword]);
-
   useEffect(() => {
     if (!canPreviewActualPassword) {
       setActualPassword("");
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      actualPreviewMutateRef.current(actualPreviewPayload, {
-        onSuccess: (data) => {
-          if (data?.password) {
-            setActualPassword(data.password);
-          }
-        },
-        onError: () => {
-          setActualPassword("");
-        }
-      });
-    }, 200);
-
-    return () => window.clearTimeout(timer);
-  }, [actualPreviewPayload, canPreviewActualPassword]);
-
-  useEffect(() => {
-    if (!canPreviewImapPassword) {
-      setImapPassword("");
-      setImapUsername("");
-      setCredentialError("");
-      setImapPreviewBusy(false);
-      return;
-    }
-
     let cancelled = false;
-    const timer = window.setTimeout(async () => {
-      setImapPreviewBusy(true);
-      setCredentialError("");
-      try {
-        const body = await previewImapPassword(imapPreviewPayload);
+    const payload = actualPreviewPayload;
+    setActualPassword("");
+
+    void actualPreviewMutateAsyncRef
+      .current(payload)
+      .then((data) => {
         if (cancelled) {
           return;
         }
-        const proposed = body?.data?.proposedCredential;
-        setImapPassword(proposed?.password || "");
-        setImapUsername(proposed?.username || "");
-      } catch (e) {
+        setActualPassword(data?.password ?? "");
+      })
+      .catch(() => {
         if (cancelled) {
           return;
         }
-        setImapPassword("");
-        setImapUsername("");
-        setCredentialError(e.message || "Could not preview IMAP app password.");
-      } finally {
-        if (!cancelled) {
-          setImapPreviewBusy(false);
-        }
-      }
-    }, 200);
+        setActualPassword("");
+      });
 
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
     };
-  }, [canPreviewImapPassword, imapPreviewPayload]);
+  }, [actualPreviewPayload, canPreviewActualPassword]);
 
   useEffect(() => {
     if (mode !== "manual") {
@@ -568,8 +513,6 @@ export function NewJoinerPage() {
     setDob("");
     setTemporaryPassword("");
     setActualPassword("");
-    setImapPassword("");
-    setImapUsername("");
     setIpadMail("");
     setMacMail("");
     setIphoneMail("");
@@ -578,7 +521,6 @@ export function NewJoinerPage() {
     setOutlookAndroid("");
     setAndroidPassword("");
     setRemarks("");
-    setCredentialError("");
   };
 
   const buildPreviewPayload = () => {
@@ -605,13 +547,7 @@ export function NewJoinerPage() {
       selectedCatalogItemKeys: [...selectedItemKeys],
       supplementalCredentials: {
         actualPassword,
-        profileFields,
-        imap: {
-          username: imapUsername || manualIdentity.email.trim(),
-          password: imapPassword,
-          inputs: imapPreviewPayload.inputs,
-          selectedFields: imapPreviewPayload.selectedFields
-        }
+        profileFields
       }
     };
 
@@ -796,11 +732,15 @@ export function NewJoinerPage() {
                     />
                   </div>
                   <div className="nj-field">
-                    <label htmlFor="nj-temp-pw">Yahoo temporary password (optional)</label>
+                    <label htmlFor="nj-temp-pw">Yahoo temporary password (required)</label>
                     <input
                       id="nj-temp-pw"
                       type="text"
+                      autoCapitalize="none"
                       autoComplete="new-password"
+                      spellCheck={false}
+                      required={mode === "manual"}
+                      aria-required={mode === "manual"}
                       value={temporaryPassword}
                       onChange={(e) => setTemporaryPassword(e.target.value)}
                     />
@@ -815,7 +755,7 @@ export function NewJoinerPage() {
               </div>
               <div className="nj-erp-rows">
                 <div className="nj-erp-row">
-                  <div className="nj-field">
+                  <div className="nj-field nj-field-span">
                     <label htmlFor="nj-actual-password">Actual password</label>
                     <input
                       id="nj-actual-password"
@@ -824,42 +764,9 @@ export function NewJoinerPage() {
                       readOnly
                       className="nj-field-readonly"
                       value={actualPassword}
-                      placeholder={actualPreviewMutation.isPending ? "Generating…" : "—"}
+                      placeholder={actualPasswordPlaceholder}
                       aria-busy={actualPreviewMutation.isPending}
                       aria-live="polite"
-                    />
-                    <p className="nj-field-helper">
-                      IMAP app password generated separately (shown next). Stored as IT-only credential; excluded from exports.
-                    </p>
-                  </div>
-                  <div className="nj-field">
-                    <label htmlFor="nj-imap-password">IMAP app password</label>
-                    <input
-                      id="nj-imap-password"
-                      type="text"
-                      autoComplete="off"
-                      readOnly
-                      className="nj-field-readonly"
-                      value={imapPassword}
-                      placeholder={imapPreviewBusy ? "Generating..." : "-"}
-                      aria-busy={imapPreviewBusy}
-                      aria-live="polite"
-                    />
-                    {credentialError ? (
-                      <p className="nj-field-error" role="alert">
-                        {credentialError}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="nj-erp-row">
-                  <div className="nj-field">
-                    <label htmlFor="nj-android-pw">Android password (optional)</label>
-                    <input
-                      id="nj-android-pw"
-                      value={androidPassword}
-                      onChange={(e) => setAndroidPassword(e.target.value)}
-                      autoComplete="off"
                     />
                   </div>
                 </div>
@@ -1063,6 +970,17 @@ export function NewJoinerPage() {
                     />
                   </div>
                   <div className="nj-field">
+                    <label htmlFor="nj-android-pw">Android password (optional)</label>
+                    <input
+                      id="nj-android-pw"
+                      value={androidPassword}
+                      onChange={(e) => setAndroidPassword(e.target.value)}
+                      autoComplete="off"
+                    />
+                  </div>
+                </div>
+                <div className="nj-erp-row">
+                  <div className="nj-field nj-field-span">
                     <label htmlFor="nj-outlook-desktop">Outlook desktop</label>
                     <input
                       id="nj-outlook-desktop"
@@ -1081,7 +999,7 @@ export function NewJoinerPage() {
               <div className="nj-erp-rows">
                 <div className="nj-erp-row">
                   <div className="nj-field nj-field-span">
-                    <label htmlFor="nj-ad">Active Directory (samAccountName)</label>
+                    <label htmlFor="nj-ad">Active Directory</label>
                     <input
                       id="nj-ad"
                       readOnly
@@ -1156,7 +1074,7 @@ export function NewJoinerPage() {
             onClick={handlePreview}
             disabled={
               previewMutation.isPending ||
-              (mode === "manual" && !manualPreviewReady)
+              (mode === "manual" && (!manualPreviewReady || !yahooTemporaryPasswordKeyed))
             }
           >
             Preview setup sheet

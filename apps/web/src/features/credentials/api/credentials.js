@@ -211,16 +211,6 @@ export const getImapWorkbench = async (userId) => {
     return handleResponse(response);
 };
 
-export const previewImapPassword = async (payload) => {
-    const response = await fetch(apiUrl(`${CREDENTIALS_BASE}/imap/preview`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload)
-    });
-    return handleResponse(response);
-};
-
 export const previewActualPassword = async (payload) => {
     const response = await fetch(apiUrl(`${CREDENTIALS_BASE}/actual-password/preview`), {
         method: 'POST',
@@ -248,12 +238,3 @@ export const getPreviousImapPasswords = async (userId) => {
     return handleResponse(response);
 };
 
-export const reviewImapConflicts = async (userId, payload) => {
-    const response = await fetch(apiUrl(`${CREDENTIALS_BASE}/imap/users/${userId}/conflicts/review`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload)
-    });
-    return handleResponse(response);
-};

@@ -14,8 +14,7 @@ vi.mock('../src/features/onboarding/onboarding-api.js', () => ({
 }));
 
 vi.mock('../src/features/credentials/api/credentials.js', () => ({
-    previewActualPassword: vi.fn(),
-    previewImapPassword: vi.fn()
+    previewActualPassword: vi.fn()
 }));
 
 import {
@@ -26,7 +25,7 @@ import {
     fetchUsersForOnboarding,
     previewOnboardingSetup
 } from '../src/features/onboarding/onboarding-api.js';
-import { previewActualPassword, previewImapPassword } from '../src/features/credentials/api/credentials.js';
+import { previewActualPassword } from '../src/features/credentials/api/credentials.js';
 
 const renderPage = () => {
     const queryClient = new QueryClient({
@@ -83,15 +82,6 @@ describe('NewJoinerPage', () => {
             }
         });
 
-        previewImapPassword.mockResolvedValue({
-            data: {
-                proposedCredential: {
-                    username: 'haziq.afendi',
-                    password: 'ImapPreview#1'
-                }
-            }
-        });
-
         fetchUsersForOnboarding.mockResolvedValue([
             {
                 id: 'user-1',
@@ -141,12 +131,26 @@ describe('NewJoinerPage', () => {
         });
     });
 
+    it('offers all category classification options', () => {
+        renderPage();
+
+        const categorySelect = screen.getByLabelText('Category');
+
+        expect(Array.from(categorySelect.options).map((option) => option.value)).toEqual([
+            '',
+            'Staff',
+            'Group',
+            'Partner',
+            'Unknown'
+        ]);
+    });
+
     it('derives Active Directory value from work email', async () => {
         renderPage();
 
         fireEvent.change(screen.getByLabelText('Work email (required)'), { target: { value: 'abu.ali' } });
 
-        expect(screen.getByLabelText('Active Directory (samAccountName)')).toHaveValue('Abuali@7189');
+        expect(screen.getByLabelText('Active Directory')).toHaveValue('Abuali@7189');
     });
 
     it('shows a fixed JKS email domain while storing the full work email', async () => {
@@ -155,6 +159,7 @@ describe('NewJoinerPage', () => {
         fireEvent.change(screen.getByLabelText('Name (required)'), { target: { value: 'Haziq Afendi' } });
         fireEvent.change(screen.getByLabelText('Work email (required)'), { target: { value: 'haziq.afendi' } });
         fireEvent.change(screen.getByLabelText(/Date of birth/), { target: { value: '1995-06-15' } });
+        fireEvent.change(screen.getByLabelText(/Yahoo temporary password/), { target: { value: 'TempYahoo#1' } });
 
         expect(screen.getByLabelText('Work email (required)')).toHaveValue('haziq.afendi');
         expect(screen.getByText('@jkseng.com')).toBeInTheDocument();
@@ -194,58 +199,13 @@ describe('NewJoinerPage', () => {
         expect(screen.getByText('Only @jkseng.com email addresses are allowed.')).toBeInTheDocument();
     });
 
-    it('shows a live IMAP app password preview based on identity and Yahoo temporary password', async () => {
-        previewImapPassword.mockImplementation(async (payload) => ({
-            data: {
-                proposedCredential: {
-                    username: 'haziq.afendi',
-                    password: payload.inputs.temporaryPassword === 'TempYahoo#2' ? 'ImapPreview#2' : 'ImapPreview#1'
-                }
-            }
-        }));
-
-        renderPage();
-
-        fireEvent.change(screen.getByLabelText('Name (required)'), { target: { value: 'Haziq Afendi' } });
-        fireEvent.change(screen.getByLabelText('Work email (required)'), { target: { value: 'haziq.afendi' } });
-        fireEvent.change(screen.getByLabelText(/Date of birth/), { target: { value: '1995-06-15' } });
-        fireEvent.change(screen.getByLabelText(/Yahoo temporary password/), { target: { value: 'TempYahoo#1' } });
-
-        await waitFor(() => {
-            expect(previewImapPassword.mock.calls[0][0]).toEqual(
-                expect.objectContaining({
-                    manualIdentity: expect.objectContaining({
-                        email: 'haziq.afendi@jkseng.com'
-                    }),
-                    inputs: expect.objectContaining({
-                        email: 'haziq.afendi@jkseng.com',
-                        fullName: 'Haziq Afendi',
-                        dob: '1995-06-15',
-                        temporaryPassword: 'TempYahoo#1'
-                    }),
-                    selectedFields: expect.objectContaining({
-                        email: true,
-                        fullName: true,
-                        dob: true,
-                        temporaryPassword: true
-                    })
-                })
-            );
-        });
-
-        expect(await screen.findByLabelText('IMAP app password')).toHaveValue('ImapPreview#1');
-        expect(screen.queryByRole('button', { name: /Generate IMAP password/ })).not.toBeInTheDocument();
-
-        fireEvent.change(screen.getByLabelText(/Yahoo temporary password/), { target: { value: 'TempYahoo#2' } });
-
-        await waitFor(() => {
-            expect(previewImapPassword.mock.calls.at(-1)[0].inputs.temporaryPassword).toBe('TempYahoo#2');
-            expect(screen.getByLabelText('IMAP app password')).toHaveValue('ImapPreview#2');
-        });
-    });
-
     it('fills actual password from live preview as inputs change', async () => {
         renderPage();
+
+        fireEvent.change(screen.getByLabelText('Name (required)'), { target: { value: 'Test User' } });
+        fireEvent.change(screen.getByLabelText('Work email (required)'), { target: { value: 'test.user' } });
+        fireEvent.change(screen.getByLabelText(/Date of birth/), { target: { value: '1998-04-30' } });
+        fireEvent.change(screen.getByLabelText(/Yahoo temporary password/), { target: { value: 'temp-vendor' } });
 
         await waitFor(
             () => {
@@ -255,10 +215,74 @@ describe('NewJoinerPage', () => {
         );
 
         const callsBefore = previewActualPassword.mock.calls.length;
-        fireEvent.change(screen.getByLabelText(/Yahoo temporary password/), { target: { value: 'temp-vendor' } });
+        fireEvent.change(screen.getByLabelText(/Yahoo temporary password/), { target: { value: 'temp-vendor-2' } });
 
         await waitFor(() => {
             expect(previewActualPassword.mock.calls.length).toBeGreaterThan(callsBefore);
+        });
+    });
+
+    it('updates the visible actual password while name, email, and Yahoo temp are still being typed', async () => {
+        previewActualPassword.mockImplementation(async (payload) => ({
+            data: {
+                password: [
+                    payload.fullName || 'blank-name',
+                    payload.email || 'blank-email',
+                    payload.temporaryPassword || 'blank-temp'
+                ].join('|'),
+                metadata: { mode: 'yahoo-actual' }
+            }
+        }));
+
+        renderPage();
+
+        fireEvent.change(screen.getByLabelText('Name (required)'), { target: { value: 'Live User' } });
+
+        await waitFor(() => {
+            expect(screen.getByLabelText('Actual password')).toHaveValue('Live User|blank-email|blank-temp');
+        });
+
+        fireEvent.change(screen.getByLabelText('Work email (required)'), { target: { value: 'live.user' } });
+
+        await waitFor(() => {
+            expect(screen.getByLabelText('Actual password')).toHaveValue('Live User|live.user@jkseng.com|blank-temp');
+        });
+
+        fireEvent.change(screen.getByLabelText(/Yahoo temporary password/), {
+            target: { value: 'TypingYahoo#1' }
+        });
+
+        await waitFor(() => {
+            expect(screen.getByLabelText('Actual password')).toHaveValue('Live User|live.user@jkseng.com|TypingYahoo#1');
+        });
+    });
+
+    it('uses pasted Yahoo temporary password text for the visible actual password preview', async () => {
+        previewActualPassword.mockImplementation(async (payload) => ({
+            data: {
+                password: payload.temporaryPassword === 'PastedYahoo#1'
+                    ? 'ActualFromPaste#1'
+                    : 'UnexpectedPreview#1',
+                metadata: { mode: 'yahoo-actual' }
+            }
+        }));
+
+        renderPage();
+
+        fireEvent.change(screen.getByLabelText('Name (required)'), { target: { value: 'Paste User' } });
+        fireEvent.change(screen.getByLabelText('Work email (required)'), { target: { value: 'paste.user' } });
+        fireEvent.change(screen.getByLabelText(/Date of birth/), { target: { value: '1998-04-30' } });
+        fireEvent.change(screen.getByLabelText(/Yahoo temporary password/), {
+            target: { value: 'PastedYahoo#1' }
+        });
+
+        await waitFor(() => {
+            expect(previewActualPassword).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    temporaryPassword: 'PastedYahoo#1'
+                })
+            );
+            expect(screen.getByLabelText('Actual password')).toHaveValue('ActualFromPaste#1');
         });
     });
 
@@ -288,7 +312,7 @@ describe('NewJoinerPage', () => {
         expect(screen.getByLabelText('Basecamp')).not.toBeChecked();
     });
 
-    it('requires only name, work email, and date of birth before Preview setup sheet (manual)', async () => {
+    it('requires identity fields and Yahoo temp before preview, actual password, and Add User (manual)', async () => {
         renderPage();
 
         expect(await screen.findByRole('heading', { name: 'Add New User' })).toBeInTheDocument();
@@ -302,11 +326,18 @@ describe('NewJoinerPage', () => {
         fireEvent.change(screen.getByLabelText('Work email (required)'), { target: { value: 'test.user@jkseng.com' } });
         fireEvent.change(screen.getByLabelText(/Date of birth/), { target: { value: '1998-04-30' } });
 
+        expect(previewBtn).toBeDisabled();
+        expect(addBtn).toBeDisabled();
+        await waitFor(() => {
+            expect(screen.getByLabelText('Actual password')).toHaveValue('DeterministicPreview#1');
+        });
+
+        fireEvent.change(screen.getByLabelText(/Yahoo temporary password/), { target: { value: 'TempYahoo#1' } });
+
         expect(previewBtn).not.toBeDisabled();
         expect(addBtn).toBeDisabled();
         await waitFor(() => {
             expect(screen.getByLabelText('Actual password')).toHaveValue('DeterministicPreview#1');
-            expect(screen.getByLabelText('IMAP app password')).toHaveValue('ImapPreview#1');
             expect(addBtn).not.toBeDisabled();
         });
     });
@@ -340,7 +371,6 @@ describe('NewJoinerPage', () => {
 
         await waitFor(() => {
             expect(screen.getByLabelText('Actual password')).toHaveValue('DeterministicPreview#1');
-            expect(screen.getByLabelText('IMAP app password')).toHaveValue('ImapPreview#1');
         });
 
         fireEvent.click(screen.getByRole('button', { name: 'Add User' }));
@@ -378,15 +408,12 @@ describe('NewJoinerPage', () => {
                             status: 'Active',
                             category: 'Staff',
                             remarks: 'Ready for onboarding'
-                        },
-                        imap: expect.objectContaining({
-                            username: 'haziq.afendi',
-                            password: 'ImapPreview#1'
-                        })
+                        }
                     })
                 }),
                 expect.anything()
             );
+            expect(previewOnboardingSetup.mock.calls[0][0].supplementalCredentials).not.toHaveProperty('imap');
             expect(confirmOnboardingSetup.mock.calls[0][0]).toEqual({
                 confirmed: true,
                 previewToken: 'preview-1'
@@ -405,8 +432,10 @@ describe('NewJoinerPage', () => {
         fireEvent.change(screen.getByLabelText('Name (required)'), { target: { value: 'Test User' } });
         fireEvent.change(screen.getByLabelText('Work email (required)'), { target: { value: 'test.user' } });
         fireEvent.change(screen.getByLabelText(/Date of birth/), { target: { value: '1998-04-30' } });
+        fireEvent.change(screen.getByLabelText(/Yahoo temporary password/), { target: { value: 'TempYahoo#1' } });
 
         await waitFor(() => {
+            expect(screen.getByLabelText('Actual password')).toHaveValue('DeterministicPreview#1');
             expect(screen.getByRole('button', { name: 'Add User' })).not.toBeDisabled();
         });
 

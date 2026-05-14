@@ -137,7 +137,7 @@ describe('OnboardingHomePage route', () => {
 
         expect(await screen.findByRole('heading', { name: 'Onboarding' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Onboarding' })).toHaveClass('is-active');
-        expect(screen.getByRole('link', { name: /open setup flow/i })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /create new user/i })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /review reusable defaults/i })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /open app catalog/i })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Start New Joiner' })).toBeInTheDocument();

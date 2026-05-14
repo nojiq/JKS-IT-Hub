@@ -208,6 +208,26 @@ export const updateUserStatus = async (id, status) => {
   });
 };
 
+export const updateUserOrgSnapshot = async (id, orgSnapshot) => {
+  return prisma.user.update({
+    where: { id },
+    data: {
+      orgSnapshot: orgSnapshot === null ? null : orgSnapshot,
+      orgSyncedAt: new Date()
+    },
+    select: {
+      id: true,
+      username: true,
+      role: true,
+      status: true,
+      ldapAttributes: true,
+      ldapSyncedAt: true,
+      orgSnapshot: true,
+      orgSyncedAt: true
+    }
+  });
+};
+
 export const listUsersFiltered = async (filters = {}, pagination = {}) => {
   const { page = 1, perPage = 20 } = pagination;
   const skip = (page - 1) * perPage;

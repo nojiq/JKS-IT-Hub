@@ -66,6 +66,15 @@ export const updateUserProfileFields = async (userId, values) => {
   return parsePayload(response);
 };
 
+export const updateUserPulseOrg = async (userId, pulseOrg) => {
+  const response = await apiFetch(`/users/${userId}/pulse-org`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pulseOrg })
+  });
+  return parsePayload(response);
+};
+
 export const updateUserRole = async (userId, role) => {
   const response = await apiFetch(`/users/${userId}/role`, {
     method: "PATCH",

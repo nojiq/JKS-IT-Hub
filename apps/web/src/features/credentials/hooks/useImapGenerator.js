@@ -12,15 +12,6 @@ export const useImapWorkbench = (userId) => {
     });
 };
 
-export const useImapPreview = () => {
-    return useMutation({
-        mutationFn: async (payload) => {
-            const response = await credentialsApi.previewImapPassword(payload);
-            return response.data;
-        }
-    });
-};
-
 export const useActualPasswordPreview = () => {
     return useMutation({
         mutationFn: async (payload) => {
@@ -47,14 +38,5 @@ export const usePreviousImapPasswords = (userId) => {
             return payload.data;
         },
         enabled: Boolean(userId)
-    });
-};
-
-export const useImapConflictReview = () => {
-    return useMutation({
-        mutationFn: async ({ userId, payload }) => {
-            const response = await credentialsApi.reviewImapConflicts(userId, payload);
-            return response.data;
-        }
     });
 };

@@ -1,4 +1,5 @@
 /* eslint-disable */
+import "./bootstrap-database-env.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
@@ -45,37 +46,16 @@ const buildApp = async ({ role = "it" } = {}) => {
     const credentialService = {
         loadImapWorkbench: async (userId) => ({
             user: { id: userId, username: "abdullah.fauzi", status: "active" },
-            subjectKey: "user-1",
-            fields: {
-                fullName: {
-                    value: "Abu",
-                    source: "system",
-                    ldapValue: "Abdullah Fauzi"
-                }
-            },
             activeCredential: null,
-            previousPasswordsCount: 1,
-            conflicts: []
-        }),
-        previewImapPassword: async () => ({
-            subjectKey: "manual:abu|abu@example.com",
-            proposedCredential: {
-                username: "abu@example.com",
-                password: "StablePass123456"
-            },
-            metadata: {
-                subjectKey: "manual:abu|abu@example.com",
-                selectedFields: ["dob", "phone"],
-                sources: { dob: "manual", phone: "manual" }
-            }
+            previousPasswordsCount: 1
         }),
         saveImapPassword: async () => ({
             user: { id: "user-1", username: "abdullah.fauzi", status: "active" },
-            subjectKey: "manual:abu|abu@example.com",
             record: {
                 id: "cred-1",
                 isActive: true,
                 metadata: {
+                    mode: "provider_recorded",
                     saveMode: "active"
                 }
             }
@@ -83,15 +63,7 @@ const buildApp = async ({ role = "it" } = {}) => {
         listPreviousImapPasswords: async () => ([
             { id: "cred-1", isActive: true, metadata: { saveMode: "active" } },
             { id: "cred-2", isActive: false, metadata: { saveMode: "history_only" } }
-        ]),
-        applyImapConflictResolution: async () => ({
-            user: { id: "user-1", username: "abdullah.fauzi", status: "active" },
-            subjectKey: "user-1",
-            fields: {
-                fullName: { value: "Abdullah Fauzi", source: "ldap" }
-            },
-            conflicts: []
-        })
+        ])
     };
 
     await app.register(credentialRoutes, {
@@ -131,8 +103,9 @@ test("IMAP Generator API allows IT roles to load workbench state", async () => {
 
     assert.equal(response.statusCode, 200);
     const body = response.json();
-    assert.equal(body.data.subjectKey, "user-1");
-    assert.equal(body.data.fields.fullName.source, "system");
+    assert.equal(body.data.user.id, "user-1");
+    assert.equal(body.data.previousPasswordsCount, 1);
+    assert.equal(body.data.activeCredential, null);
     await app.close();
 });
 
@@ -149,34 +122,20 @@ test("IMAP Generator API rejects non-IT roles", async () => {
     await app.close();
 });
 
-test("IMAP Generator API previews deterministic passwords", async () => {
-    const { app, authHeader } = await buildApp({ role: "head_it" });
+test("IMAP save API rejects missing password", async () => {
+    const { app, authHeader } = await buildApp({ role: "it" });
 
     const response = await app.inject({
         method: "POST",
-        url: "/api/v1/credentials/imap/preview",
+        url: "/api/v1/credentials/imap/save",
         headers: authHeader,
         payload: {
-            manualIdentity: {
-                fullName: "Abu",
-                email: "abu@example.com"
-            },
-            username: "abu@example.com",
-            inputs: {
-                dob: "2021-01-21",
-                phone: "123"
-            },
-            selectedFields: {
-                dob: true,
-                phone: true
-            }
+            userId: "user-1",
+            setActive: true
         }
     });
 
-    assert.equal(response.statusCode, 200);
-    const body = response.json();
-    assert.equal(body.data.subjectKey, "manual:abu|abu@example.com");
-    assert.equal(body.data.proposedCredential.username, "abu@example.com");
+    assert.equal(response.statusCode, 400);
     await app.close();
 });
 
@@ -271,22 +230,9 @@ test("IMAP Generator API saves passwords with active mode", async () => {
         url: "/api/v1/credentials/imap/save",
         headers: authHeader,
         payload: {
-            manualIdentity: {
-                fullName: "Abu",
-                email: "abu@example.com"
-            },
-            createUser: {
-                username: "abu"
-            },
+            userId: "user-1",
             username: "abu@example.com",
-            inputs: {
-                dob: "2021-01-21",
-                phone: "123"
-            },
-            selectedFields: {
-                dob: true,
-                phone: true
-            },
+            password: "From-Host-Provider-1",
             setActive: true
         }
     });
@@ -294,6 +240,7 @@ test("IMAP Generator API saves passwords with active mode", async () => {
     assert.equal(response.statusCode, 201);
     const body = response.json();
     assert.equal(body.data.record.metadata.saveMode, "active");
+    assert.equal(body.data.record.metadata.mode, "provider_recorded");
     await app.close();
 });
 
@@ -328,26 +275,6 @@ test("IMAP Generator API lists previous passwords", async () => {
     const body = response.json();
     assert.equal(body.data.length, 2);
     assert.equal(body.data[1].metadata.saveMode, "history_only");
-    await app.close();
-});
-
-test("IMAP Generator API applies conflict review decisions", async () => {
-    const { app, authHeader } = await buildApp();
-
-    const response = await app.inject({
-        method: "POST",
-        url: "/api/v1/credentials/imap/users/user-1/conflicts/review",
-        headers: authHeader,
-        payload: {
-            fields: {
-                fullName: "use_ldap"
-            }
-        }
-    });
-
-    assert.equal(response.statusCode, 200);
-    const body = response.json();
-    assert.equal(body.data.fields.fullName.source, "ldap");
     await app.close();
 });
 

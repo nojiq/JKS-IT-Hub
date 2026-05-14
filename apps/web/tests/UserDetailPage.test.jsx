@@ -78,9 +78,27 @@ const userDetailPayload = Object.freeze({
             matchedBy: 'email',
             confidence: 'exact'
         }),
-        ldapFields: Object.freeze({ mail: 'jane@example.com', department: 'Finance', birthDate: '1998-01-02' })
+        ldapFields: Object.freeze({
+            mail: 'jane@example.com',
+            department: 'Finance',
+            birthDate: '1998-01-02',
+            sAMAccountName: 'jane.doe',
+            cn: 'jane.doe',
+            givenName: 'Jane',
+            sn: 'Doe'
+        })
     }),
-    fields: Object.freeze(['mail', 'department', 'birthDate'])
+    fields: Object.freeze([
+        'mail',
+        'department',
+        'birthDate',
+        'employeeNumber',
+        'telephoneNumber',
+        'sAMAccountName',
+        'cn',
+        'givenName',
+        'sn'
+    ])
 });
 
 const historyPayload = Object.freeze([]);
@@ -153,8 +171,19 @@ describe('UserDetailPage', () => {
         expect(screen.getByText('Section')).toBeInTheDocument();
         expect(screen.getByText('INFRASTRUCTURE')).toBeInTheDocument();
         expect(screen.getAllByText('Source: JKSPulse').length).toBeGreaterThanOrEqual(1);
-        expect(screen.getByText('02/01/1998')).toBeInTheDocument();
-        expect(screen.queryByText('1998-01-02')).not.toBeInTheDocument();
+        expect(screen.queryByText('birthDate')).not.toBeInTheDocument();
+        expect(screen.queryByText('department')).not.toBeInTheDocument();
+        expect(screen.queryByText('employeeNumber')).not.toBeInTheDocument();
+        expect(screen.queryByText('telephoneNumber')).not.toBeInTheDocument();
+        expect(screen.queryByText('sAMAccountName')).not.toBeInTheDocument();
+        const ldapRows = screen.getAllByText('Source: LDAP').map((node) => node.closest('.user-detail-field'));
+        const ldapFieldLabels = ldapRows.map((row) => row?.querySelector('.user-detail-field-label')?.textContent);
+        expect(ldapFieldLabels).not.toContain('cn');
+        expect(ldapFieldLabels).not.toContain('givenName');
+        expect(ldapFieldLabels).not.toContain('sn');
+        expect(ldapFieldLabels).toContain('First name');
+        expect(ldapFieldLabels).toContain('Last name');
+        expect(ldapFieldLabels).toContain('Username');
         expect(screen.getByText('Account Status')).toBeInTheDocument();
         expect(screen.getByText('Credential Generator Stub')).toBeInTheDocument();
         expect(screen.getByText('Recent Actions')).toBeInTheDocument();

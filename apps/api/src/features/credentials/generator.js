@@ -256,113 +256,6 @@ const generatePassword = (pattern, fieldValues, deterministicSeed) => {
     .join('');
 };
 
-const IMAP_DETERMINISTIC_FIELDS = ['email', 'firstName', 'lastName', 'fullName', 'dob', 'phone', 'temporaryPassword'];
-const IMAP_DETERMINISTIC_MODE = 'imap_deterministic';
-const IMAP_DETERMINISTIC_ALGORITHM_VERSION = 1;
-
-const normalizeImapInputValue = (field, value) => {
-  if (value === null || value === undefined) {
-    return '';
-  }
-
-  const normalized = String(value).trim();
-  switch (field) {
-    case 'email':
-      return normalized.toLowerCase();
-    case 'firstName':
-    case 'lastName':
-    case 'fullName':
-      return normalized.replace(/\s+/g, ' ').toLowerCase();
-    case 'phone':
-      return normalized.replace(/\D+/g, '');
-    default:
-      return normalized;
-  }
-};
-
-const fingerprintImapInputValue = (value) => {
-  return createHash('sha256').update(value).digest('hex').slice(0, 16);
-};
-
-export const generateImapDeterministicPassword = ({
-  subjectKey,
-  userId,
-  username,
-  inputs = {},
-  selectedFields = {},
-  origins = {},
-  previousMetadata = null
-}) => {
-  const resolvedSubjectKey = String(subjectKey ?? userId ?? '').trim();
-  if (!resolvedSubjectKey) {
-    throw new Error('IMAP deterministic generator requires subjectKey or userId');
-  }
-
-  const normalizedUsername = normalizeImapInputValue('email', username);
-  const resolvedSelectedFields = IMAP_DETERMINISTIC_FIELDS
-    .filter((field) => selectedFields[field])
-    .sort((a, b) => a.localeCompare(b));
-
-  const normalizedInputs = {};
-  const inputFingerprints = {};
-  const selectedOrigins = {};
-
-  for (const field of resolvedSelectedFields) {
-    const normalizedValue = normalizeImapInputValue(field, inputs[field]);
-    normalizedInputs[field] = normalizedValue;
-    inputFingerprints[field] = fingerprintImapInputValue(normalizedValue);
-    selectedOrigins[field] = origins[field] || 'manual';
-  }
-
-  const deterministicSeed = stableStringify({
-    mode: IMAP_DETERMINISTIC_MODE,
-    algorithmVersion: IMAP_DETERMINISTIC_ALGORITHM_VERSION,
-    system: 'imap',
-    subjectKey: resolvedSubjectKey,
-    username: normalizedUsername,
-    selectedFields: resolvedSelectedFields,
-    inputs: normalizedInputs
-  });
-
-  const password = deriveDeterministicChars(`${deterministicSeed}:password`, 16);
-  let changedFields = [];
-
-  if (previousMetadata?.mode === IMAP_DETERMINISTIC_MODE) {
-    const previousSelectedFields = new Set(previousMetadata.selectedFields || []);
-    const previousFingerprints = previousMetadata.inputFingerprints || {};
-    const previousOrigins = previousMetadata.origins || {};
-
-    changedFields = IMAP_DETERMINISTIC_FIELDS.filter((field) => {
-      const isSelected = resolvedSelectedFields.includes(field);
-      const wasSelected = previousSelectedFields.has(field);
-
-      if (isSelected !== wasSelected) {
-        return true;
-      }
-
-      if (!isSelected) {
-        return false;
-      }
-
-      return previousFingerprints[field] !== inputFingerprints[field]
-        || (previousOrigins[field] || null) !== (selectedOrigins[field] || null);
-    });
-  }
-
-  return {
-    password,
-    metadata: {
-      mode: IMAP_DETERMINISTIC_MODE,
-      algorithmVersion: IMAP_DETERMINISTIC_ALGORITHM_VERSION,
-      subjectKey: resolvedSubjectKey,
-      selectedFields: resolvedSelectedFields,
-      changedFields,
-      origins: selectedOrigins,
-      inputFingerprints
-    }
-  };
-};
-
 const YAHOO_ACTUAL_MODE = 'yahoo_actual';
 const YAHOO_ACTUAL_ALGORITHM_VERSION = 1;
 
@@ -404,6 +297,22 @@ const deriveDeterministicFromPool = (seed, length, pool) => {
  * Always normalizes to zero-padded `dd/mm/yyyy` (day-first for slash forms), matching
  * `IsoDatePopoverField` calendar output and preserving legacy seeds for existing previews.
  */
+const normalizeYahooIdentityField = (field, value) => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  const normalized = String(value).trim();
+  switch (field) {
+    case 'email':
+      return normalized.toLowerCase();
+    case 'fullName':
+      return normalized.replace(/\s+/g, ' ').toLowerCase();
+    default:
+      return normalized;
+  }
+};
+
 const formatDdMmYyyyPadded = (day, month, year) =>
   `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year}`;
 
@@ -453,8 +362,8 @@ export const generateActualDeterministicPassword = ({
   charset
 }) => {
   const normalized = {
-    fullName: normalizeImapInputValue('fullName', fullName),
-    email: normalizeImapInputValue('email', email),
+    fullName: normalizeYahooIdentityField('fullName', fullName),
+    email: normalizeYahooIdentityField('email', email),
     dob: canonicalDobForYahooActual(dob),
     temporaryPassword: String(temporaryPassword ?? '').trim()
   };
@@ -704,7 +613,6 @@ export const previewCredentials = (template, user, systemConfig = null) => {
 export default {
   generateCredentials,
   previewCredentials,
-  generateImapDeterministicPassword,
   generateActualDeterministicPassword,
   MissingLdapFieldsError,
   NoActiveTemplateError

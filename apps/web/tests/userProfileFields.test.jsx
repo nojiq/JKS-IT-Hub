@@ -15,7 +15,17 @@ vi.mock("../src/features/users/users-api.js", () => ({
   fetchUserDetail: vi.fn(),
   fetchUserHistory: vi.fn(),
   updateUserStatus: vi.fn(),
-  updateUserProfileFields: vi.fn()
+  updateUserProfileFields: vi.fn(),
+  updateUserPulseOrg: vi.fn()
+}));
+
+vi.mock("../src/features/onboarding/onboarding-api.js", () => ({
+  fetchPulseOrgHierarchy: vi.fn().mockResolvedValue({
+    enabled: false,
+    divisions: [],
+    departments: [],
+    sections: []
+  })
 }));
 
 vi.mock("../src/features/credentials/hooks/useCredentials.js", () => ({

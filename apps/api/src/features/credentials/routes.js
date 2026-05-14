@@ -13,11 +13,7 @@ import {
     compareVersionsSchema,
     versionIdSchema
 } from "./schema.js";
-import {
-    previewImapGeneratorSchema,
-    saveImapGeneratorSchema,
-    reviewImapConflictsSchema
-} from "./imap/schema.js";
+import { saveImapPasswordSchema } from "./imap/schema.js";
 import { previewActualPasswordSchema } from "./actualPasswordSchema.js";
 import { generateActualDeterministicPassword } from "./generator.js";
 import { DisabledUserError, NoChangesDetectedError } from "./service.js";
@@ -1536,25 +1532,6 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         reply.send({ data: result });
     });
 
-    app.post("/imap/preview", async (request, reply) => {
-        const actor = await requireAuthenticated(request, reply, { config, userRepo });
-        if (!actor) return;
-        if (!ensureImapGeneratorAccess(actor, reply)) return;
-
-        const validation = previewImapGeneratorSchema.safeParse(request.body || {});
-        if (!validation.success) {
-            sendProblem(reply, createProblemDetails({
-                status: 400,
-                title: "Invalid Input",
-                detail: validation.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ')
-            }));
-            return;
-        }
-
-        const result = await credentialService.previewImapPassword(validation.data);
-        reply.send({ data: result });
-    });
-
     app.post("/actual-password/preview", async (request, reply) => {
         const actor = await requireAuthenticated(request, reply, { config, userRepo });
         if (!actor) return;
@@ -1587,7 +1564,7 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
         if (!actor) return;
         if (!ensureImapGeneratorAccess(actor, reply)) return;
 
-        const validation = saveImapGeneratorSchema.safeParse(request.body || {});
+        const validation = saveImapPasswordSchema.safeParse(request.body || {});
         if (!validation.success) {
             sendProblem(reply, createProblemDetails({
                 status: 400,
@@ -1608,29 +1585,6 @@ export default async function credentialRoutes(app, { config, userRepo, credenti
 
         const { userId } = request.params;
         const result = await credentialService.listPreviousImapPasswords(userId);
-        reply.send({ data: result });
-    });
-
-    app.post("/imap/users/:userId/conflicts/review", async (request, reply) => {
-        const actor = await requireAuthenticated(request, reply, { config, userRepo });
-        if (!actor) return;
-        if (!ensureImapGeneratorAccess(actor, reply)) return;
-
-        const validation = reviewImapConflictsSchema.safeParse(request.body || {});
-        if (!validation.success) {
-            sendProblem(reply, createProblemDetails({
-                status: 400,
-                title: "Invalid Input",
-                detail: validation.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ')
-            }));
-            return;
-        }
-
-        const { userId } = request.params;
-        const result = await credentialService.applyImapConflictResolution({
-            userId,
-            ...validation.data
-        }, actor.id);
         reply.send({ data: result });
     });
 

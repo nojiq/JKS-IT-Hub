@@ -4,7 +4,6 @@ import * as userRepo from "../users/repo.js";
 import { prisma } from "../../shared/db/prisma.js";
 import {
     generateCredentials,
-    generateImapDeterministicPassword,
     previewCredentials,
     MissingLdapFieldsError,
     NoActiveTemplateError
@@ -984,10 +983,8 @@ export const compareCredentialVersions = async (
 
 export {
     loadImapWorkbench,
-    previewImapPassword,
     saveImapPassword,
-    listPreviousImapPasswords,
-    applyImapConflictResolution
+    listPreviousImapPasswords
 } from "./imap/service.js";
 
 /**
@@ -1120,56 +1117,17 @@ export const previewCredentialOverride = async (userId, system, overrideData, de
     let changes;
     let metadata;
 
-    if (overrideData.mode === "imap_deterministic") {
-        if (system !== "imap") {
-            const error = new Error("Deterministic IMAP override is only supported for the IMAP system");
-            error.code = "UNSUPPORTED_OVERRIDE_MODE";
-            throw error;
-        }
+    // Build preview with partial override logic (includes IMAP — IT records provider values only)
+    proposedCredential = {
+        system,
+        username: overrideData.username || credential.username,
+        password: overrideData.password || credential.password
+    };
 
-        const resolvedSubjectKey = credential.metadata?.subjectKey || userId;
-        const deterministicResult = generateImapDeterministicPassword({
-            subjectKey: resolvedSubjectKey,
-            userId,
-            username: credential.username,
-            inputs: overrideData.inputs,
-            selectedFields: overrideData.selectedFields,
-            origins: overrideData.origins,
-            previousMetadata: credential.metadata
-        });
-
-        metadata = deterministicResult.metadata;
-        if (metadata.changedFields.length === 0 && credential.metadata?.mode !== "imap_deterministic") {
-            metadata = {
-                ...metadata,
-                changedFields: Object.keys(overrideData.selectedFields).filter((field) => overrideData.selectedFields[field])
-            };
-        }
-
-        proposedCredential = {
-            system,
-            username: credential.username,
-            password: deterministicResult.password
-        };
-
-        changes = {
-            usernameChanged: false,
-            passwordChanged: proposedCredential.password !== credential.password,
-            changedFields: metadata.changedFields
-        };
-    } else {
-        // 3. Build preview with partial override logic
-        proposedCredential = {
-            system,
-            username: overrideData.username || credential.username,
-            password: overrideData.password || credential.password
-        };
-
-        changes = {
-            usernameChanged: overrideData.username && overrideData.username !== credential.username,
-            passwordChanged: !!overrideData.password
-        };
-    }
+    changes = {
+        usernameChanged: overrideData.username && overrideData.username !== credential.username,
+        passwordChanged: !!overrideData.password
+    };
 
     // 4. Build preview object
     const preview = {

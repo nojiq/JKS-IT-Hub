@@ -2,6 +2,8 @@ import { requireItUser } from "../../shared/auth/requireItUser.js";
 import { requireAdminOrHead } from "../../shared/auth/requireAdminOrHead.js";
 import { ASSIGNABLE_ROLES, assertCanAssignRole } from "../../shared/auth/roleAssignment.js";
 import { createProblemDetails, sendProblem } from "../../shared/errors/problemDetails.js";
+import { z } from "zod";
+import { buildOrgSnapshotFromPulsePicker } from "./pulseOrgSnapshot.js";
 
 export default async function (app, { config, userRepo, auditRepo, userFieldRepo }) {
     let loadedUserFieldRepo = null;
@@ -207,6 +209,70 @@ export default async function (app, { config, userRepo, auditRepo, userFieldRepo
         }
     });
 
+    const pulseOrgEntitySchema = z.object({
+        id: z.string().trim().max(191),
+        name: z.string().trim().max(191)
+    });
+
+    const patchUserPulseOrgSchema = z.object({
+        pulseOrg: z.object({
+            division: pulseOrgEntitySchema.nullable().optional(),
+            department: pulseOrgEntitySchema.nullable().optional(),
+            section: pulseOrgEntitySchema.nullable().optional()
+        })
+    });
+
+    app.patch("/users/:id/pulse-org", async (request, reply) => {
+        const actor = await requireItUser(request, reply, {
+            config,
+            userRepo,
+            forbiddenDetail: "Only IT, Admin, and Head of IT can update JKSPulse org assignment."
+        });
+        if (!actor) return;
+
+        const { id } = request.params;
+        const target = await userRepo.findUserById(id);
+        if (!target) {
+            sendProblem(reply, createProblemDetails({
+                status: 404,
+                title: "Not Found",
+                detail: "User not found"
+            }));
+            return;
+        }
+
+        const parsed = patchUserPulseOrgSchema.safeParse(request.body ?? {});
+        if (!parsed.success) {
+            sendProblem(reply, createProblemDetails({
+                status: 400,
+                title: "Invalid Input",
+                detail: parsed.error.issues.map((i) => i.message).join("; ") || "Invalid pulse org payload."
+            }));
+            return;
+        }
+
+        const orgSnapshot = buildOrgSnapshotFromPulsePicker(parsed.data.pulseOrg);
+        const updated = await userRepo.updateUserOrgSnapshot(id, orgSnapshot);
+
+        if (auditRepo) {
+            await auditRepo.createAuditLog({
+                action: "user.pulse_org_update",
+                actorUserId: actor.id,
+                entityType: "user",
+                entityId: id,
+                metadata: {
+                    orgSnapshot: updated.orgSnapshot ?? null
+                }
+            });
+        }
+
+        return {
+            data: {
+                user: mapUser(updated)
+            }
+        };
+    });
+
     app.patch("/users/:id/status", async (request, reply) => {
         const actor = await requireAdminOrHead(request, reply, {
             config,
@@ -365,6 +431,8 @@ export default async function (app, { config, userRepo, auditRepo, userFieldRepo
                 "user.ldap_update",
                 "user.update",
                 "user.role_update",
+                "user.profile_fields_update",
+                "user.pulse_org_update",
                 "credentials.regenerate.preview",
                 "credentials.regenerate.confirm",
                 "credentials.override.preview",
@@ -408,6 +476,34 @@ export default async function (app, { config, userRepo, auditRepo, userFieldRepo
                     action: log.action,
                     type: 'lifecycle_event',
                     metadata: log.metadata
+                });
+            }
+
+            else if (log.action === "user.pulse_org_update") {
+                history.push({
+                    id: log.id,
+                    timestamp: log.createdAt,
+                    field: "JKSPulse org",
+                    oldValue: null,
+                    newValue: "Updated",
+                    actor: actorName,
+                    action: log.action,
+                    type: "field_change"
+                });
+            }
+
+            else if (log.action === "user.profile_fields_update") {
+                history.push({
+                    id: log.id,
+                    timestamp: log.createdAt,
+                    field: "Profile fields",
+                    oldValue: null,
+                    newValue: Array.isArray(log.metadata?.changedFields)
+                        ? log.metadata.changedFields.join(", ")
+                        : "Updated",
+                    actor: actorName,
+                    action: log.action,
+                    type: "field_change"
                 });
             }
 

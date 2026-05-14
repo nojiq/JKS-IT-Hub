@@ -1,5 +1,5 @@
 import { useSearchParams } from "react-router-dom";
-import ImapGeneratorPanel from "../imap/ImapGeneratorPanel.jsx";
+import ProviderImapPanel from "./ProviderImapPanel.jsx";
 import ActualPasswordPanel from "./ActualPasswordPanel.jsx";
 import "../imap/ImapGeneratorPage.css";
 import "./credential-generator.css";
@@ -27,7 +27,7 @@ const CredentialGeneratorPage = () => {
                         role="tab"
                         type="button"
                     >
-                        IMAP
+                        IMAP (provider)
                     </button>
                     <button
                         aria-selected={generatorMode === "actual"}
@@ -41,7 +41,7 @@ const CredentialGeneratorPage = () => {
                 </div>
             </header>
 
-            {generatorMode === "imap" ? <ImapGeneratorPanel initialUserId={userId} /> : <ActualPasswordPanel />}
+            {generatorMode === "imap" ? <ProviderImapPanel initialUserId={userId} /> : <ActualPasswordPanel />}
         </section>
     );
 };

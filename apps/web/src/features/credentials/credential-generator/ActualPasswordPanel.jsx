@@ -120,11 +120,11 @@ const ActualPasswordPanel = () => {
     const [charset, setCharset] = useState(defaultCharset);
     const [previewResult, setPreviewResult] = useState(null);
     const previewMutation = useActualPasswordPreview();
-    const mutateRef = useRef(previewMutation.mutate);
+    const mutateAsyncRef = useRef(previewMutation.mutateAsync);
 
     useEffect(() => {
-        mutateRef.current = previewMutation.mutate;
-    }, [previewMutation.mutate]);
+        mutateAsyncRef.current = previewMutation.mutateAsync;
+    }, [previewMutation.mutateAsync]);
 
     const searchQuery = useMemo(() => buildUserSearchQuery(fullName, email), [fullName, email]);
 
@@ -203,19 +203,26 @@ const ActualPasswordPanel = () => {
             return;
         }
 
-        const timer = window.setTimeout(() => {
-            mutateRef.current(payload, {
-                onSuccess: (data) => {
-                    setPreviewResult(data);
-                },
-                onError: () => {
-                    setPreviewResult(null);
+        let cancelled = false;
+        const snapshot = payload;
+
+        void mutateAsyncRef
+            .current(snapshot)
+            .then((data) => {
+                if (cancelled) {
+                    return;
                 }
+                setPreviewResult(data ?? null);
+            })
+            .catch(() => {
+                if (cancelled) {
+                    return;
+                }
+                setPreviewResult(null);
             });
-        }, 200);
 
         return () => {
-            window.clearTimeout(timer);
+            cancelled = true;
         };
     }, [payload, canPreview]);
 

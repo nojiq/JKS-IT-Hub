@@ -131,7 +131,7 @@ test("Credential Override API - confirm success does not double-delete preview i
     await app.close();
 });
 
-test("Credential Override API - preview accepts IMAP deterministic payload", async () => {
+test("Credential Override API - preview accepts manual IMAP password payload", async () => {
     const app = Fastify({ logger: false });
     await app.register(cookie);
 
@@ -146,19 +146,14 @@ test("Credential Override API - preview accepts IMAP deterministic payload", asy
             expiresAt: "2026-02-09T12:05:00.000Z",
             currentCredential: { username: "john.doe@company.com" },
             proposedCredential: {
-                username: "john.doe@company.com",
+                username: overrideData.username || "john.doe@company.com",
                 password: { masked: "••••••••" }
             },
             changes: {
                 usernameChanged: false,
-                passwordChanged: true,
-                changedFields: ["phone"]
+                passwordChanged: true
             },
-            metadata: {
-                mode: overrideData.mode,
-                selectedFields: ["email", "phone"],
-                changedFields: ["phone"]
-            },
+            metadata: null,
             reason: overrideData.reason
         }),
         getPreviewSession: async () => null,
@@ -191,35 +186,14 @@ test("Credential Override API - preview accepts IMAP deterministic payload", asy
         url: "/api/v1/credentials/users/user-1/imap/override/preview",
         headers: { cookie: `${config.cookie.name}=${token}` },
         payload: {
-            mode: "imap_deterministic",
-            reason: "Update IMAP deterministic password after data cleanup",
-            inputs: {
-                email: "john.doe@company.com",
-                firstName: "John",
-                lastName: "Doe",
-                fullName: "John Doe",
-                dob: "1990-01-01",
-                phone: "0123456789"
-            },
-            selectedFields: {
-                email: true,
-                firstName: false,
-                lastName: false,
-                fullName: false,
-                dob: false,
-                phone: true
-            },
-            origins: {
-                email: "ldap",
-                phone: "manual"
-            }
+            password: "AppPasswordFromProvider123",
+            reason: "User received new app password from Yahoo; recording for mailbox access"
         }
     });
 
     assert.equal(response.statusCode, 200);
     const body = response.json();
     assert.equal(body.data.previewToken, "imap-preview-token");
-    assert.equal(body.data.metadata.mode, "imap_deterministic");
-    assert.deepEqual(body.data.changes.changedFields, ["phone"]);
+    assert.equal(body.data.changes.passwordChanged, true);
     await app.close();
 });

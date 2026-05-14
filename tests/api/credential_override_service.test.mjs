@@ -52,7 +52,7 @@ test("previewCredentialOverride keeps unchanged values for partial override", as
     assert.equal(stored.session.proposedCredential.password, "old-password");
 });
 
-test("previewCredentialOverride builds deterministic IMAP preview metadata", async () => {
+test("previewCredentialOverride accepts manual IMAP password from provider", async () => {
     const stored = { token: null, session: null };
     const repoMock = {
         getUserById: async () => ({
@@ -60,11 +60,7 @@ test("previewCredentialOverride builds deterministic IMAP preview metadata", asy
             username: "target",
             status: "active",
             ldapAttributes: {
-                mail: "john.doe@company.com",
-                givenName: "John",
-                sn: "Doe",
-                birthDate: "1990-01-01",
-                telephoneNumber: "0123456789"
+                mail: "john.doe@company.com"
             }
         }),
         getUserCredentialBySystem: async () => ({
@@ -86,30 +82,8 @@ test("previewCredentialOverride builds deterministic IMAP preview metadata", asy
         "user-1",
         "imap",
         {
-            mode: "imap_deterministic",
-            reason: "Update IMAP deterministic password after data cleanup",
-            inputs: {
-                email: " John.Doe@Company.com ",
-                firstName: "John",
-                lastName: "Doe",
-                fullName: "John Doe",
-                dob: "1990-01-01",
-                phone: "0123456789"
-            },
-            selectedFields: {
-                email: true,
-                firstName: false,
-                lastName: true,
-                fullName: false,
-                dob: true,
-                phone: true
-            },
-            origins: {
-                email: "ldap",
-                lastName: "ldap",
-                dob: "manual",
-                phone: "manual"
-            }
+            password: "NewAppPasswordFromHost",
+            reason: "User received new app password from Yahoo; recording for mailbox access"
         },
         {
             repo: repoMock,
@@ -120,14 +94,9 @@ test("previewCredentialOverride builds deterministic IMAP preview metadata", asy
 
     assert.equal(result.previewToken, "imap_preview_token");
     assert.equal(result.currentCredential.username, "john.doe@company.com");
-    assert.equal(result.proposedCredential.username, "john.doe@company.com");
-    assert.match(result.proposedCredential.password.masked, /•+/);
-    assert.equal(result.metadata.subjectKey, "user-1");
-    assert.deepEqual(result.metadata.selectedFields, ["dob", "email", "lastName", "phone"]);
-    assert.deepEqual(result.metadata.changedFields, ["email", "lastName", "dob", "phone"]);
-    assert.equal(stored.session.mode, "imap_deterministic");
-    assert.equal(stored.session.subjectKey, "user-1");
-    assert.deepEqual(stored.session.metadata.selectedFields, ["dob", "email", "lastName", "phone"]);
+    assert.equal(result.changes.passwordChanged, true);
+    assert.equal(stored.session.proposedCredential.password, "NewAppPasswordFromHost");
+    assert.equal(stored.session.mode, null);
 });
 
 test("confirmCredentialOverride stores IMAP metadata on version history", async () => {
@@ -179,27 +148,19 @@ test("confirmCredentialOverride stores IMAP metadata on version history", async 
         token: "imap_preview_token",
         userId: "user-1",
         system: "imap",
-        mode: "imap_deterministic",
         proposedCredential: {
             username: "john.doe@company.com",
             password: "new-password"
         },
         currentCredentialId: "cred-old",
-        reason: "Update IMAP deterministic password after data cleanup",
+        reason: "User received new app password from Yahoo; recording for mailbox access",
         changes: {
             usernameChanged: false,
-            passwordChanged: true,
-            changedFields: ["phone"]
+            passwordChanged: true
         },
         metadata: {
-            mode: "imap_deterministic",
-            algorithmVersion: 1,
-            selectedFields: ["email", "phone"],
-            changedFields: ["phone"],
-            origins: {
-                email: "ldap",
-                phone: "manual"
-            }
+            mode: "provider_recorded",
+            saveMode: "active"
         }
     };
 
@@ -212,6 +173,6 @@ test("confirmCredentialOverride stores IMAP metadata on version history", async 
     assert.equal(calls.versions.length, 2);
     assert.deepEqual(calls.versions[1].metadata, previewSession.metadata);
     assert.deepEqual(calls.auditMetadata.metadata, previewSession.metadata);
-    assert.deepEqual(calls.auditMetadata.changedFields, ["phone"]);
+    assert.deepEqual(calls.auditMetadata.changedFields, []);
     assert.equal(calls.deletedToken, "imap_preview_token");
 });

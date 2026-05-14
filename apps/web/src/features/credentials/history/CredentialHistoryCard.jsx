@@ -173,6 +173,15 @@ function CredentialHistoryCard({ entry, isSelected, onSelect, canSelect }) {
                 </div>
               </div>
             )}
+
+            {entry.metadata?.mode === 'provider_recorded' && (
+              <div className="detail-field">
+                <label>Source</label>
+                <div className="detail-value">
+                  Password recorded by IT from the email provider (not generated in-app).
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
