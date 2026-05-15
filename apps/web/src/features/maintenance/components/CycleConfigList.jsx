@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { formatCycleLabel } from '../utils/maintenanceDisplay.js';
 import './CycleConfigList.css';
 
 const CycleConfigList = ({ cycles = [], onEdit, onGenerateSchedule }) => {
@@ -8,7 +9,7 @@ const CycleConfigList = ({ cycles = [], onEdit, onGenerateSchedule }) => {
     }
 
     return (
-        <table className="cycle-list-table">
+        <table className="workspace-table cycle-list-table">
             <thead>
                 <tr>
                     <th>Name</th>
@@ -20,9 +21,16 @@ const CycleConfigList = ({ cycles = [], onEdit, onGenerateSchedule }) => {
                 </tr>
             </thead>
             <tbody>
-                {cycles.map(cycle => (
+                {cycles.map(cycle => {
+                    const cycleLabel = formatCycleLabel(cycle.name, 'Cycle');
+                    return (
                     <tr key={cycle.id}>
-                        <td>{cycle.name}</td>
+                        <td>
+                            <span className="maintenance-table-primary">{cycleLabel.primary}</span>
+                            {cycleLabel.secondary ? (
+                                <code className="maintenance-table-secondary">{cycleLabel.secondary}</code>
+                            ) : null}
+                        </td>
                         <td>{cycle.intervalMonths}</td>
                         <td>
                             {cycle.defaultChecklist?.name
@@ -48,7 +56,8 @@ const CycleConfigList = ({ cycles = [], onEdit, onGenerateSchedule }) => {
                             )}
                         </td>
                     </tr>
-                ))}
+                    );
+                })}
             </tbody>
         </table>
     );

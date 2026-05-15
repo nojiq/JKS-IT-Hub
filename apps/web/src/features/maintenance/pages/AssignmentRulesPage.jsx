@@ -84,10 +84,16 @@ const AssignmentRulesPage = () => {
 
     return (
         <div className="maintenance-module-page assignment-rules-page">
+            <header className="maintenance-page-header">
+                <div>
+                    <h2>Assignment rules</h2>
+                    <p>Control which technicians receive maintenance windows for each department and strategy.</p>
+                </div>
+            </header>
             <WorkspacePanel
-                variant="content"
-                title="Department Assignment Rules"
-                meta="Control which technicians receive maintenance windows for each department and strategy."
+                variant="table"
+                title="Department rules"
+                meta="Rotation and fixed assignment coverage by department."
                 actions={!isEditing ? (
                     <button onClick={handleCreate} className="workspace-inline-button is-primary" type="button">
                         Create New Rule

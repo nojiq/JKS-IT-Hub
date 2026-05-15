@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useWindow, useMaintenanceCompletion } from '../hooks/useMaintenance.js';
 import DeviceTypeBadge from '../components/DeviceTypeBadge.jsx';
 import { formatDisplayDateTime } from '../../../shared/utils/date-format.js';
-import './MaintenanceSchedulePage.css';
+import { formatCycleLabel, formatWindowTitle } from '../utils/maintenanceDisplay.js';
 
 const toTypeCounts = (deviceTypes = []) => {
     const normalized = deviceTypes
@@ -45,128 +45,128 @@ const MaintenanceWindowDetailPage = () => {
     const completionId = window?.status === 'COMPLETED' ? id : null;
     const { data: completion } = useMaintenanceCompletion(completionId);
 
-    if (isLoading) return <div className="maintenance-schedule-page">Loading maintenance window...</div>;
-    if (error) return <div className="maintenance-schedule-page">Error loading maintenance window: {error.message}</div>;
-    if (!window) return <div className="maintenance-schedule-page">Maintenance window not found.</div>;
+    if (isLoading) {
+        return <div className="maintenance-module-page maintenance-schedule-page">Loading maintenance window...</div>;
+    }
+    if (error) {
+        return <div className="maintenance-module-page maintenance-schedule-page">Error loading maintenance window: {error.message}</div>;
+    }
+    if (!window) {
+        return <div className="maintenance-module-page maintenance-schedule-page">Maintenance window not found.</div>;
+    }
 
+    const title = formatWindowTitle(window);
+    const cycle = formatCycleLabel(window.cycleConfig?.name, 'Ad-hoc');
     const counts = toTypeCounts(window.deviceTypes);
     const typeEntries = Object.entries(counts);
     const checklist = resolveChecklist(window);
 
     return (
-        <div className="maintenance-schedule-page">
-            <div style={{ marginBottom: '1rem' }}>
-                <Link to="/maintenance/schedule" className="btn-secondary" style={{ textDecoration: 'none' }}>
-                    Back to Schedule
-                </Link>
-            </div>
+        <div className="maintenance-module-page maintenance-schedule-page">
+            <header className="maintenance-page-header">
+                <div>
+                    <Link to="/maintenance/schedule" className="workspace-inline-link">Back to schedule</Link>
+                    <h2>{title.primary}</h2>
+                    {title.secondary ? <code>{title.secondary}</code> : null}
+                </div>
+                <span className={`maintenance-status-badge ${String(window.status).toLowerCase()}`}>{window.status}</span>
+            </header>
 
-            <h1 style={{ marginBottom: '0.5rem' }}>{window.cycleConfig?.name || 'Maintenance Window'}</h1>
-            <p style={{ marginBottom: '1.5rem', color: '#5f6368' }}>Window ID: {window.id}</p>
+            <dl className="maintenance-detail-grid">
+                <div>
+                    <dt>Cycle</dt>
+                    <dd>{cycle.primary}</dd>
+                </div>
+                <div>
+                    <dt>Scheduled start</dt>
+                    <dd>{formatDisplayDateTime(window.scheduledStartDate, { fallback: '-' })}</dd>
+                </div>
+                <div>
+                    <dt>Scheduled end</dt>
+                    <dd>{formatDisplayDateTime(window.scheduledEndDate, { fallback: '-' })}</dd>
+                </div>
+                <div>
+                    <dt>Device coverage</dt>
+                    <dd>
+                        <DeviceTypeBadge deviceTypes={window.deviceTypes} showCount />
+                        {typeEntries.length > 0 ? (
+                            <ul className="maintenance-detail-list">
+                                {typeEntries.map(([type, count]) => (
+                                    <li key={type}>{formatTypeLabel(type)}: {count}</li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <span>No device types configured.</span>
+                        )}
+                    </dd>
+                </div>
+            </dl>
 
-            <div style={{ display: 'grid', gap: '1rem' }}>
-                <section>
-                    <h2 style={{ marginBottom: '0.5rem' }}>Status</h2>
-                    <span className={`status-badge ${window.status.toLowerCase()}`}>{window.status}</span>
-                </section>
-
-                <section>
-                    <h2 style={{ marginBottom: '0.5rem' }}>Device Coverage</h2>
-                    <DeviceTypeBadge deviceTypes={window.deviceTypes} showCount />
-                    {typeEntries.length > 0 ? (
-                        <ul style={{ marginTop: '0.5rem' }}>
-                            {typeEntries.map(([type, count]) => (
-                                <li key={type}>{formatTypeLabel(type)}: {count}</li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p>No device types configured.</p>
-                    )}
-                </section>
-
-                <section>
-                    <h2 style={{ marginBottom: '0.5rem' }}>Schedule</h2>
-                    <p><strong>Start:</strong> {formatDisplayDateTime(window.scheduledStartDate, { fallback: '-' })}</p>
-                    <p><strong>End:</strong> {formatDisplayDateTime(window.scheduledEndDate, { fallback: '-' })}</p>
-                </section>
-
-                <section>
-                    <h2 style={{ marginBottom: '0.5rem' }}>Checklist</h2>
-                    {checklist ? (
-                        <>
-                            <p>
-                                <strong>{checklist.name || 'Checklist'} </strong>
-                                {checklist.version ? `(v${checklist.version})` : ''}
-                            </p>
-                            <ol>
-                                {[...checklist.items]
-                                    .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
-                                    .map((item, index) => (
-                                        <li key={item.id || `${item.title}-${index}`}>
-                                            <strong>{item.title}</strong> {item.isRequired ? '(Required)' : '(Optional)'}
-                                            {item.description ? ` - ${item.description}` : ''}
-                                        </li>
-                                    ))}
-                            </ol>
-                        </>
-                    ) : (
-                        <p>No checklist assigned.</p>
-                    )}
-                </section>
-
-                {window.status === 'COMPLETED' && completion && (
-                    <section>
-                        <h2 style={{ marginBottom: '0.5rem' }}>Completion Details</h2>
-                        <p><strong>Status:</strong> <span className="status-badge completed">COMPLETED</span></p>
-                        <p>
-                            <strong>Signed Off By:</strong> {completion.completedBy?.username || 'Unknown'} at{' '}
-                            {formatDisplayDateTime(completion.completedAt, { fallback: '-' })}
+            <section className="maintenance-section">
+                <header className="maintenance-section__header">
+                    <h3>Checklist</h3>
+                </header>
+                {checklist ? (
+                    <>
+                        <p className="maintenance-muted">
+                            <strong>{checklist.name || 'Checklist'}</strong>
+                            {checklist.version ? ` (v${checklist.version})` : ''}
                         </p>
-                        <p>
-                            <strong>Sign-Off Mode:</strong> {formatSignoffMode(completion.signoffMode)}
-                        </p>
-                        {completion.signerName && (
-                            <p><strong>Signer Name:</strong> {completion.signerName}</p>
-                        )}
-                        {completion.signerConfirmedAt && (
-                            <p><strong>Signer Confirmed At:</strong> {formatDisplayDateTime(completion.signerConfirmedAt, { fallback: '-' })}</p>
-                        )}
-                        {completion.signerSignatureUrl && (
-                            <div style={{ marginBottom: '0.75rem' }}>
-                                <strong>Signer Signature:</strong>
-                                <div style={{ marginTop: '0.5rem' }}>
-                                    <img
-                                        src={completion.signerSignatureUrl}
-                                        alt="Signer signature"
-                                        style={{
-                                            maxWidth: '320px',
-                                            width: '100%',
-                                            border: '1px solid #d0d7de',
-                                            borderRadius: '8px',
-                                            background: '#fff'
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        )}
-                        <p><strong>Notes:</strong> {completion.notes || '-'}</p>
-                        <div>
-                            <strong>Checklist Snapshot:</strong>
-                            {completion.checklistItems?.length ? (
-                                <ul>
-                                    {completion.checklistItems.map((item) => (
-                                        <li key={item.id}>
-                                            {item.isCompleted ? '✓' : '✗'} {item.itemTitle} {item.isRequired ? '(Required)' : '(Optional)'}
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p>No checklist snapshot available.</p>
-                            )}
-                        </div>
-                    </section>
+                        <ol className="maintenance-detail-list">
+                            {[...checklist.items]
+                                .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
+                                .map((item, index) => (
+                                    <li key={item.id || `${item.title}-${index}`}>
+                                        <strong>{item.title}</strong> {item.isRequired ? '(Required)' : '(Optional)'}
+                                        {item.description ? ` - ${item.description}` : ''}
+                                    </li>
+                                ))}
+                        </ol>
+                    </>
+                ) : (
+                    <p className="maintenance-muted">No checklist assigned.</p>
                 )}
-            </div>
+            </section>
+
+            {window.status === 'COMPLETED' && completion ? (
+                <section className="maintenance-section">
+                    <header className="maintenance-section__header">
+                        <h3>Completion details</h3>
+                    </header>
+                    <dl className="maintenance-detail-grid">
+                        <div>
+                            <dt>Signed off by</dt>
+                            <dd>
+                                {completion.completedBy?.username || 'Unknown'} at{' '}
+                                {formatDisplayDateTime(completion.completedAt, { fallback: '-' })}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>Sign-off mode</dt>
+                            <dd>{formatSignoffMode(completion.signoffMode)}</dd>
+                        </div>
+                        {completion.signerName ? (
+                            <div>
+                                <dt>Signer name</dt>
+                                <dd>{completion.signerName}</dd>
+                            </div>
+                        ) : null}
+                        {completion.notes ? (
+                            <div>
+                                <dt>Notes</dt>
+                                <dd>{completion.notes}</dd>
+                            </div>
+                        ) : null}
+                    </dl>
+                    {completion.signerSignatureUrl ? (
+                        <img
+                            className="maintenance-detail-signature"
+                            src={completion.signerSignatureUrl}
+                            alt="Signer signature"
+                        />
+                    ) : null}
+                </section>
+            ) : null}
         </div>
     );
 };

@@ -73,7 +73,8 @@ describe('MaintenanceConfigPage linkage states', () => {
 
         renderPage();
 
-        expect(screen.getByText('Maintenance Cycles Configuration')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Maintenance cycles' })).toBeInTheDocument();
+        expect(screen.getByText('Cycle templates')).toBeInTheDocument();
         expect(screen.getByText('Quarterly PM')).toBeInTheDocument();
         expect(screen.getByText('Quarterly preventive maintenance')).toBeInTheDocument();
         expect(screen.queryByTestId('maintenance-config-empty')).not.toBeInTheDocument();

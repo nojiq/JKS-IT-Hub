@@ -16,36 +16,46 @@
   min-width: 0;
 }
 
+.maintenance-home-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--ui-border-subtle);
+}
+
+.maintenance-home-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-family: var(--font-heading);
+  color: var(--ui-text-primary);
+}
+
+.maintenance-home-actions-top {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.maintenance-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.dashboard-column {
+  display: grid;
+  gap: 1.5rem;
+}
+
 .maintenance-support-grid,
 .maintenance-panel-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
-}
-
-.maintenance-overview-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0;
-  border-top: 1px solid var(--ui-border-subtle);
-  border-bottom: 1px solid var(--ui-border-subtle);
-}
-
-.maintenance-overview-card {
-  min-height: 0;
-  padding-inline: 1rem;
-}
-
-.maintenance-overview-card + .maintenance-overview-card {
-  border-left: 1px solid var(--ui-border-subtle);
-}
-
-.maintenance-overview-value {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: 2.25rem;
-  line-height: 1;
-  color: var(--ui-text-primary);
 }
 
 .maintenance-inline-stack {
@@ -135,21 +145,9 @@
 
 @media (max-width: 767px) {
   .maintenance-support-grid,
-  .maintenance-panel-grid {
+  .maintenance-panel-grid,
+  .maintenance-dashboard-grid {
     grid-template-columns: 1fr;
-  }
-
-  .maintenance-overview-grid {
-    grid-template-columns: 1fr;
-    border-bottom: 0;
-  }
-
-  .maintenance-overview-card {
-    padding-inline: 0;
-  }
-
-  .maintenance-overview-card + .maintenance-overview-card {
-    border-left: 0;
   }
 
   .maintenance-home-actions,
@@ -158,7 +156,8 @@
   }
 
   .maintenance-home-actions > *,
-  .maintenance-module-toolbar-actions > * {
+  .maintenance-module-toolbar-actions > *,
+  .maintenance-home-actions-top > * {
     flex: 1 1 100%;
   }
 }

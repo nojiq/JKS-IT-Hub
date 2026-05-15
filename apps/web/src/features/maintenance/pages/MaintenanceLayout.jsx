@@ -1,6 +1,8 @@
 import { Navigate, Outlet, useOutletContext } from "react-router-dom";
 import { WorkspacePageHeader } from "../../../shared/workspace/WorkspacePageHeader.jsx";
+import { MaintenanceSubnav } from "../components/MaintenanceSubnav.jsx";
 import "./MaintenanceHomePage.css";
+import "../maintenance-workspace.css";
 
 import { DEV_ONLY_ROLES } from "../../../shared/auth/workspaceRoles.js";
 
@@ -17,6 +19,8 @@ export function MaintenanceLayout() {
       <WorkspacePageHeader
         title="Maintenance"
       />
+
+      <MaintenanceSubnav />
 
       <div className="maintenance-shell">
         <div className="maintenance-module-panel">

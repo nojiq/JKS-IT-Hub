@@ -40,10 +40,16 @@ const ChecklistManagementPage = () => {
 
     return (
         <div className="maintenance-module-page maintenance-config-page">
+            <header className="maintenance-page-header">
+                <div>
+                    <h2>Maintenance checklists</h2>
+                    <p>Define reusable checklist templates so each maintenance window starts with the right sign-off steps.</p>
+                </div>
+            </header>
             <WorkspacePanel
-                variant="content"
-                title="Maintenance Checklists"
-                meta="Define reusable checklist templates so each maintenance window starts with the right sign-off steps."
+                variant="table"
+                title="Checklist templates"
+                meta="Reusable sign-off steps for maintenance windows."
                 actions={!isEditing ? (
                     <button type="button" className="workspace-inline-button is-primary" onClick={() => setIsCreating(true)}>
                         Create Checklist

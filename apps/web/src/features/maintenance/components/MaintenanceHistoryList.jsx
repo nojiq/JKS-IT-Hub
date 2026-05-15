@@ -2,76 +2,52 @@ import React from 'react';
 import './MaintenanceWindowList.css';
 import DeviceTypeBadge from './DeviceTypeBadge.jsx';
 import { formatDisplayDateTime } from '../../../shared/utils/date-format.js';
+import { formatCycleLabel } from '../utils/maintenanceDisplay.js';
 
 const formatSignoffMode = (mode) => (mode === 'ASSISTED' ? 'Assisted' : 'Standard');
 
 const MaintenanceHistoryList = ({ completions }) => {
     if (!completions || completions.length === 0) {
-        return <div className="window-list-empty">No maintenance history found.</div>;
+        return <div className="maintenance-table-empty">No maintenance history found.</div>;
     }
 
     return (
-        <div className="window-list-container">
-            <table className="window-table">
+        <div className="maintenance-table-container">
+            <table className="workspace-table maintenance-history-table" aria-label="Maintenance history">
                 <thead>
                     <tr>
-                        <th>Date Completed</th>
-                        <th>Signed By</th>
-                        <th>Sign-Off Mode</th>
-                        <th>Signer</th>
-                        <th>Signature</th>
+                        <th>Completed</th>
                         <th>Cycle</th>
-                        <th>Device Types</th>
-                        <th>Checklist Snapshot</th>
+                        <th>Signed by</th>
+                        <th>Mode</th>
+                        <th>Device types</th>
                         <th>Notes</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {completions.map(record => {
+                    {completions.map((record) => {
                         const completionDeviceTypes = Array.isArray(record.deviceTypes) ? record.deviceTypes : [];
                         const windowDeviceTypes = Array.isArray(record.window?.deviceTypes) ? record.window.deviceTypes : [];
                         const deviceTypes = completionDeviceTypes.length > 0 ? completionDeviceTypes : windowDeviceTypes;
-                        const signoffMode = record.signoffMode || 'STANDARD';
-                        const hasSignature = Boolean(record.signerSignatureUrl);
+                        const cycle = formatCycleLabel(record.window?.cycleConfig?.name, 'N/A');
 
                         return (
                             <tr key={record.id}>
-                                <td>{formatDisplayDateTime(record.completedAt, { fallback: '-' })}</td>
-                                <td>{record.completedBy?.username || 'Unknown'}</td>
-                                <td>{formatSignoffMode(signoffMode)}</td>
-                                <td>{record.signerName || '-'}</td>
-                                <td>
-                                    {hasSignature ? (
-                                        <a href={record.signerSignatureUrl} target="_blank" rel="noreferrer">
-                                            View
-                                        </a>
-                                    ) : (
-                                        '-'
-                                    )}
+                                <td data-label="Completed">
+                                    {formatDisplayDateTime(record.completedAt, { fallback: '-' })}
                                 </td>
-                                <td>{record.window?.cycleConfig?.name || 'N/A'}</td>
-                                <td>
+                                <td data-label="Cycle">
+                                    <span className="maintenance-table-primary">{cycle.primary}</span>
+                                    {cycle.secondary ? (
+                                        <code className="maintenance-table-secondary">{cycle.secondary}</code>
+                                    ) : null}
+                                </td>
+                                <td data-label="Signed by">{record.completedBy?.username || 'Unknown'}</td>
+                                <td data-label="Mode">{formatSignoffMode(record.signoffMode || 'STANDARD')}</td>
+                                <td data-label="Device types">
                                     <DeviceTypeBadge deviceTypes={deviceTypes} showCount />
                                 </td>
-                                <td style={{ maxWidth: '260px' }}>
-                                    {(record.checklistItems && record.checklistItems.length > 0) ? (
-                                        <ul style={{ margin: 0, paddingInlineStart: '1rem' }}>
-                                            {record.checklistItems.slice(0, 3).map((item) => (
-                                                <li key={item.id}>
-                                                    {item.isCompleted ? '✓' : '✗'} {item.itemTitle}
-                                                </li>
-                                            ))}
-                                            {record.checklistItems.length > 3 && (
-                                                <li>+{record.checklistItems.length - 3} more</li>
-                                            )}
-                                        </ul>
-                                    ) : (
-                                        record._count?.checklistItems || 0
-                                    )}
-                                </td>
-                                <td style={{ maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    {record.notes || '-'}
-                                </td>
+                                <td data-label="Notes">{record.notes || '-'}</td>
                             </tr>
                         );
                     })}

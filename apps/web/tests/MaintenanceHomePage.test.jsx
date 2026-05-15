@@ -128,23 +128,27 @@ describe('Maintenance module overview route', () => {
 
         useMaintenanceHistory.mockReturnValue({
             data: {
-                data: [{ id: 'history-1' }, { id: 'history-2' }, { id: 'history-3' }],
-                meta: { total: 3 }
+                data: [
+                    { id: 'history-1', window: { id: 'win-h1', status: 'COMPLETED', cycleConfig: { name: 'Quarterly PM' } } },
+                    { id: 'history-2', window: { id: 'win-h2', status: 'COMPLETED', cycleConfig: { name: 'Server Patch' } } }
+                ],
+                meta: { total: 2 }
             },
             isLoading: false,
             error: null
         });
     });
 
-    it('opens /maintenance for developer users with overview panels', async () => {
+    it('opens /maintenance for developer users with dashboard sections', async () => {
         renderMaintenanceApp();
 
-        expect(await screen.findByRole('heading', { name: 'Maintenance' })).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Upcoming Windows' })).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'My Tasks' })).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: 'Maintenance dashboard' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Next maintenance' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'My tasks' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Overdue' })).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'History' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Open schedule' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Recent history' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'View schedule' })).toBeInTheDocument();
+        expect(screen.getByText('Upcoming')).toBeInTheDocument();
     });
 
     it('keeps history subroute reachable for developer users', async () => {
@@ -168,7 +172,7 @@ describe('Maintenance module overview route', () => {
         });
 
         expect(await screen.findByText('Dashboard Content')).toBeInTheDocument();
-        expect(screen.queryByRole('heading', { name: 'Maintenance' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Maintenance dashboard' })).not.toBeInTheDocument();
     });
 
     it('redirects unauthorized users to / and does not render the maintenance shell', async () => {
@@ -176,6 +180,6 @@ describe('Maintenance module overview route', () => {
 
         expect(await screen.findByText('Dashboard Content')).toBeInTheDocument();
         expect(router.state.location.pathname).toBe('/');
-        expect(screen.queryByRole('heading', { name: 'Maintenance' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Maintenance dashboard' })).not.toBeInTheDocument();
     });
 });

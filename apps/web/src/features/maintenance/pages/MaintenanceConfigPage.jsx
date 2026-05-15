@@ -74,10 +74,16 @@ const MaintenanceConfigPage = () => {
 
     return (
         <div className="maintenance-module-page maintenance-config-page">
+            <header className="maintenance-page-header">
+                <div>
+                    <h2>Maintenance cycles</h2>
+                    <p>Define reusable cycles, generate upcoming windows, and keep related checklist templates close at hand.</p>
+                </div>
+            </header>
             <WorkspacePanel
-                variant="content"
-                title="Maintenance Cycles Configuration"
-                meta="Define reusable cycles, generate upcoming windows, and keep related checklist templates close at hand."
+                variant="table"
+                title="Cycle templates"
+                meta="Active and inactive maintenance cycle definitions."
                 actions={!isEditing ? (
                     <div className="maintenance-config-actions">
                         <button onClick={handleCreate} className="workspace-inline-button is-primary" type="button">Add New Cycle</button>

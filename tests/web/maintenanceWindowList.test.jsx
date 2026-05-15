@@ -16,7 +16,7 @@ const baseWindow = {
 };
 
 describe('MaintenanceWindowList', () => {
-    it('groups windows by cycle and renders cards', () => {
+    it('renders a flat workspace table for all windows', () => {
         const windows = [
             {
                 ...baseWindow,
@@ -49,10 +49,10 @@ describe('MaintenanceWindowList', () => {
             />
         );
 
+        expect(screen.getByRole('table', { name: 'Maintenance windows' })).toBeInTheDocument();
         expect(screen.getAllByText('Quarterly').length).toBeGreaterThan(0);
         expect(screen.getAllByText('Biannual').length).toBeGreaterThan(0);
-        expect(screen.getByText('2 window(s)')).toBeInTheDocument();
-        expect(screen.getByText('1 window(s)')).toBeInTheDocument();
+        expect(screen.queryByText(/window\(s\)/i)).not.toBeInTheDocument();
     });
 
     it('calls view and pagination handlers', () => {
@@ -74,25 +74,21 @@ describe('MaintenanceWindowList', () => {
             />
         );
 
-        fireEvent.click(screen.getByRole('button', { name: 'View Details' }));
+        fireEvent.click(screen.getByRole('button', { name: 'View details' }));
         expect(onView).toHaveBeenCalledTimes(1);
 
         fireEvent.click(screen.getByRole('button', { name: 'Next' }));
         expect(onPageChange).toHaveBeenCalledWith(2);
     });
 
-    it('owns styles for every maintenance card action variant', () => {
+    it('owns workspace table styles for maintenance rows', () => {
         const css = readFileSync(
-            resolve(testDir, '../../apps/web/src/features/maintenance/components/MaintenanceWindowCard.css'),
+            resolve(testDir, '../../apps/web/src/features/maintenance/maintenance-workspace.css'),
             'utf8'
         );
 
-        expect(css).toContain('.maintenance-window-card__actions .btn-primary');
-        expect(css).toContain('.maintenance-window-card__actions .btn-secondary');
-        expect(css).toContain('.maintenance-window-card__actions .btn-tertiary');
-        expect(css).toContain('.maintenance-window-card__actions .btn-danger');
-        expect(css).toContain('.maintenance-window-card__action-group--review');
-        expect(css).toContain('.maintenance-window-card__action-group--manage');
-        expect(css).toContain('.maintenance-window-card__action-group--danger');
+        expect(css).toContain('.maintenance-windows-table');
+        expect(css).toContain('.maintenance-status-badge');
+        expect(css).toContain('.maintenance-row-actions__menu');
     });
 });

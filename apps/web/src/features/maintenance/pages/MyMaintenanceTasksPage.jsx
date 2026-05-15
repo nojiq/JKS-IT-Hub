@@ -1,29 +1,21 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMyMaintenanceWindows } from '../hooks/useMaintenance.js';
 import { DataStateBlock } from '../../../shared/workspace/DataStateBlock.jsx';
 import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel.jsx';
-import { formatDisplayDateTime } from '../../../shared/utils/date-format.js';
+import { MaintenanceSearchCombobox } from '../components/MaintenanceSearchCombobox.jsx';
+import MaintenanceWindowList from '../components/MaintenanceWindowList.jsx';
+import { FilterSelect } from '../../../shared/components/FilterPanel/FilterSelect';
 import './MaintenanceHomePage.css';
 import './MyMaintenanceTasksPage.css';
 
 const PAGE_SIZE = 20;
 
-const formatAssignmentReason = (reason) => {
-    if (!reason) return null;
-    if (reason === 'rotation') return 'Rotation';
-    if (reason === 'fixed-assignment') return 'Fixed Assignment';
-    if (reason === 'manual-override') return 'Manual Assignment';
-    return reason;
-};
-
-const normalizeDeviceTypes = (deviceTypes = []) =>
-    deviceTypes
-        .map((item) => (typeof item === 'string' ? item : item?.deviceType))
-        .filter(Boolean);
-
 const MyMaintenanceTasksPage = () => {
+    const navigate = useNavigate();
     const [statusFilter, setStatusFilter] = useState('all');
     const [page, setPage] = useState(1);
+    const [search, setSearch] = useState('');
 
     const statusQuery = statusFilter === 'all' ? undefined : statusFilter.toUpperCase();
     const { data: result, isLoading, error, isFetching } = useMyMaintenanceWindows({
@@ -31,6 +23,24 @@ const MyMaintenanceTasksPage = () => {
         page,
         limit: PAGE_SIZE
     });
+
+    const windows = result?.data || [];
+    const meta = result?.meta || { page, totalPages: 1, total: windows.length };
+
+    const filteredWindows = useMemo(() => {
+        const query = search.trim().toLowerCase();
+        if (!query) return windows;
+        return windows.filter((window) => {
+            const haystack = [
+                window.cycleConfig?.name,
+                window.status,
+                window.assignedTo?.displayName,
+                window.assignedTo?.username,
+                window.id
+            ];
+            return haystack.some((value) => String(value || '').toLowerCase().includes(query));
+        });
+    }, [windows, search]);
 
     if (isLoading && !result) {
         return (
@@ -56,199 +66,106 @@ const MyMaintenanceTasksPage = () => {
         );
     }
 
-    const windows = result?.data || [];
-    const meta = result?.meta || { page, totalPages: 1, total: windows.length };
-
     const upcomingCount = windows.filter((window) => window.status === 'UPCOMING').length;
     const scheduledCount = windows.filter((window) => window.status === 'SCHEDULED').length;
     const overdueCount = windows.filter((window) => window.status === 'OVERDUE').length;
 
     return (
         <div className="maintenance-module-page my-tasks-page">
-            <div className="maintenance-panel-grid stats-summary">
-                <WorkspacePanel variant="detail" title="Upcoming" meta="Assigned work that is arriving soon.">
-                    <div className="stat-value">{upcomingCount}</div>
-                </WorkspacePanel>
-                <WorkspacePanel variant="detail" title="Scheduled" meta="Windows currently planned for execution.">
-                    <div className="stat-value">{scheduledCount}</div>
-                </WorkspacePanel>
-                <WorkspacePanel variant="detail" title="Overdue" meta="Assigned work that needs immediate follow-up.">
-                    <div className="stat-value">{overdueCount}</div>
-                </WorkspacePanel>
+            <header className="maintenance-page-header">
+                <div>
+                    <h2>My maintenance tasks</h2>
+                    <p>Assigned windows for your queue. Filter by status or search to find specific work.</p>
+                </div>
+            </header>
+
+            <dl className="maintenance-summary-strip">
+                <div className="maintenance-summary-item">
+                    <dt>Upcoming</dt>
+                    <dd>{upcomingCount}</dd>
+                </div>
+                <div className="maintenance-summary-item">
+                    <dt>Scheduled</dt>
+                    <dd>{scheduledCount}</dd>
+                </div>
+                <div className="maintenance-summary-item">
+                    <dt>Overdue</dt>
+                    <dd>{overdueCount}</dd>
+                </div>
+            </dl>
+
+            <div className="maintenance-toolbar">
+                <MaintenanceSearchCombobox
+                    value={search}
+                    onChange={setSearch}
+                    windows={windows}
+                    placeholder="Search assigned windows…"
+                    isLoading={isFetching}
+                />
+                <FilterSelect
+                    label="Status"
+                    value={statusFilter === 'all' ? '' : statusFilter}
+                    onChange={(value) => {
+                        setStatusFilter(value || 'all');
+                        setPage(1);
+                    }}
+                    options={[
+                        { value: 'upcoming', label: 'Upcoming' },
+                        { value: 'scheduled', label: 'Scheduled' },
+                        { value: 'overdue', label: 'Overdue' },
+                        { value: 'completed', label: 'Completed' }
+                    ]}
+                />
             </div>
 
-            <WorkspacePanel
-                variant="content"
-                title="Assigned Windows"
-                meta="Filter your queue by status, then open window details to complete or verify work."
-            >
-                <div className="maintenance-select-group filter-section">
-                    <label htmlFor="status-filter">Status</label>
-                    <select
-                        id="status-filter"
-                        value={statusFilter}
-                        onChange={(event) => {
-                            setStatusFilter(event.target.value);
-                            setPage(1);
-                        }}
-                        disabled={isFetching}
-                    >
-                        <option value="all">All Tasks</option>
-                        <option value="upcoming">Upcoming</option>
-                        <option value="scheduled">Scheduled</option>
-                        <option value="overdue">Overdue</option>
-                        <option value="completed">Completed</option>
-                    </select>
-                </div>
-            </WorkspacePanel>
-
-            {windows.length === 0 ? (
-                <WorkspacePanel variant="detail" title="Assigned Windows" meta="No items match the current technician view.">
-                    <div className="empty-state">
-                        {statusFilter === 'all'
+            {filteredWindows.length === 0 ? (
+                <WorkspacePanel variant="detail" title="Assigned windows" meta="No items match the current technician view.">
+                    <p className="maintenance-empty-note">
+                        {statusFilter === 'all' && !search
                             ? 'No maintenance tasks assigned to you.'
-                            : `No ${statusFilter} tasks found.`}
-                    </div>
+                            : 'No tasks match your current filters.'}
+                    </p>
                 </WorkspacePanel>
             ) : (
                 <WorkspacePanel
                     variant="table"
-                    title="Assigned Windows"
-                    meta={`${meta.total ?? windows.length} task${(meta.total ?? windows.length) === 1 ? '' : 's'} in the current queue`}
+                    title="Assigned windows"
+                    meta={`${meta.total ?? filteredWindows.length} task${(meta.total ?? filteredWindows.length) === 1 ? '' : 's'} in the current queue`}
                 >
-                    <div className="tasks-grid">
-                    {windows.map((window) => {
-                        const deviceTypes = normalizeDeviceTypes(window.deviceTypes);
-                        return (
-                            <div key={window.id} className={`task-card ${window.status.toLowerCase()}`}>
-                                <div className="task-header">
-                                    <h3>{window.cycleConfig?.name || 'Ad-hoc Maintenance'}</h3>
-                                    <span className={`status-badge ${window.status.toLowerCase()}`}>
-                                        {window.status}
-                                    </span>
-                                </div>
-
-                                <div className="task-details">
-                                    <div className="detail-row">
-                                        <span className="detail-label">Scheduled:</span>
-                                        <span className="detail-value">
-                                            {formatDisplayDateTime(window.scheduledStartDate)}
-                                        </span>
-                                    </div>
-
-                                    {window.scheduledEndDate && (
-                                        <div className="detail-row">
-                                            <span className="detail-label">End:</span>
-                                            <span className="detail-value">
-                                                {formatDisplayDateTime(window.scheduledEndDate)}
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {window.cycleConfig?.description && (
-                                        <div className="detail-row">
-                                            <span className="detail-label">Description:</span>
-                                            <span className="detail-value">{window.cycleConfig.description}</span>
-                                        </div>
-                                    )}
-
-                                    {window.assignedTo && (
-                                        <div className="detail-row">
-                                            <span className="detail-label">Assigned To:</span>
-                                            <span className="detail-value">
-                                                {window.assignedTo.displayName || window.assignedTo.username || 'Unknown'}
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {window.assignmentReason && (
-                                        <div className="detail-row">
-                                            <span className="detail-label">Assignment:</span>
-                                            <span className={`assignment-reason ${window.assignmentReason.toLowerCase().replace('-', '_')}`}>
-                                                {formatAssignmentReason(window.assignmentReason)}
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {window.assignmentTimestamp && (
-                                        <div className="detail-row">
-                                            <span className="detail-label">Assigned At:</span>
-                                            <span className="detail-value">
-                                                {formatDisplayDateTime(window.assignmentTimestamp)}
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {window.departmentId && (
-                                        <div className="detail-row">
-                                            <span className="detail-label">Department:</span>
-                                            <span className="detail-value">{window.departmentId}</span>
-                                        </div>
-                                    )}
-
-                                    {deviceTypes.length > 0 && (
-                                        <div className="detail-row">
-                                            <span className="detail-label">Device Types:</span>
-                                            <div className="device-types">
-                                                {deviceTypes.map((type, index) => (
-                                                    <span key={`${type}-${index}`} className="device-badge">
-                                                        {type.replace(/_/g, ' ')}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {(window.checklist || window.checklistSnapshot) && (
-                                        <div className="detail-row">
-                                            <span className="detail-label">Checklist:</span>
-                                            <span className="detail-value">
-                                                {window.checklistSnapshot?.name || window.checklist?.name}
-                                                {window.checklistVersion ? ` (v${window.checklistVersion})` : ''}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="task-actions">
-                                    {window.status === 'SCHEDULED' || window.status === 'UPCOMING' ? (
-                                        <a href={`/maintenance/schedule/${window.id}`} className="btn-primary">
-                                            View Details
-                                        </a>
-                                    ) : window.status === 'COMPLETED' ? (
-                                        <span className="completed-label">✓ Completed</span>
-                                    ) : null}
-                                </div>
-                            </div>
-                        );
-                    })}
-                    </div>
+                    <MaintenanceWindowList
+                        windows={filteredWindows}
+                        meta={{ ...meta, totalPages: 1 }}
+                        dense
+                        onView={(window) => navigate(`/maintenance/schedule/${window.id}`)}
+                    />
                 </WorkspacePanel>
             )}
 
-            {meta.totalPages > 1 && (
-                <div className="maintenance-module-pagination pagination-controls">
-                    <button
-                        type="button"
-                        className="workspace-inline-button"
-                        disabled={meta.page <= 1 || isFetching}
-                        onClick={() => setPage(meta.page - 1)}
-                    >
-                        Previous
-                    </button>
-                    <span>
+            {meta.totalPages > 1 ? (
+                <div className="maintenance-pagination-bar">
+                    <p className="maintenance-pagination-summary">
                         Page {meta.page} of {meta.totalPages}
-                    </span>
-                    <button
-                        type="button"
-                        className="workspace-inline-button"
-                        disabled={meta.page >= meta.totalPages || isFetching}
-                        onClick={() => setPage(meta.page + 1)}
-                    >
-                        Next
-                    </button>
+                    </p>
+                    <div className="maintenance-pagination-controls">
+                        <button
+                            type="button"
+                            className="workspace-inline-button"
+                            disabled={meta.page <= 1 || isFetching}
+                            onClick={() => setPage(meta.page - 1)}
+                        >
+                            Previous
+                        </button>
+                        <button
+                            type="button"
+                            className="workspace-inline-button"
+                            disabled={meta.page >= meta.totalPages || isFetching}
+                            onClick={() => setPage(meta.page + 1)}
+                        >
+                            Next
+                        </button>
+                    </div>
                 </div>
-            )}
+            ) : null}
         </div>
     );
 };
