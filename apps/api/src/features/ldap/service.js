@@ -141,6 +141,8 @@ export const authenticateLdapUser = async (config, { username, password, usernam
       "cn",
       "mail",
       "uid",
+      "department",
+      "dept",
       "sAMAccountName",
       "userPrincipalName"
     ]);

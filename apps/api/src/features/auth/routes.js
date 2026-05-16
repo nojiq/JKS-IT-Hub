@@ -6,6 +6,7 @@ import {
 } from "../ldap/service.js";
 import { signSessionToken, parseDurationToSeconds } from "../../shared/auth/jwt.js";
 import { getSessionFromRequest } from "../../shared/auth/session.js";
+import { deriveRoleForDepartment } from "../../shared/auth/departmentRoleAssignment.js";
 import { createProblemDetails, sendProblem } from "../../shared/errors/problemDetails.js";
 
 const loginSchema = z.object({
@@ -75,11 +76,14 @@ export default async function authRoutes(app, { config, userRepo, ldapAuthFn, au
             const canonicalUsername =
                 extractCanonicalLdapUsername(ldapUser, usernameAttribute) ?? ldapSearchName;
 
-            // 2. Find or create local user
-            // Note: We use findOrCreateUser to ensure we have a local record with default role/status
+            // 2. Find or create local user. IT department users are promoted to technician access.
             const user = await userRepo.findOrCreateUser({
                 username: canonicalUsername,
-                // Default role is requester, default status is active (handled by repo/schema default)
+                role: deriveRoleForDepartment({
+                    currentRole: "requester",
+                    ldapAttributes: ldapUser.attributes
+                }),
+                ldapAttributes: ldapUser.attributes
             });
 
             // 3. CHECK STATUS (Critical for Story 1.8)

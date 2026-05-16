@@ -7,6 +7,7 @@ export function WorkspacePanel({
   variant = "content",
   eyebrow,
   title,
+  titleHint,
   meta,
   actions,
   footer,
@@ -15,6 +16,7 @@ export function WorkspacePanel({
 }) {
   const hasHeader = eyebrow || title || meta || actions;
   const titleId = useId();
+  const titleHintId = useId();
 
   return (
     <section
@@ -26,7 +28,29 @@ export function WorkspacePanel({
         <header className="workspace-panel-header-band">
           <div className="workspace-panel-header-copy">
             {eyebrow ? <p className="workspace-panel-eyebrow">{eyebrow}</p> : null}
-            {title ? <h2 className="workspace-panel-title" id={titleId}>{title}</h2> : null}
+            {title ? (
+              <h2 className="workspace-panel-title" id={titleId}>
+                {titleHint ? (
+                  <span
+                    className="workspace-panel-title-hint"
+                    tabIndex={0}
+                    aria-describedby={titleHintId}
+                  >
+                    {title}
+                    <span
+                      className="workspace-panel-title-hint-popup"
+                      id={titleHintId}
+                      role="tooltip"
+                      aria-hidden="true"
+                    >
+                      {titleHint}
+                    </span>
+                  </span>
+                ) : (
+                  title
+                )}
+              </h2>
+            ) : null}
             {meta ? <p className="workspace-panel-meta">{meta}</p> : null}
           </div>
           {actions ? <div className="workspace-panel-header-actions">{actions}</div> : null}

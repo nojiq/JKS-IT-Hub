@@ -121,7 +121,7 @@ describe('SystemManagementPage', () => {
         const { container } = renderPage();
 
         expect(screen.getByRole('heading', { name: 'Systems' })).toBeInTheDocument();
-        expect(screen.getByText('Manage system mappings, username sources, and normalization rules.')).toBeInTheDocument();
+        expect(screen.getByText('Set up connected systems, choose where usernames come from, and tidy how they appear.')).toBeInTheDocument();
         expect(container.querySelector('.workspace-page-header')).not.toBeNull();
         expect(container.querySelectorAll('.workspace-panel').length).toBeGreaterThanOrEqual(2);
         expect(screen.getByRole('heading', { name: 'System Catalog' })).toBeInTheDocument();

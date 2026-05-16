@@ -36,6 +36,22 @@ describe('WorkspacePanel', () => {
         expect(container.querySelector('.workspace-panel-footer')).not.toBeNull();
     });
 
+    it('shows title hint on hover instead of meta line', () => {
+        render(
+            <WorkspacePanel
+                variant="detail"
+                title="Recent Access Actions"
+                titleHint="See recent account changes in history."
+            >
+                <p>Body content</p>
+            </WorkspacePanel>
+        );
+
+        expect(screen.getByRole('heading', { name: 'Recent Access Actions' })).toBeInTheDocument();
+        expect(screen.getByText('See recent account changes in history.')).toHaveClass('workspace-panel-title-hint-popup');
+        expect(screen.queryByText('See recent account changes in history.', { selector: 'p' })).not.toBeInTheDocument();
+    });
+
     it('applies detail and table modifier classes', () => {
         const { container: detailContainer } = render(
             <WorkspacePanel variant="detail">

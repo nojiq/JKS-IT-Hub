@@ -4,6 +4,7 @@ import * as userRepo from "../users/repo.js";
 import * as profileFieldsRepo from "../users/profileFieldsRepo.js";
 import * as credentialRepo from "../credentials/repo.js";
 import * as credentialService from "../credentials/service.js";
+import { deriveRoleForDepartment } from "../../shared/auth/departmentRoleAssignment.js";
 import { OnboardingNotFoundError, OnboardingValidationError } from "./errors.js";
 
 const trimToNull = (value) => {
@@ -123,6 +124,16 @@ export const createManualOnboardingUser = async (manualIdentity, deps = {}) => {
   const samAccountName = deriveActiveDirectoryFromEmail(email);
   const orgSnapshot = buildManualOrgSnapshot(manualIdentity);
   const { givenName, surname } = deriveNameParts(fullName);
+  const ldapAttributes = {
+    cn: fullName,
+    displayName: fullName,
+    mail: email,
+    department,
+    givenName,
+    sn: surname,
+    ...(samAccountName ? { samAccountName } : {}),
+    ...(dob ? { birthDate: dob } : {})
+  };
 
   const existing = await userRepoApi.findUserByUsername(username);
   if (existing) {
@@ -131,19 +142,14 @@ export const createManualOnboardingUser = async (manualIdentity, deps = {}) => {
 
   return userRepoApi.createUser({
     username,
-    role: "requester",
+    role: deriveRoleForDepartment({
+      currentRole: "requester",
+      ldapAttributes,
+      orgSnapshot
+    }),
     status: "active",
     ldapSyncedAt: null,
-    ldapAttributes: {
-      cn: fullName,
-      displayName: fullName,
-      mail: email,
-      department,
-      givenName,
-      sn: surname,
-      ...(samAccountName ? { samAccountName } : {}),
-      ...(dob ? { birthDate: dob } : {})
-    },
+    ldapAttributes,
     ...(orgSnapshot ? { orgSnapshot, orgSyncedAt: new Date() } : {})
   });
 };

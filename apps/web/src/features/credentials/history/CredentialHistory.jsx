@@ -1,11 +1,40 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useCredentialHistory } from '../hooks/useCredentials.js';
 import CredentialHistoryList from './CredentialHistoryList.jsx';
 import CredentialFilters from './CredentialFilters.jsx';
 import CredentialComparison from './CredentialComparison.jsx';
 import HistoryEmptyState from './HistoryEmptyState.jsx';
+import '../../../shared/workspace/workspace.css';
 import './CredentialHistory.css';
+
+function HistoryTitle({ hint, children }) {
+  const hintId = useId();
+
+  if (!hint) {
+    return <h2>{children}</h2>;
+  }
+
+  return (
+    <h2>
+      <span
+        className="workspace-panel-title-hint"
+        tabIndex={0}
+        aria-describedby={hintId}
+      >
+        {children}
+        <span
+          className="workspace-panel-title-hint-popup"
+          id={hintId}
+          role="tooltip"
+          aria-hidden="true"
+        >
+          {hint}
+        </span>
+      </span>
+    </h2>
+  );
+}
 
 /**
  * CredentialHistory Component
@@ -94,10 +123,9 @@ function CredentialHistory({ userId }) {
     return (
       <div className="credential-history">
         <header className="history-header">
-          <h2>Credential History</h2>
-          <p className="history-subtitle">
-            Open a user record to compare historical credential versions and regeneration events.
-          </p>
+          <HistoryTitle hint="Open a user record to compare historical credential versions and regeneration events.">
+            Credential History
+          </HistoryTitle>
         </header>
 
         <HistoryEmptyState hasFilters={false} />
@@ -133,10 +161,9 @@ function CredentialHistory({ userId }) {
   return (
     <div className="credential-history">
       <header className="history-header">
-        <h2>Credential History</h2>
-        <p className="history-subtitle">
-          View and compare historical credential versions
-        </p>
+        <HistoryTitle hint="View and compare historical credential versions">
+          Credential History
+        </HistoryTitle>
       </header>
 
       <CredentialFilters

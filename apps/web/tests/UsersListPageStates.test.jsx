@@ -153,6 +153,35 @@ describe('UsersListPage states', () => {
         expect(queryOptions.placeholderData).toEqual(expect.any(Function));
     });
 
+    it('keeps the directory toolbar mounted when a search returns no users', () => {
+        const router = createMemoryRouter([
+            {
+                path: '/',
+                element: <Outlet context={{ user: { role: 'it', username: 'alice.it' } }} />,
+                children: [{ index: true, element: <UsersListPage /> }]
+            }
+        ], {
+            initialEntries: ['/?search=lee+sing+lee']
+        });
+
+        useQuery.mockReturnValue({
+            data: {
+                users: [],
+                fields: [],
+                meta: { total: 0, page: 1, perPage: 20 }
+            },
+            isLoading: false,
+            error: null,
+            isFetching: false,
+            refetch: vi.fn()
+        });
+
+        render(<RouterProvider router={router} />);
+
+        expect(screen.getByPlaceholderText('Search by name, username or department...')).toBeInTheDocument();
+        expect(screen.getByText('No results found for "lee sing lee"')).toBeInTheDocument();
+    });
+
     it('points empty sync guidance to the toolbar sync action', () => {
         useQuery.mockReturnValue({
             data: {

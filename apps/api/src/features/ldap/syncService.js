@@ -1,4 +1,5 @@
 import { buildLdapSyncEvent } from "./syncEvents.js";
+import { deriveRoleForDepartment } from "../../shared/auth/departmentRoleAssignment.js";
 
 export const STALE_RUN_ERROR_MESSAGE = "Recovered stale run (app restart or crash)";
 const DEFAULT_STALE_AFTER_MS = 60 * 60 * 1000;
@@ -293,6 +294,11 @@ export const createLdapSyncRunner = ({
       }
 
       const isNewUser = !existingUser;
+      const role = deriveRoleForDepartment({
+        currentRole: existingUser?.role ?? "requester",
+        ldapAttributes: newLdapAttributes,
+        ...(orgResolved ? { orgSnapshot } : {})
+      });
 
       if (existingUser) {
         const oldLdapAttributes = existingUser.ldapAttributes || {};
@@ -323,6 +329,7 @@ export const createLdapSyncRunner = ({
         username,
         ldapDn: entry.dn,
         ldapAttributes: newLdapAttributes,
+        role,
         ...(orgResolved ? { orgSnapshot, orgSyncedAt } : {}),
         syncedAt: new Date()
       });

@@ -700,6 +700,47 @@ test("scheduled sync enriches LDAP users with Pulse org snapshot", async () => {
   assert.ok(upserts[0].orgSyncedAt instanceof Date);
 });
 
+test("scheduled sync assigns new IT department users as technicians", async () => {
+  const syncRepo = createInMemorySyncRepo();
+  const upserts = [];
+  const runner = createLdapSyncRunner({
+    config: {
+      ...baseConfig,
+      ldapSync: {
+        ...baseConfig.ldapSync,
+        attributes: ["uid", "cn", "mail", "department"]
+      }
+    },
+    ldapService: {
+      searchEntries: async () => [
+        {
+          dn: "uid=ituser,dc=example,dc=com",
+          uid: "ituser",
+          cn: "IT User",
+          mail: "ituser@example.com",
+          department: "IT"
+        }
+      ]
+    },
+    syncRepo,
+    userRepo: {
+      findUsersByUsernames: async () => [],
+      upsertUserFromLdap: async (data) => {
+        upserts.push(data);
+        return { id: "user-1", username: data.username, role: data.role };
+      }
+    },
+    auditRepo: { createAuditLog: async () => ({}) },
+    eventChannel: null
+  });
+
+  const run = await runner.startScheduledSync();
+
+  assert.equal(run.status, "completed");
+  assert.equal(upserts.length, 1);
+  assert.equal(upserts[0].role, "it");
+});
+
 test("scheduled sync updates unchanged LDAP user when Pulse org snapshot changed", async () => {
   const syncRepo = createInMemorySyncRepo();
   const upserts = [];

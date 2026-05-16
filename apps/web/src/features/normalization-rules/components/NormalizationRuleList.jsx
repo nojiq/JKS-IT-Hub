@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId } from 'react';
 
 const RULE_TYPE_LABELS = {
     lowercase: 'Lowercase',
@@ -11,6 +11,7 @@ const RULE_TYPE_LABELS = {
 };
 
 const NormalizationRuleList = ({ rules = [], onEdit, onDelete, onReorder, systemId = null }) => {
+    const globalRulesHintId = useId();
     const sortedRules = [...rules].sort((a, b) => a.priority - b.priority);
 
     const handleMove = (index, direction) => {
@@ -27,8 +28,27 @@ const NormalizationRuleList = ({ rules = [], onEdit, onDelete, onReorder, system
     return (
         <div className="normalization-rule-list">
             <div className="list-header">
-                <h4>{systemId ? `Rules for ${systemId}` : 'Global Normalization Rules'}</h4>
-                {!systemId && <p className="hint">Global rules are applied to ALL systems before system-specific rules.</p>}
+                <h4>
+                    {systemId ? (
+                        `Rules for ${systemId}`
+                    ) : (
+                        <span
+                            className="workspace-panel-title-hint"
+                            tabIndex={0}
+                            aria-describedby={globalRulesHintId}
+                        >
+                            Global Normalization Rules
+                            <span
+                                className="workspace-panel-title-hint-popup"
+                                id={globalRulesHintId}
+                                role="tooltip"
+                                aria-hidden="true"
+                            >
+                                Shared rules run for every system before any system-only rules.
+                            </span>
+                        </span>
+                    )}
+                </h4>
             </div>
 
             {sortedRules.length === 0 ? (

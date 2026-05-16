@@ -120,6 +120,32 @@ test("createManualOnboardingUser creates real user from manual identity and reus
     });
 });
 
+test("createManualOnboardingUser assigns IT department users as technicians", async () => {
+    process.env.DATABASE_URL ??= "mysql://test:test@localhost:3306/test";
+    const { createManualOnboardingUser } = await import("../../apps/api/src/features/onboarding/service.js");
+
+    let createdUser;
+    const userRepo = {
+        findUserByUsername: async () => null,
+        createUser: async (data) => {
+            createdUser = { id: "user-1", ...data };
+            return createdUser;
+        }
+    };
+
+    await createManualOnboardingUser(
+        {
+            fullName: "Izzat Ismail",
+            email: "izzat.ismail@jkseng.com",
+            department: "IT",
+            dob: "1996-02-10"
+        },
+        { userRepo }
+    );
+
+    assert.equal(createdUser.role, "it");
+});
+
 test("confirmOnboardingSetup saves manual onboarding credentials to a real user", async () => {
     process.env.DATABASE_URL ??= "mysql://test:test@localhost:3306/test";
     const { confirmOnboardingSetup } = await import("../../apps/api/src/features/onboarding/service.js");

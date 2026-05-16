@@ -123,8 +123,7 @@ export default function SystemManagementPage() {
             <WorkspacePageHeader
                 eyebrow="Administration"
                 title="Systems"
-                description="Manage system mappings, username sources, and normalization rules."
-                meta="Use global rules for shared cleanup, then layer in system-specific overrides when a connector needs its own username logic."
+                titleHint="Set up connected systems, choose where usernames come from, and tidy how they appear."
             />
 
             <div className="management-layout">
@@ -132,7 +131,7 @@ export default function SystemManagementPage() {
                     <WorkspacePanel
                         variant="detail"
                         title="Scope"
-                        meta="Choose whether you are editing shared rules or a specific system."
+                        titleHint="Pick shared settings for every system, or open one system to adjust its own."
                     >
                         <div className="sidebar-section">
                             <button
@@ -160,7 +159,7 @@ export default function SystemManagementPage() {
                     <WorkspacePanel
                         variant="detail"
                         title="Preview Username Rules"
-                        meta="Test how the current normalization stack changes raw usernames before you save."
+                        titleHint="Try a sample username to see how your rules change it before you save."
                     >
                         <NormalizationPreviewer systemId={activeSystemId} />
                     </WorkspacePanel>
@@ -170,7 +169,7 @@ export default function SystemManagementPage() {
                     <WorkspacePanel
                         variant="table"
                         title="System Catalog"
-                        meta="Map each system to the right LDAP source and access visibility rules."
+                        titleHint="List each system, where its usernames come from, and who can see it."
                         actions={(
                             <button
                                 className="workspace-inline-button is-primary"
@@ -192,10 +191,10 @@ export default function SystemManagementPage() {
                     <WorkspacePanel
                         variant="content"
                         title="Normalization Rules"
-                        meta={
+                        titleHint={
                             activeSystemId
-                                ? `Rules specific to ${activeSystemId}. These apply after the shared rule stack.`
-                                : 'Rules applied to all usernames before any system-specific overrides.'
+                                ? `Rules for ${activeSystemId} only. They run after the shared rules.`
+                                : 'These rules run for every system first. System-specific rules run after.'
                         }
                         actions={(
                             <button

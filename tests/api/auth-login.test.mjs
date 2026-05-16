@@ -131,6 +131,32 @@ test("POST /auth/login resolves email to synced username before LDAP", async () 
   await app.close();
 });
 
+test("POST /auth/login creates IT department users as technicians", async () => {
+  const ldapService = {
+    authenticate: async () => ({
+      dn: "uid=ituser,dc=example,dc=com",
+      attributes: {
+        uid: "ituser",
+        cn: "IT User",
+        Department: "IT"
+      }
+    })
+  };
+  const userRepo = createInMemoryUserRepo();
+  const app = await createTestApp({ ldapService, userRepo });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/auth/login",
+    payload: { username: "ituser", password: "secret" }
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.json().data.user.role, "it");
+
+  await app.close();
+});
+
 test("POST /auth/login rejects invalid LDAP credentials", async () => {
   const ldapService = {
     authenticate: async () => {
