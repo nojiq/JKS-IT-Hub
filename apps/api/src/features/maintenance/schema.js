@@ -111,14 +111,14 @@ export const assignmentStrategyEnum = z.enum(['FIXED', 'ROTATION']);
 export const createAssignmentRuleSchema = z.object({
     department: z.string().min(1).max(100),
     assignmentStrategy: assignmentStrategyEnum,
-    technicianIds: z.array(z.string().uuid()).min(1, 'At least one technician is required')
+    technicianIds: z.array(z.string().uuid()).min(1, 'At least one PIC is required')
 });
 
 export const updateAssignmentRuleSchema = z.object({
     department: z.string().min(1).max(100).optional(),
     assignmentStrategy: assignmentStrategyEnum.optional(),
     isActive: z.boolean().optional(),
-    technicianIds: z.array(z.string().uuid()).min(1).optional()
+    technicianIds: z.array(z.string().uuid()).min(1, 'At least one PIC is required').optional()
 });
 
 export const manualAssignSchema = z.object({

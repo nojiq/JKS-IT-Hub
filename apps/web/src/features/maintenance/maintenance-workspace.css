@@ -433,3 +433,40 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Shared confirm dialog + assignment rule modal shells */
+.workspace-page.maintenance-layout .maintenance-confirm-dialog {
+  width: min(440px, 100%);
+  padding: 1.15rem 1.25rem;
+}
+
+.workspace-page.maintenance-layout .maintenance-confirm-dialog__title {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+  color: var(--ui-text-primary);
+}
+
+.workspace-page.maintenance-layout .maintenance-confirm-dialog__body {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--ui-text-secondary);
+}
+
+.workspace-page.maintenance-layout .maintenance-confirm-dialog__actions {
+  margin-top: 0;
+}
+
+.workspace-page.maintenance-layout .assignment-rule-modal-shell {
+  width: min(680px, 100%);
+  max-height: 92vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 1.15rem 1.25rem 1.25rem;
+}
+
+.workspace-page.maintenance-layout .assignment-rule-modal__header.maintenance-window-detail-header {
+  margin-bottom: 0.65rem;
+  flex-shrink: 0;
+}

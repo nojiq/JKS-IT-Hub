@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatDisplayDate } from '../../../shared/utils/date-format.js';
+import './CycleConfigForm.css';
 import './AssignmentRuleList.css';
 
 const AssignmentRuleList = ({ rules = [], onEdit, onDeactivate, onResetRotation }) => {
@@ -13,7 +14,7 @@ const AssignmentRuleList = ({ rules = [], onEdit, onDeactivate, onResetRotation 
                 <tr>
                     <th>Department</th>
                     <th>Strategy</th>
-                    <th>Technicians</th>
+                    <th>PICs</th>
                     <th>Current Rotation</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -29,7 +30,7 @@ const AssignmentRuleList = ({ rules = [], onEdit, onDeactivate, onResetRotation 
                             </span>
                         </td>
                         <td>
-                            {rule.technicians?.length || 0} technician(s)
+                            {rule.technicians?.length || 0} PIC(s)
                         </td>
                         <td>
                             {rule.assignmentStrategy === 'ROTATION' && rule.rotationState ? (
@@ -51,22 +52,29 @@ const AssignmentRuleList = ({ rules = [], onEdit, onDeactivate, onResetRotation 
                             </span>
                         </td>
                         <td className="actions-cell">
-                            <button onClick={() => onEdit(rule)} className="btn-secondary" title="Edit rule">
+                            <button
+                                type="button"
+                                onClick={() => onEdit(rule)}
+                                className="workspace-inline-button"
+                                title="Edit rule"
+                            >
                                 Edit
                             </button>
                             {rule.assignmentStrategy === 'ROTATION' && rule.isActive && (
                                 <button
-                                    onClick={() => onResetRotation(rule.id)}
-                                    className="btn-tertiary"
-                                    title="Reset rotation to first technician"
+                                    type="button"
+                                    onClick={() => onResetRotation(rule)}
+                                    className="workspace-inline-button"
+                                    title="Reset rotation to first PIC"
                                 >
-                                    Reset Rotation
+                                    Reset rotation
                                 </button>
                             )}
                             {rule.isActive && (
                                 <button
-                                    onClick={() => onDeactivate(rule.id)}
-                                    className="btn-danger"
+                                    type="button"
+                                    onClick={() => onDeactivate(rule)}
+                                    className="workspace-inline-button cycle-config-form__btn-danger"
                                     title="Deactivate rule"
                                 >
                                     Deactivate

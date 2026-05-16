@@ -1,11 +1,14 @@
 import { NavLink } from 'react-router-dom';
 
+/** Order aligned with `workspaceModules` Maintenance children */
 const LINKS = [
-    { to: '/maintenance', label: 'Dashboard', end: true },
+    { to: '/maintenance', label: 'Overview', end: true },
     { to: '/maintenance/schedule', label: 'Schedule' },
     { to: '/maintenance/my-tasks', label: 'My Tasks' },
     { to: '/maintenance/history', label: 'History' },
-    { to: '/maintenance/config', label: 'Configuration' }
+    { to: '/maintenance/config', label: 'Configuration' },
+    { to: '/maintenance/assignment-rules', label: 'Rules' },
+    { to: '/maintenance/checklists', label: 'Checklists' }
 ];
 
 export function MaintenanceSubnav() {

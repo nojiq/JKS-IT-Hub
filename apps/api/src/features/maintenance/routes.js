@@ -415,7 +415,7 @@ export default async function maintenanceRoutes(app, { config, userRepo, mainten
             const rotationState = await maintenanceService.resetDepartmentRotation(request.params.id, actor);
             reply.send({
                 data: rotationState,
-                meta: { message: 'Rotation reset to first technician' }
+                meta: { message: 'Rotation reset to first PIC' }
             });
         } catch (error) {
             handleError(reply, error);

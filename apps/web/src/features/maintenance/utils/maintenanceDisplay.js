@@ -41,7 +41,7 @@ export const formatAssignee = (user) => {
     }
 
     if (UUID_PATTERN.test(` ${primary}`) || /^[0-9a-f-]{36}$/i.test(primary)) {
-        return { primary: username || 'Technician', secondary: shortId(user.id || primary) };
+        return { primary: username || 'PIC', secondary: shortId(user.id || primary) };
     }
 
     return { primary, secondary: '' };

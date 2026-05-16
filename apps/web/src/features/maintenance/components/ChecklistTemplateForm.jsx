@@ -7,14 +7,18 @@ import {
 } from '../hooks/useMaintenance.js';
 import { useToast } from '../../../shared/hooks/useToast.js';
 import ChecklistItemEditor from './ChecklistItemEditor.jsx';
+import './CycleConfigForm.css';
+import './ChecklistTemplateForm.css';
 
-const ChecklistTemplateForm = ({ templateId, onClose }) => {
+const ChecklistTemplateForm = ({ templateId, onClose, variant = 'default' }) => {
     const isEdit = Boolean(templateId);
+    const isModal = variant === 'modal';
     const { data: loadedTemplate, isLoading } = useChecklistTemplate(templateId);
     const createMutation = useCreateChecklistTemplate();
     const updateMutation = useUpdateChecklistTemplate();
     const deactivateMutation = useDeactivateChecklistTemplate();
     const toast = useToast();
+    const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -39,6 +43,10 @@ const ChecklistTemplateForm = ({ templateId, onClose }) => {
             }))
         });
     }, [loadedTemplate]);
+
+    useEffect(() => {
+        setShowDeactivateConfirm(false);
+    }, [templateId]);
 
     const validationError = useMemo(() => {
         if (!formData.name.trim()) return 'Template name is required.';
@@ -80,83 +88,141 @@ const ChecklistTemplateForm = ({ templateId, onClose }) => {
         }
     };
 
-    const onDeactivate = async () => {
+    const handleDeactivateConfirmed = async () => {
         if (!templateId) return;
-        if (!window.confirm('Deactivate this checklist template?')) return;
-
         try {
             await deactivateMutation.mutateAsync(templateId);
             toast.success('Checklist deactivated', 'Template marked inactive.');
+            setShowDeactivateConfirm(false);
             onClose();
         } catch (error) {
             toast.error('Failed to deactivate checklist', error.message || 'Unknown error');
         }
     };
 
+    const rootClass = ['cycle-config-form', 'checklist-template-form', isModal && 'cycle-config-form--modal']
+        .filter(Boolean)
+        .join(' ');
+
     if (isEdit && isLoading) {
-        return <div>Loading checklist template...</div>;
+        return (
+            <div className={`${rootClass} checklist-template-form--loading-root`} aria-busy="true">
+                <div className="checklist-template-form__loading">Loading checklist template…</div>
+            </div>
+        );
     }
 
     return (
-        <form onSubmit={onSubmit} className="cycle-config-form">
-            <h2>{isEdit ? 'Edit Checklist Template' : 'Create Checklist Template'}</h2>
+        <form onSubmit={onSubmit} className={rootClass} aria-busy={busy}>
+            {!isModal ? (
+                <h2>{isEdit ? 'Edit Checklist Template' : 'Create Checklist Template'}</h2>
+            ) : null}
 
-            <div className="form-group">
-                <label>Name</label>
-                <input
-                    type="text"
-                    className="form-control"
-                    value={formData.name}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, name: event.target.value }))}
-                    maxLength={100}
-                    required
+            <div className="checklist-template-form__scroll">
+                <div className="cycle-config-form__fields">
+                    <div className="form-group">
+                        <label htmlFor="checklist-template-name">Name</label>
+                        <input
+                            id="checklist-template-name"
+                            type="text"
+                            className="form-control"
+                            value={formData.name}
+                            onChange={(event) => setFormData((prev) => ({ ...prev, name: event.target.value }))}
+                            maxLength={100}
+                            required
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="checklist-template-description">Description</label>
+                        <textarea
+                            id="checklist-template-description"
+                            className="form-control"
+                            rows={3}
+                            maxLength={500}
+                            value={formData.description}
+                            onChange={(event) => setFormData((prev) => ({ ...prev, description: event.target.value }))}
+                        />
+                    </div>
+
+                    <div className="form-group form-checkbox">
+                        <label>
+                            <input
+                                type="checkbox"
+                                checked={formData.isActive}
+                                onChange={(event) => setFormData((prev) => ({ ...prev, isActive: event.target.checked }))}
+                            />
+                            Active
+                        </label>
+                    </div>
+                </div>
+
+                <ChecklistItemEditor
+                    items={formData.items}
+                    onChange={(items) => setFormData((prev) => ({ ...prev, items }))}
                 />
+
+                {validationError ? (
+                    <p className="checklist-template-form__validation" role="alert">
+                        {validationError}
+                    </p>
+                ) : null}
             </div>
 
-            <div className="form-group">
-                <label>Description</label>
-                <textarea
-                    className="form-control"
-                    rows={3}
-                    maxLength={500}
-                    value={formData.description}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, description: event.target.value }))}
-                />
-            </div>
+            {isEdit && showDeactivateConfirm ? (
+                <div className="checklist-deactivate-confirm" role="alert">
+                    <p className="checklist-deactivate-confirm__title">Deactivate this template?</p>
+                    <p className="checklist-deactivate-confirm__text">
+                        <strong>{formData.name || 'This template'}</strong> will be marked inactive and hidden from new
+                        assignments.
+                    </p>
+                    <div className="checklist-deactivate-confirm__actions">
+                        <button
+                            type="button"
+                            className="workspace-inline-button"
+                            onClick={() => setShowDeactivateConfirm(false)}
+                            disabled={busy}
+                        >
+                            Back
+                        </button>
+                        <button
+                            type="button"
+                            className="workspace-inline-button checklist-template-form__btn-danger"
+                            onClick={handleDeactivateConfirmed}
+                            disabled={busy}
+                        >
+                            {deactivateMutation.isPending ? 'Deactivating…' : 'Deactivate template'}
+                        </button>
+                    </div>
+                </div>
+            ) : null}
 
-            <div className="form-group form-checkbox">
-                <label>
-                    <input
-                        type="checkbox"
-                        checked={formData.isActive}
-                        onChange={(event) => setFormData((prev) => ({ ...prev, isActive: event.target.checked }))}
-                    />
-                    Active
-                </label>
-            </div>
-
-            <ChecklistItemEditor
-                items={formData.items}
-                onChange={(items) => setFormData((prev) => ({ ...prev, items }))}
-            />
-
-            {validationError && (
-                <p style={{ color: '#b42318', marginTop: '0.75rem' }}>{validationError}</p>
-            )}
-
-            <div className="form-actions">
-                {isEdit && (
-                    <button type="button" className="btn-danger" onClick={onDeactivate} disabled={busy}>
-                        Deactivate
+            <footer className="checklist-template-form__footer">
+                <div className="checklist-template-form__footer-start">
+                    {isEdit && !showDeactivateConfirm ? (
+                        <button
+                            type="button"
+                            className="workspace-inline-button checklist-template-form__btn-danger"
+                            onClick={() => setShowDeactivateConfirm(true)}
+                            disabled={busy}
+                        >
+                            Deactivate
+                        </button>
+                    ) : null}
+                </div>
+                <div className="checklist-template-form__footer-end">
+                    <button type="button" className="workspace-inline-button" onClick={onClose} disabled={busy}>
+                        Cancel
                     </button>
-                )}
-                <button type="button" className="btn-secondary" onClick={onClose} disabled={busy}>
-                    Cancel
-                </button>
-                <button type="submit" className="btn-primary" disabled={busy}>
-                    {isEdit ? 'Update' : 'Create'}
-                </button>
-            </div>
+                    <button type="submit" className="workspace-inline-button is-primary" disabled={busy}>
+                        {createMutation.isPending || updateMutation.isPending
+                            ? 'Saving…'
+                            : isEdit
+                              ? 'Save changes'
+                              : 'Create template'}
+                    </button>
+                </div>
+            </footer>
         </form>
     );
 };

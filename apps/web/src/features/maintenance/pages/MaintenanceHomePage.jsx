@@ -60,7 +60,7 @@ export default function MaintenanceHomePage() {
     <section className="maintenance-home-page maintenance-module-page">
       <header className="maintenance-page-header">
         <div>
-          <h2>Maintenance dashboard</h2>
+          <h2>Overview</h2>
           <p>At-a-glance view of upcoming work, assignments, overdue windows, and recent sign-offs.</p>
         </div>
         <div className="maintenance-page-actions">

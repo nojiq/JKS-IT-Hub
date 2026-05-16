@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { maintenanceConfigViewStates, useMaintenanceConfig, useGenerateSchedule } from "../hooks/useMaintenance.js";
 import CycleConfigList from "../components/CycleConfigList.jsx";
-import CycleConfigForm from "../components/CycleConfigForm.jsx";
+import CycleConfigModal from "../components/CycleConfigModal.jsx";
 import ScheduleGenerationModal from "../components/ScheduleGenerationModal.jsx";
 import { useToast } from '../../../shared/hooks/useToast.js';
 import { DataStateBlock } from '../../../shared/workspace/DataStateBlock.jsx';
@@ -15,23 +15,19 @@ const MaintenanceConfigPage = () => {
     const { cycles, viewState, error } = useMaintenanceConfig(false);
     const generateSchedule = useGenerateSchedule();
     const toast = useToast();
-    const [selectedCycle, setSelectedCycle] = useState(null);
-    const [isEditing, setIsEditing] = useState(false);
+    const [cycleModal, setCycleModal] = useState(null);
     const [cycleToGenerate, setCycleToGenerate] = useState(null);
 
     const handleCreate = () => {
-        setSelectedCycle(null);
-        setIsEditing(true);
+        setCycleModal({ type: 'create' });
     };
 
     const handleEdit = (cycle) => {
-        setSelectedCycle(cycle);
-        setIsEditing(true);
+        setCycleModal({ type: 'edit', cycle });
     };
 
-    const handleClose = () => {
-        setSelectedCycle(null);
-        setIsEditing(false);
+    const handleCloseCycleModal = () => {
+        setCycleModal(null);
     };
 
     const handleGenerateSchedule = async (monthsAhead) => {
@@ -84,7 +80,7 @@ const MaintenanceConfigPage = () => {
                 variant="table"
                 title="Cycle templates"
                 meta="Active and inactive maintenance cycle definitions."
-                actions={!isEditing ? (
+                actions={!cycleModal ? (
                     <div className="maintenance-config-actions">
                         <button onClick={handleCreate} className="workspace-inline-button is-primary" type="button">Add New Cycle</button>
                         <Link to="/maintenance/checklists" className="workspace-inline-link">
@@ -93,12 +89,7 @@ const MaintenanceConfigPage = () => {
                     </div>
                 ) : null}
             >
-                {isEditing ? (
-                    <CycleConfigForm
-                        cycle={selectedCycle}
-                        onClose={handleClose}
-                    />
-                ) : viewState === maintenanceConfigViewStates.empty ? (
+                {viewState === maintenanceConfigViewStates.empty ? (
                     <div className="maintenance-config-state maintenance-config-state--empty" data-testid="maintenance-config-empty">
                         No maintenance configuration available from backend data.
                     </div>
@@ -110,6 +101,13 @@ const MaintenanceConfigPage = () => {
                     />
                 )}
             </WorkspacePanel>
+
+            <CycleConfigModal
+                isOpen={Boolean(cycleModal)}
+                mode={cycleModal?.type === 'edit' ? 'edit' : 'create'}
+                cycle={cycleModal?.type === 'edit' ? cycleModal.cycle : null}
+                onClose={handleCloseCycleModal}
+            />
 
             <ScheduleGenerationModal
                 isOpen={Boolean(cycleToGenerate)}

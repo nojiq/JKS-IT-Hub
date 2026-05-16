@@ -1,88 +1,224 @@
+/* Shared with ChecklistTemplateForm (root .cycle-config-form on form element) */
 .cycle-config-form {
-    background-color: #fff;
+    background: var(--ui-surface-muted);
     padding: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    max-width: 600px;
-    margin: 2rem auto;
+    border-radius: var(--radius-panel, 12px);
+    border: 1px solid var(--ui-border-subtle);
+    max-width: 640px;
+    margin: 0 auto;
+    color: var(--ui-text-primary);
+}
+
+.cycle-config-form--modal {
+    background: transparent;
+    padding: 0;
+    border: none;
+    margin: 0;
+    max-width: none;
 }
 
 .cycle-config-form h2 {
-    margin-bottom: 1.5rem;
-    color: #202124;
+    margin: 0 0 1.25rem;
+    font-size: 1.15rem;
+    color: var(--ui-text-primary);
 }
 
-.form-group {
+.cycle-config-form__fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+}
+
+.cycle-config-form .form-group {
     margin-bottom: 1rem;
 }
 
-.form-group label {
+.cycle-config-form .form-group label {
     display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    color: #3c4043;
+    margin-bottom: 0.4rem;
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ui-text-secondary);
 }
 
-.form-control {
+.cycle-config-form .form-control {
     width: 100%;
-    padding: 0.5rem;
-    border: 1px solid #dadce0;
-    border-radius: 4px;
-    font-size: 1rem;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid var(--ui-border-subtle);
+    border-radius: var(--radius-control, 10px);
+    font-size: 0.9375rem;
     box-sizing: border-box;
+    background: var(--ui-surface-elevated);
+    color: var(--ui-text-primary);
+    transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
-.form-control:focus {
-    border-color: #1a73e8;
+.cycle-config-form .form-control:focus {
+    border-color: var(--ui-accent-primary);
     outline: none;
-    box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-accent-primary) 28%, transparent);
 }
 
-.form-checkbox {
+.cycle-config-form .form-checkbox {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    margin-top: 1rem;
+    margin-top: 0.25rem;
 }
 
-.form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-    margin-top: 2rem;
-}
-
-.btn-primary {
-    background-color: #1a73e8;
-    color: white;
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
+.cycle-config-form .form-checkbox label {
+    text-transform: none;
+    letter-spacing: normal;
     font-weight: 500;
-}
-
-.btn-primary:hover {
-    background-color: #185abc;
-}
-
-.btn-danger {
-    background-color: #dc3545;
-    color: white;
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 4px;
+    font-size: 0.9rem;
+    color: var(--ui-text-primary);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0;
     cursor: pointer;
 }
 
-.btn-danger:hover {
-    background-color: #c82333;
+.cycle-config-delete-confirm {
+    margin-top: 1rem;
+    padding: 1rem 1.1rem;
+    border-radius: var(--radius-panel, 12px);
+    border: 1px solid color-mix(in srgb, var(--ui-feedback-error) 35%, var(--ui-border-subtle));
+    background: color-mix(in srgb, var(--ui-feedback-error-muted) 55%, var(--ui-surface-elevated));
+}
+
+.cycle-config-delete-confirm__title {
+    margin: 0 0 0.35rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--ui-feedback-error);
+}
+
+.cycle-config-delete-confirm__text {
+    margin: 0 0 0.85rem;
+    font-size: 0.875rem;
+    color: var(--ui-text-secondary);
+    line-height: 1.45;
+}
+
+.cycle-config-delete-confirm__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.cycle-config-form__footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--ui-border-subtle);
+}
+
+.cycle-config-form__footer-start {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    min-height: 2.2rem;
+    align-items: center;
+}
+
+.cycle-config-form__footer-end {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+.cycle-config-form__btn-danger {
+    border-color: color-mix(in srgb, var(--ui-feedback-error) 45%, var(--ui-border-strong)) !important;
+    background: color-mix(in srgb, var(--ui-feedback-error-muted) 40%, var(--ui-surface-elevated)) !important;
+    color: var(--ui-feedback-error) !important;
+}
+
+.cycle-config-form__btn-danger:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--ui-feedback-error-muted) 65%, var(--ui-surface-hover)) !important;
+    color: var(--ui-feedback-error) !important;
+}
+
+.cycle-config-modal-shell.cycle-config-modal-shell {
+    padding: 1.15rem 1.25rem 1.25rem;
+}
+
+.cycle-config-modal__header.maintenance-window-detail-header {
+    margin-bottom: 1rem;
+}
+
+.cycle-config-modal__close {
+    flex-shrink: 0;
 }
 
 .form-error {
-    color: #d93025;
-    background-color: #fce8e6;
+    color: var(--ui-feedback-error);
+    background: var(--ui-feedback-error-muted);
     padding: 0.75rem;
-    border-radius: 4px;
+    border-radius: var(--radius-control, 10px);
     margin-bottom: 1rem;
+}
+
+/* ChecklistTemplateForm (legacy flat actions + btn-* on same root class) */
+.cycle-config-form .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--ui-border-subtle);
+}
+
+.cycle-config-form .btn-primary,
+.cycle-config-form .btn-secondary,
+.cycle-config-form .btn-danger {
+    border-radius: var(--radius-control, 10px);
+    min-height: 2.2rem;
+    padding: 0 0.85rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--ui-border-subtle);
+    transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.cycle-config-form .btn-primary {
+    background: var(--ui-accent-primary);
+    color: var(--ui-text-inverse);
+    border-color: var(--ui-accent-primary);
+}
+
+.cycle-config-form .btn-primary:hover:not(:disabled) {
+    background: var(--ui-accent-primary-hover);
+    border-color: var(--ui-accent-primary-hover);
+}
+
+.cycle-config-form .btn-secondary {
+    background: var(--ui-surface-elevated);
+    color: var(--ui-text-secondary);
+}
+
+.cycle-config-form .btn-secondary:hover:not(:disabled) {
+    background: var(--ui-surface-hover);
+    color: var(--ui-text-primary);
+}
+
+.cycle-config-form .btn-danger {
+    border-color: color-mix(in srgb, var(--ui-feedback-error) 45%, var(--ui-border-strong));
+    background: color-mix(in srgb, var(--ui-feedback-error-muted) 40%, var(--ui-surface-elevated));
+    color: var(--ui-feedback-error);
+    margin-right: auto;
+}
+
+.cycle-config-form .btn-danger:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--ui-feedback-error-muted) 65%, var(--ui-surface-hover));
 }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useChecklistTemplates } from '../hooks/useMaintenance.js';
 import ChecklistTemplateList from '../components/ChecklistTemplateList.jsx';
-import ChecklistTemplateForm from '../components/ChecklistTemplateForm.jsx';
+import ChecklistTemplateModal from '../components/ChecklistTemplateModal.jsx';
 import { DataStateBlock } from '../../../shared/workspace/DataStateBlock.jsx';
 import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel.jsx';
 import './MaintenanceHomePage.css';
@@ -9,8 +9,7 @@ import './MaintenanceConfigPage.css';
 
 const ChecklistManagementPage = () => {
     const { data: templates = [], isLoading, error } = useChecklistTemplates(true);
-    const [editingTemplateId, setEditingTemplateId] = useState(null);
-    const [isCreating, setIsCreating] = useState(false);
+    const [checklistModal, setChecklistModal] = useState(null);
 
     if (isLoading) {
         return (
@@ -36,8 +35,6 @@ const ChecklistManagementPage = () => {
         );
     }
 
-    const isEditing = isCreating || Boolean(editingTemplateId);
-
     return (
         <div className="maintenance-module-page maintenance-config-page">
             <header className="maintenance-page-header">
@@ -50,27 +47,30 @@ const ChecklistManagementPage = () => {
                 variant="table"
                 title="Checklist templates"
                 meta="Reusable sign-off steps for maintenance windows."
-                actions={!isEditing ? (
-                    <button type="button" className="workspace-inline-button is-primary" onClick={() => setIsCreating(true)}>
-                        Create Checklist
-                    </button>
-                ) : null}
+                actions={
+                    !checklistModal ? (
+                        <button
+                            type="button"
+                            className="workspace-inline-button is-primary"
+                            onClick={() => setChecklistModal({ type: 'create' })}
+                        >
+                            Create checklist
+                        </button>
+                    ) : null
+                }
             >
-                {isEditing ? (
-                    <ChecklistTemplateForm
-                        templateId={editingTemplateId}
-                        onClose={() => {
-                            setEditingTemplateId(null);
-                            setIsCreating(false);
-                        }}
-                    />
-                ) : (
-                    <ChecklistTemplateList
-                        templates={templates}
-                        onEdit={(templateId) => setEditingTemplateId(templateId)}
-                    />
-                )}
+                <ChecklistTemplateList
+                    templates={templates}
+                    onEdit={(templateId) => setChecklistModal({ type: 'edit', templateId })}
+                />
             </WorkspacePanel>
+
+            <ChecklistTemplateModal
+                isOpen={checklistModal != null}
+                mode={checklistModal?.type === 'edit' ? 'edit' : 'create'}
+                templateId={checklistModal?.type === 'edit' ? checklistModal.templateId : null}
+                onClose={() => setChecklistModal(null)}
+            />
         </div>
     );
 };

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useAssignmentRules, useDeactivateAssignmentRule, useResetRotation } from '../hooks/useMaintenance.js';
 import AssignmentRuleList from '../components/AssignmentRuleList.jsx';
-import AssignmentRuleForm from '../components/AssignmentRuleForm.jsx';
+import AssignmentRuleModal from '../components/AssignmentRuleModal.jsx';
+import { MaintenanceConfirmDialog } from '../components/MaintenanceConfirmDialog.jsx';
 import { useToast } from '../../../shared/hooks/useToast.js';
 import { DataStateBlock } from '../../../shared/workspace/DataStateBlock.jsx';
 import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel.jsx';
@@ -10,53 +11,45 @@ import './AssignmentRulesPage.css';
 
 const AssignmentRulesPage = () => {
     const { data: rules, isLoading, error } = useAssignmentRules(true);
-    const [selectedRule, setSelectedRule] = useState(null);
-    const [isEditing, setIsEditing] = useState(false);
+    const [ruleModal, setRuleModal] = useState(null);
+    const [confirmAction, setConfirmAction] = useState(null);
     const toast = useToast();
 
     const deactivateMutation = useDeactivateAssignmentRule();
     const resetRotationMutation = useResetRotation();
 
     const handleCreate = () => {
-        setSelectedRule(null);
-        setIsEditing(true);
+        setRuleModal({ type: 'create' });
     };
 
     const handleEdit = (rule) => {
-        setSelectedRule(rule);
-        setIsEditing(true);
+        setRuleModal({ type: 'edit', rule });
     };
 
-    const handleClose = () => {
-        setSelectedRule(null);
-        setIsEditing(false);
+    const handleCloseModal = () => {
+        setRuleModal(null);
     };
 
-    const handleDeactivate = async (ruleId) => {
-        if (!confirm('Are you sure you want to deactivate this assignment rule?')) {
-            return;
-        }
-
+    const handleConfirmAction = async () => {
+        if (!confirmAction) return;
         try {
-            await deactivateMutation.mutateAsync(ruleId);
-            toast.success('Rule deactivated', 'Department assignment rule was deactivated.');
-        } catch (error) {
-            toast.error('Failed to deactivate rule', error.message);
+            if (confirmAction.kind === 'deactivate') {
+                await deactivateMutation.mutateAsync(confirmAction.rule.id);
+                toast.success('Rule deactivated', 'Department assignment rule was deactivated.');
+            } else {
+                await resetRotationMutation.mutateAsync(confirmAction.rule.id);
+                toast.success('Rotation reset', 'Rotation was reset to the first PIC.');
+            }
+            setConfirmAction(null);
+        } catch (e) {
+            toast.error(
+                confirmAction.kind === 'deactivate' ? 'Failed to deactivate rule' : 'Failed to reset rotation',
+                e.message
+            );
         }
     };
 
-    const handleResetRotation = async (ruleId) => {
-        if (!confirm('Reset rotation to the first technician?')) {
-            return;
-        }
-
-        try {
-            await resetRotationMutation.mutateAsync(ruleId);
-            toast.success('Rotation reset', 'Rotation was reset to the first technician.');
-        } catch (error) {
-            toast.error('Failed to reset rotation', error.message);
-        }
-    };
+    const confirmPending = deactivateMutation.isPending || resetRotationMutation.isPending;
 
     if (isLoading) {
         return (
@@ -64,7 +57,7 @@ const AssignmentRulesPage = () => {
                 <DataStateBlock
                     variant="loading"
                     title="Loading assignment rules"
-                    description="Preparing department coverage and technician rotation rules."
+                    description="Preparing department coverage and PIC rotation rules."
                 />
             </section>
         );
@@ -87,30 +80,59 @@ const AssignmentRulesPage = () => {
             <header className="maintenance-page-header">
                 <div>
                     <h2>Assignment rules</h2>
-                    <p>Control which technicians receive maintenance windows for each department and strategy.</p>
+                    <p>Control which PICs receive maintenance windows for each department and strategy.</p>
                 </div>
             </header>
             <WorkspacePanel
                 variant="table"
                 title="Department rules"
                 meta="Rotation and fixed assignment coverage by department."
-                actions={!isEditing ? (
-                    <button onClick={handleCreate} className="workspace-inline-button is-primary" type="button">
-                        Create New Rule
-                    </button>
-                ) : null}
+                actions={
+                    !ruleModal ? (
+                        <button onClick={handleCreate} className="workspace-inline-button is-primary" type="button">
+                            Create rule
+                        </button>
+                    ) : null
+                }
             >
-                {isEditing ? (
-                    <AssignmentRuleForm rule={selectedRule} onClose={handleClose} />
-                ) : (
-                    <AssignmentRuleList
-                        rules={rules}
-                        onEdit={handleEdit}
-                        onDeactivate={handleDeactivate}
-                        onResetRotation={handleResetRotation}
-                    />
-                )}
+                <AssignmentRuleList
+                    rules={rules}
+                    onEdit={handleEdit}
+                    onDeactivate={(rule) => setConfirmAction({ kind: 'deactivate', rule })}
+                    onResetRotation={(rule) => setConfirmAction({ kind: 'reset', rule })}
+                />
             </WorkspacePanel>
+
+            <AssignmentRuleModal
+                isOpen={ruleModal != null}
+                mode={ruleModal?.type === 'edit' ? 'edit' : 'create'}
+                rule={ruleModal?.type === 'edit' ? ruleModal.rule : null}
+                onClose={handleCloseModal}
+            />
+
+            <MaintenanceConfirmDialog
+                open={confirmAction != null}
+                title={confirmAction?.kind === 'deactivate' ? 'Deactivate this rule?' : 'Reset rotation?'}
+                confirmLabel={confirmAction?.kind === 'deactivate' ? 'Deactivate' : 'Reset rotation'}
+                confirmVariant={confirmAction?.kind === 'deactivate' ? 'danger' : 'primary'}
+                onClose={() => {
+                    if (!confirmPending) setConfirmAction(null);
+                }}
+                onConfirm={handleConfirmAction}
+                isPending={confirmPending}
+            >
+                {confirmAction?.kind === 'deactivate' ? (
+                    <p>
+                        <strong>{confirmAction.rule.department}</strong> will stop receiving new assignments from this
+                        rule.
+                    </p>
+                ) : confirmAction?.kind === 'reset' ? (
+                    <p>
+                        Rotation for <strong>{confirmAction.rule.department}</strong> will start again from the first PIC
+                        in the list.
+                    </p>
+                ) : null}
+            </MaintenanceConfirmDialog>
         </div>
     );
 };

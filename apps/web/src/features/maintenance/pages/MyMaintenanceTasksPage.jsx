@@ -48,7 +48,7 @@ const MyMaintenanceTasksPage = () => {
                 <DataStateBlock
                     variant="loading"
                     title="Loading maintenance tasks"
-                    description="Preparing assigned windows and technician workload details."
+                    description="Preparing assigned windows and PIC workload details."
                 />
             </section>
         );
@@ -119,7 +119,7 @@ const MyMaintenanceTasksPage = () => {
             </div>
 
             {filteredWindows.length === 0 ? (
-                <WorkspacePanel variant="detail" title="Assigned windows" meta="No items match the current technician view.">
+                <WorkspacePanel variant="detail" title="Assigned windows" meta="No items match the current PIC view.">
                     <p className="maintenance-empty-note">
                         {statusFilter === 'all' && !search
                             ? 'No maintenance tasks assigned to you.'

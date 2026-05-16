@@ -142,7 +142,7 @@ describe('Maintenance module overview route', () => {
     it('opens /maintenance for developer users with dashboard sections', async () => {
         renderMaintenanceApp();
 
-        expect(await screen.findByRole('heading', { name: 'Maintenance dashboard' })).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Next maintenance' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'My tasks' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Overdue' })).toBeInTheDocument();
@@ -172,7 +172,7 @@ describe('Maintenance module overview route', () => {
         });
 
         expect(await screen.findByText('Dashboard Content')).toBeInTheDocument();
-        expect(screen.queryByRole('heading', { name: 'Maintenance dashboard' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Overview' })).not.toBeInTheDocument();
     });
 
     it('redirects unauthorized users to / and does not render the maintenance shell', async () => {
@@ -180,6 +180,6 @@ describe('Maintenance module overview route', () => {
 
         expect(await screen.findByText('Dashboard Content')).toBeInTheDocument();
         expect(router.state.location.pathname).toBe('/');
-        expect(screen.queryByRole('heading', { name: 'Maintenance dashboard' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Overview' })).not.toBeInTheDocument();
     });
 });

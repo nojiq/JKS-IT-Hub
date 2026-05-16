@@ -4,9 +4,9 @@ import { useCreateCycle, useUpdateCycle, useDeactivateCycle, useChecklistTemplat
 import { useToast } from '../../../shared/hooks/useToast.js';
 import './CycleConfigForm.css';
 
-const CycleConfigForm = ({ cycle, onClose }) => {
+const CycleConfigForm = ({ cycle, onClose, variant = 'default' }) => {
     const isEdit = !!cycle;
-    // Default form data
+    const isModal = variant === 'modal';
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -14,8 +14,8 @@ const CycleConfigForm = ({ cycle, onClose }) => {
         isActive: true,
         defaultChecklistTemplateId: ''
     });
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-    // Initialize if editing
     useEffect(() => {
         if (cycle) {
             setFormData({
@@ -28,13 +28,16 @@ const CycleConfigForm = ({ cycle, onClose }) => {
         }
     }, [cycle]);
 
-    // Hooks
+    useEffect(() => {
+        setShowDeleteConfirm(false);
+    }, [cycle?.id]);
+
     const createCycle = useCreateCycle();
     const updateCycle = useUpdateCycle();
-    const deactivateCycle = useDeactivateCycle();
+    const deleteCycleMutation = useDeactivateCycle();
     const { data: checklistTemplates = [] } = useChecklistTemplates(false);
     const toast = useToast();
-    const isSaving = createCycle.isPending || updateCycle.isPending || deactivateCycle.isPending;
+    const isSaving = createCycle.isPending || updateCycle.isPending || deleteCycleMutation.isPending;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -57,15 +60,15 @@ const CycleConfigForm = ({ cycle, onClose }) => {
         }
     };
 
-    const handleDeactivate = async () => {
-        if (!window.confirm('Are you sure you want to deactivate this cycle?')) return;
-
+    const handleDeleteConfirmed = async () => {
+        if (!cycle) return;
         try {
-            await deactivateCycle.mutateAsync(cycle.id);
-            toast.success('Cycle deactivated', `"${cycle.name}" is now inactive.`);
+            await deleteCycleMutation.mutateAsync(cycle.id);
+            toast.success('Cycle deleted', `"${cycle.name}" was removed.`);
+            setShowDeleteConfirm(false);
             onClose();
         } catch (error) {
-            toast.error('Failed to deactivate cycle', error.message || 'Unable to deactivate maintenance cycle.');
+            toast.error('Failed to delete cycle', error.message || 'Unable to delete maintenance cycle.');
         }
     };
 
@@ -77,95 +80,150 @@ const CycleConfigForm = ({ cycle, onClose }) => {
         }));
     };
 
+    const rootClass = ['cycle-config-form', isModal && 'cycle-config-form--modal'].filter(Boolean).join(' ');
+
     return (
-        <div className="cycle-config-form" aria-busy={isSaving}>
-            <h2>{isEdit ? 'Edit Maintenance Cycle' : 'Create New Maintenance Cycle'}</h2>
+        <div className={rootClass} aria-busy={isSaving}>
+            {!isModal ? (
+                <h2>{isEdit ? 'Edit Maintenance Cycle' : 'Create New Maintenance Cycle'}</h2>
+            ) : null}
 
             <form onSubmit={handleSubmit}>
-                <div className="form-group">
-                    <label>Name</label>
-                    <input
-                        type="text"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleChange}
-                        className="form-control"
-                        required
-                        minLength={1}
-                        maxLength={100}
-                    />
-                </div>
-
-                <div className="form-group">
-                    <label>Description</label>
-                    <textarea
-                        name="description"
-                        value={formData.description}
-                        onChange={handleChange}
-                        className="form-control"
-                        rows={3}
-                        maxLength={500}
-                    />
-                </div>
-
-                <div className="form-group">
-                    <label>Interval (Months)</label>
-                    <input
-                        type="number"
-                        name="intervalMonths"
-                        value={formData.intervalMonths}
-                        onChange={handleChange}
-                        className="form-control"
-                        min={1}
-                        max={24}
-                        required
-                    />
-                </div>
-
-                <div className="form-group">
-                    <label>Default Checklist (Optional)</label>
-                    <select
-                        name="defaultChecklistTemplateId"
-                        value={formData.defaultChecklistTemplateId}
-                        onChange={handleChange}
-                        className="form-control"
-                    >
-                        <option value="">None</option>
-                        {checklistTemplates.map((template) => (
-                            <option key={template.id} value={template.id}>
-                                {template.name} ({template._count?.items ?? template.items?.length ?? 0} items)
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                {isEdit && (
-                    <div className="form-group form-checkbox">
-                        <label>
-                            <input
-                                type="checkbox"
-                                name="isActive"
-                                checked={formData.isActive}
-                                onChange={handleChange}
-                            />
-                            Is Active
-                        </label>
+                <div className="cycle-config-form__fields">
+                    <div className="form-group">
+                        <label htmlFor="cycle-name">Name</label>
+                        <input
+                            id="cycle-name"
+                            type="text"
+                            name="name"
+                            value={formData.name}
+                            onChange={handleChange}
+                            className="form-control"
+                            required
+                            minLength={1}
+                            maxLength={100}
+                        />
                     </div>
-                )}
 
-                <div className="form-actions">
+                    <div className="form-group">
+                        <label htmlFor="cycle-description">Description</label>
+                        <textarea
+                            id="cycle-description"
+                            name="description"
+                            value={formData.description}
+                            onChange={handleChange}
+                            className="form-control"
+                            rows={3}
+                            maxLength={500}
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="cycle-interval">Interval (months)</label>
+                        <input
+                            id="cycle-interval"
+                            type="number"
+                            name="intervalMonths"
+                            value={formData.intervalMonths}
+                            onChange={handleChange}
+                            className="form-control"
+                            min={1}
+                            max={24}
+                            required
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="cycle-checklist">Default checklist (optional)</label>
+                        <select
+                            id="cycle-checklist"
+                            name="defaultChecklistTemplateId"
+                            value={formData.defaultChecklistTemplateId}
+                            onChange={handleChange}
+                            className="form-control"
+                        >
+                            <option value="">None</option>
+                            {checklistTemplates.map((template) => (
+                                <option key={template.id} value={template.id}>
+                                    {template.name} ({template._count?.items ?? template.items?.length ?? 0} items)
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
                     {isEdit && (
-                        <button type="button" onClick={handleDeactivate} className="btn-danger" disabled={isSaving}>
-                            Deactivate
-                        </button>
+                        <div className="form-group form-checkbox">
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    name="isActive"
+                                    checked={formData.isActive}
+                                    onChange={handleChange}
+                                />
+                                Active
+                            </label>
+                        </div>
                     )}
-                    <button type="button" onClick={onClose} className="btn-secondary" disabled={isSaving}>
-                        Cancel
-                    </button>
-                    <button type="submit" className="btn-primary" disabled={isSaving}>
-                        {isSaving ? 'Saving...' : (isEdit ? 'Update' : 'Create')}
-                    </button>
                 </div>
+
+                {isEdit && showDeleteConfirm ? (
+                    <div className="cycle-config-delete-confirm" role="alert">
+                        <p className="cycle-config-delete-confirm__title">Delete this cycle?</p>
+                        <p className="cycle-config-delete-confirm__text">
+                            <strong>{cycle.name}</strong> will be permanently removed. This cannot be undone.
+                        </p>
+                        <div className="cycle-config-delete-confirm__actions">
+                            <button
+                                type="button"
+                                className="workspace-inline-button"
+                                onClick={() => setShowDeleteConfirm(false)}
+                                disabled={isSaving}
+                            >
+                                Back
+                            </button>
+                            <button
+                                type="button"
+                                className="workspace-inline-button cycle-config-form__btn-danger"
+                                onClick={handleDeleteConfirmed}
+                                disabled={isSaving}
+                            >
+                                {deleteCycleMutation.isPending ? 'Deleting…' : 'Delete cycle'}
+                            </button>
+                        </div>
+                    </div>
+                ) : null}
+
+                <footer className="cycle-config-form__footer">
+                    <div className="cycle-config-form__footer-start">
+                        {isEdit && !showDeleteConfirm ? (
+                            <button
+                                type="button"
+                                className="workspace-inline-button cycle-config-form__btn-danger"
+                                onClick={() => setShowDeleteConfirm(true)}
+                                disabled={isSaving}
+                            >
+                                Delete
+                            </button>
+                        ) : null}
+                    </div>
+                    <div className="cycle-config-form__footer-end">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="workspace-inline-button"
+                            disabled={isSaving}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            className="workspace-inline-button is-primary"
+                            disabled={isSaving}
+                        >
+                            {isSaving ? 'Saving…' : (isEdit ? 'Save changes' : 'Create cycle')}
+                        </button>
+                    </div>
+                </footer>
             </form>
         </div>
     );
