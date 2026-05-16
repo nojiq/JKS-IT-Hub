@@ -41,10 +41,14 @@ export const formatAssignee = (user) => {
     }
 
     if (UUID_PATTERN.test(` ${primary}`) || /^[0-9a-f-]{36}$/i.test(primary)) {
-        return { primary: username || 'PIC', secondary: shortId(user.id || primary) };
+        return { primary: username || 'Technician', secondary: shortId(user.id || primary) };
     }
 
     return { primary, secondary: '' };
+};
+
+export const formatPolicyLabel = (name, fallback = 'Ad-hoc') => {
+    return formatCycleLabel(name, fallback);
 };
 
 export const formatCycleLabel = (name, fallback = 'Ad-hoc') => {
@@ -53,6 +57,12 @@ export const formatCycleLabel = (name, fallback = 'Ad-hoc') => {
         primary: primary || fallback,
         secondary: secondaryId ? shortId(secondaryId) : ''
     };
+};
+
+export const formatTechnician = formatAssignee;
+
+export const formatTaskTitle = (window, fallback = 'Ad-hoc') => {
+    return formatWindowTitle(window, fallback);
 };
 
 export const formatWindowTitle = (window, fallback = 'Ad-hoc') => {

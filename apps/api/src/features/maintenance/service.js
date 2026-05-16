@@ -625,6 +625,36 @@ export const deactivateChecklistTemplate = async (id, actorUser) => {
     }
 };
 
+export const deleteChecklistTemplate = async (id, actorUser) => {
+    ensureAuthorized(actorUser);
+
+    try {
+        const result = await repo.deleteChecklistTemplate(id);
+
+        await auditRepo.createAuditLog({
+            action: 'MAINTENANCE_CHECKLIST:DELETE',
+            actorUserId: actorUser.id,
+            entityType: 'MaintenanceChecklistTemplate',
+            entityId: result.id,
+            metadata: {
+                name: result.name,
+                itemsDeleted: result.itemsDeleted,
+                detachedCycleCount: result.detachedCycleCount,
+                detachedWindowCount: result.detachedWindowCount
+            }
+        });
+
+        return result;
+    } catch (e) {
+        if (e.code === 'P2025') {
+            const error = new Error('Template not found');
+            error.statusCode = 404;
+            throw error;
+        }
+        throw e;
+    }
+};
+
 export const attachChecklistToCycle = async (cycleId, checklistTemplateId, actorUser, options = {}) => {
     ensureAuthorized(actorUser);
     await getActiveChecklistTemplate(checklistTemplateId);

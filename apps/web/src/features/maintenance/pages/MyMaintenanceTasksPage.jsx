@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useId, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMyMaintenanceWindows } from '../hooks/useMaintenance.js';
 import { DataStateBlock } from '../../../shared/workspace/DataStateBlock.jsx';
@@ -6,12 +6,14 @@ import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel.jsx';
 import { MaintenanceSearchCombobox } from '../components/MaintenanceSearchCombobox.jsx';
 import MaintenanceWindowList from '../components/MaintenanceWindowList.jsx';
 import { FilterSelect } from '../../../shared/components/FilterPanel/FilterSelect';
+import '../../../shared/workspace/workspace.css';
 import './MaintenanceHomePage.css';
 import './MyMaintenanceTasksPage.css';
 
 const PAGE_SIZE = 20;
 
 const MyMaintenanceTasksPage = () => {
+    const tasksHintId = useId();
     const navigate = useNavigate();
     const [statusFilter, setStatusFilter] = useState('all');
     const [page, setPage] = useState(1);
@@ -74,8 +76,23 @@ const MyMaintenanceTasksPage = () => {
         <div className="maintenance-module-page my-tasks-page">
             <header className="maintenance-page-header">
                 <div>
-                    <h2>My maintenance tasks</h2>
-                    <p>Assigned windows for your queue. Filter by status or search to find specific work.</p>
+                    <h2>
+                        <span
+                            className="workspace-panel-title-hint"
+                            tabIndex={0}
+                            aria-describedby={tasksHintId}
+                        >
+                            My maintenance tasks
+                            <span
+                                className="workspace-panel-title-hint-popup"
+                                id={tasksHintId}
+                                role="tooltip"
+                                aria-hidden="true"
+                            >
+                                Assigned windows for your queue. Filter by status or search to find specific work.
+                            </span>
+                        </span>
+                    </h2>
                 </div>
             </header>
 

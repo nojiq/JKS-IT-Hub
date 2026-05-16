@@ -17,6 +17,7 @@ import { DataStateBlock } from "../../shared/workspace/DataStateBlock.jsx";
 import { WorkspacePageHeader } from "../../shared/workspace/WorkspacePageHeader.jsx";
 import { WorkspacePanel } from "../../shared/workspace/WorkspacePanel.jsx";
 import { formatDisplayDateTime } from "../../shared/utils/date-format.js";
+import { UserAssignedAssetsPanel } from "../assets/components/UserAssignedAssetsPanel.jsx";
 
 const formatValue = (value) => {
   if (value === null || value === undefined || value === "") {
@@ -498,7 +499,7 @@ export default function UserDetailPage() {
       <WorkspacePageHeader
         eyebrow="Users & Credentials"
         title={user.username}
-        description="Review identity state, credential tools, and recent access work from one user workspace."
+        titleHint="Review identity state, credential tools, and recent access work from one user workspace."
         actions={(
           <Link className="workspace-inline-link" to="/users/directory">
             Back to directory
@@ -522,7 +523,7 @@ export default function UserDetailPage() {
         <WorkspacePanel
           variant="detail"
           title="Identity"
-          meta={
+          titleHint={
             isEditingIdentity
               ? "Edit profile fields first, then role and JKSPulse org (when enabled), then save. LDAP rows stay read-only."
               : canAssignRoleOnTarget
@@ -765,6 +766,14 @@ export default function UserDetailPage() {
               </div>
             ))}
           </div>
+        </WorkspacePanel>
+
+        <WorkspacePanel
+          variant="detail"
+          title="Assigned assets"
+          meta="Hardware inventory items linked to this user in IT Hub."
+        >
+          <UserAssignedAssetsPanel userId={id} />
         </WorkspacePanel>
 
         <WorkspacePanel variant="detail" title="Account Status" meta="Operational status and sync checkpoints for this account.">

@@ -3,7 +3,8 @@ import {
     useChecklistTemplate,
     useCreateChecklistTemplate,
     useUpdateChecklistTemplate,
-    useDeactivateChecklistTemplate
+    useDeactivateChecklistTemplate,
+    useDeleteChecklistTemplate
 } from '../hooks/useMaintenance.js';
 import { useToast } from '../../../shared/hooks/useToast.js';
 import ChecklistItemEditor from './ChecklistItemEditor.jsx';
@@ -17,8 +18,10 @@ const ChecklistTemplateForm = ({ templateId, onClose, variant = 'default' }) => 
     const createMutation = useCreateChecklistTemplate();
     const updateMutation = useUpdateChecklistTemplate();
     const deactivateMutation = useDeactivateChecklistTemplate();
+    const deleteMutation = useDeleteChecklistTemplate();
     const toast = useToast();
     const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -27,7 +30,7 @@ const ChecklistTemplateForm = ({ templateId, onClose, variant = 'default' }) => 
         items: []
     });
 
-    const busy = createMutation.isPending || updateMutation.isPending || deactivateMutation.isPending;
+    const busy = createMutation.isPending || updateMutation.isPending || deactivateMutation.isPending || deleteMutation.isPending;
 
     useEffect(() => {
         if (!loadedTemplate) return;
@@ -46,6 +49,7 @@ const ChecklistTemplateForm = ({ templateId, onClose, variant = 'default' }) => 
 
     useEffect(() => {
         setShowDeactivateConfirm(false);
+        setShowDeleteConfirm(false);
     }, [templateId]);
 
     const validationError = useMemo(() => {
@@ -97,6 +101,18 @@ const ChecklistTemplateForm = ({ templateId, onClose, variant = 'default' }) => 
             onClose();
         } catch (error) {
             toast.error('Failed to deactivate checklist', error.message || 'Unknown error');
+        }
+    };
+
+    const handleDeleteConfirmed = async () => {
+        if (!templateId) return;
+        try {
+            await deleteMutation.mutateAsync(templateId);
+            toast.success('Checklist deleted', 'Template permanently deleted.');
+            setShowDeleteConfirm(false);
+            onClose();
+        } catch (error) {
+            toast.error('Failed to delete checklist', error.message || 'Unknown error');
         }
     };
 
@@ -197,17 +213,55 @@ const ChecklistTemplateForm = ({ templateId, onClose, variant = 'default' }) => 
                 </div>
             ) : null}
 
-            <footer className="checklist-template-form__footer">
-                <div className="checklist-template-form__footer-start">
-                    {isEdit && !showDeactivateConfirm ? (
+            {isEdit && showDeleteConfirm ? (
+                <div className="checklist-deactivate-confirm" role="alert">
+                    <p className="checklist-deactivate-confirm__title">Delete this template?</p>
+                    <p className="checklist-deactivate-confirm__text">
+                        <strong>{formData.name || 'This template'}</strong> will be permanently deleted. Existing
+                        windows keep their checklist snapshots.
+                    </p>
+                    <div className="checklist-deactivate-confirm__actions">
+                        <button
+                            type="button"
+                            className="workspace-inline-button"
+                            onClick={() => setShowDeleteConfirm(false)}
+                            disabled={busy}
+                        >
+                            Back
+                        </button>
                         <button
                             type="button"
                             className="workspace-inline-button checklist-template-form__btn-danger"
-                            onClick={() => setShowDeactivateConfirm(true)}
+                            onClick={handleDeleteConfirmed}
                             disabled={busy}
                         >
-                            Deactivate
+                            {deleteMutation.isPending ? 'Deleting…' : 'Delete template'}
                         </button>
+                    </div>
+                </div>
+            ) : null}
+
+            <footer className="checklist-template-form__footer">
+                <div className="checklist-template-form__footer-start">
+                    {isEdit && !showDeactivateConfirm && !showDeleteConfirm ? (
+                        <div className="checklist-template-form__danger-actions">
+                            <button
+                                type="button"
+                                className="workspace-inline-button checklist-template-form__btn-warning"
+                                onClick={() => setShowDeactivateConfirm(true)}
+                                disabled={busy}
+                            >
+                                Deactivate
+                            </button>
+                            <button
+                                type="button"
+                                className="workspace-inline-button checklist-template-form__btn-danger"
+                                onClick={() => setShowDeleteConfirm(true)}
+                                disabled={busy}
+                            >
+                                Delete
+                            </button>
+                        </div>
                     ) : null}
                 </div>
                 <div className="checklist-template-form__footer-end">

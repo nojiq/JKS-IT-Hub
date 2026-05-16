@@ -1,5 +1,6 @@
 import { keepPreviousData, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as api from "../api/maintenanceApi.js";
+import * as preventiveApi from "../api/preventiveMaintenanceApi.js";
 
 export const maintenanceConfigViewStates = Object.freeze({
     loading: 'loading',
@@ -139,6 +140,17 @@ export const useDeactivateChecklistTemplate = () => {
             if (template?.id) {
                 queryClient.invalidateQueries({ queryKey: maintenanceKeys.checklist(template.id) });
             }
+        }
+    });
+};
+
+export const useDeleteChecklistTemplate = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: api.deleteChecklistTemplate,
+        onSuccess: (_result, id) => {
+            queryClient.invalidateQueries({ queryKey: maintenanceKeys.all });
+            queryClient.removeQueries({ queryKey: maintenanceKeys.checklist(id) });
         }
     });
 };
@@ -317,6 +329,123 @@ export const useMyMaintenanceWindows = (filters = {}) => {
         queryKey: assignmentRulesKeys.myTasks(filters),
         queryFn: () => api.fetchMyMaintenanceWindows(filters),
         placeholderData: keepPreviousData
+    });
+};
+
+export const preventiveKeys = {
+    all: [...maintenanceKeys.all, 'preventive'],
+    profiles: (includeInactive) => [...preventiveKeys.all, 'profiles', { includeInactive }],
+    matrix: () => [...preventiveKeys.all, 'matrix'],
+    myRuns: (filters) => [...preventiveKeys.all, 'my-runs', filters],
+    run: (id) => [...preventiveKeys.all, 'run', id],
+    history: (filters) => [...preventiveKeys.all, 'history', filters]
+};
+
+export const useMaintenanceProfiles = (includeInactive = false) => {
+    return useQuery({
+        queryKey: preventiveKeys.profiles(includeInactive),
+        queryFn: () => preventiveApi.fetchMaintenanceProfiles(includeInactive)
+    });
+};
+
+export const useCreateMaintenanceProfile = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: preventiveApi.createMaintenanceProfile,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: preventiveKeys.all });
+        }
+    });
+};
+
+export const useUpdateMaintenanceProfile = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }) => preventiveApi.updateMaintenanceProfile(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: preventiveKeys.all });
+        }
+    });
+};
+
+export const useSaveProfileChecklist = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ profileId, items }) => preventiveApi.saveProfileChecklist(profileId, items),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: preventiveKeys.all });
+        }
+    });
+};
+
+export const useAssignmentMatrix = () => {
+    return useQuery({
+        queryKey: preventiveKeys.matrix(),
+        queryFn: () => preventiveApi.fetchAssignmentMatrix()
+    });
+};
+
+export const useCreateMaintenanceAssignment = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: preventiveApi.createMaintenanceAssignment,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: preventiveKeys.all });
+        }
+    });
+};
+
+export const useMyMaintenanceRuns = (filters = {}) => {
+    return useQuery({
+        queryKey: preventiveKeys.myRuns(filters),
+        queryFn: () => preventiveApi.fetchMyMaintenanceRuns(filters),
+        placeholderData: keepPreviousData
+    });
+};
+
+export const useMaintenanceRunHistory = (filters = {}) => {
+    return useQuery({
+        queryKey: preventiveKeys.history(filters),
+        queryFn: () => preventiveApi.fetchMaintenanceRunHistory(filters),
+        placeholderData: keepPreviousData
+    });
+};
+
+export const useMaintenanceRun = (id, enabled = true) => {
+    return useQuery({
+        queryKey: preventiveKeys.run(id),
+        queryFn: () => preventiveApi.fetchMaintenanceRun(id),
+        enabled: Boolean(id) && enabled
+    });
+};
+
+export const useStartMaintenanceRun = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: preventiveApi.startMaintenanceRun,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: preventiveKeys.all });
+        }
+    });
+};
+
+export const useUpdateMaintenanceRunItem = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ itemId, data }) => preventiveApi.updateMaintenanceRunItem(itemId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: preventiveKeys.all });
+        }
+    });
+};
+
+export const useCompleteMaintenanceRun = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: preventiveApi.completeMaintenanceRun,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: preventiveKeys.all });
+        }
     });
 };
 

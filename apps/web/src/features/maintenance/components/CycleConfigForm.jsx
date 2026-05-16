@@ -49,10 +49,10 @@ const CycleConfigForm = ({ cycle, onClose, variant = 'default' }) => {
             };
             if (isEdit) {
                 await updateCycle.mutateAsync({ id: cycle.id, data: payload });
-                toast.success('Cycle updated', `"${payload.name}" has been updated.`);
+                toast.success('Policy updated', `"${payload.name}" has been updated.`);
             } else {
                 await createCycle.mutateAsync(payload);
-                toast.success('Cycle created', `"${payload.name}" has been created.`);
+                toast.success('Policy created', `"${payload.name}" has been created.`);
             }
             onClose();
         } catch (error) {
@@ -85,7 +85,7 @@ const CycleConfigForm = ({ cycle, onClose, variant = 'default' }) => {
     return (
         <div className={rootClass} aria-busy={isSaving}>
             {!isModal ? (
-                <h2>{isEdit ? 'Edit Maintenance Cycle' : 'Create New Maintenance Cycle'}</h2>
+                <h2>{isEdit ? 'Edit maintenance policy' : 'Create maintenance policy'}</h2>
             ) : null}
 
             <form onSubmit={handleSubmit}>

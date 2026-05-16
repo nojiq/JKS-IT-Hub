@@ -1,7 +1,10 @@
 import { requireAuthenticated } from "../../shared/auth/requireAuthenticated.js";
 import { createProblemDetails, sendProblem } from "../../shared/errors/problemDetails.js";
 
+import preventiveMaintenanceRoutes from './preventiveRoutes.js';
+
 export default async function maintenanceRoutes(app, { config, userRepo, maintenanceService }) {
+    await app.register(preventiveMaintenanceRoutes, { config, userRepo });
 
     const maintenanceConfigMeta = {
         contract: 'maintenance-cycle-config.v1',
@@ -295,8 +298,11 @@ export default async function maintenanceRoutes(app, { config, userRepo, mainten
         if (!actor) return;
 
         try {
-            const template = await maintenanceService.deactivateChecklistTemplate(request.params.id, actor);
-            reply.send({ data: template });
+            const hardDelete = request.query.hard === 'true';
+            const result = hardDelete
+                ? await maintenanceService.deleteChecklistTemplate(request.params.id, actor)
+                : await maintenanceService.deactivateChecklistTemplate(request.params.id, actor);
+            reply.send({ data: result });
         } catch (error) {
             handleError(reply, error);
         }

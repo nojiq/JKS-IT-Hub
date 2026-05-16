@@ -38,7 +38,7 @@ const ManualAssignmentModal = ({ window, onClose }) => {
         e.preventDefault();
 
         if (!selectedTechnicianId) {
-            setError('Please select a PIC');
+            setError('Please select a technician');
             return;
         }
 
@@ -57,13 +57,13 @@ const ManualAssignmentModal = ({ window, onClose }) => {
         <div className="modal-overlay" onClick={() => onClose(false)}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h3>{window.assignedTo ? 'Reassign' : 'Assign'} Maintenance Window</h3>
+                    <h3>{window.assignedTo ? 'Reassign' : 'Assign'} maintenance task</h3>
                     <button className="modal-close" onClick={() => onClose(false)}>✕</button>
                 </div>
 
                 <div className="modal-body">
                     <div className="window-info">
-                        <p><strong>Cycle:</strong> {window.cycleConfig?.name || 'Ad-hoc'}</p>
+                        <p><strong>Policy:</strong> {window.cycleConfig?.name || 'Ad-hoc'}</p>
                         <p><strong>Scheduled:</strong> {formatDisplayDateTime(window.scheduledStartDate, { fallback: '-' })}</p>
                         {window.assignedTo && (
                             <p><strong>Currently assigned to:</strong> {window.assignedTo.displayName || window.assignedTo.username}</p>
@@ -73,7 +73,7 @@ const ManualAssignmentModal = ({ window, onClose }) => {
                     <form onSubmit={handleAssign}>
                         <div className="form-group">
                             <label htmlFor="technician">
-                                Select PIC <span className="required">*</span>
+                                Select technician <span className="required">*</span>
                             </label>
                             {isLoadingTechnicians ? (
                                 <p className="loading-text">Loading IT staff...</p>

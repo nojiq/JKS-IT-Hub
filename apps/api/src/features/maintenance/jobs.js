@@ -1,5 +1,6 @@
 import { CronJob, AsyncTask } from "toad-scheduler";
 import * as scheduler from "./scheduler.js";
+import { dailyPreventiveMaintenanceJob } from "./preventiveScheduler.js";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -21,7 +22,9 @@ export const createMaintenanceJob = ({ logger, config }) => {
             while (attempt < maxAttempts) {
                 attempt += 1;
                 try {
-                    const result = await scheduler.updateWindowStatuses();
+                    const windowStatusResult = await scheduler.updateWindowStatuses();
+                    const preventiveRunResult = await dailyPreventiveMaintenanceJob();
+                    const result = { windowStatusResult, preventiveRunResult };
                     logger.info({ result, attempt, maxAttempts }, "Maintenance status update completed");
                     return;
                 } catch (err) {

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useId, useState, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWindows, useCancelWindow, useCycles, useGenerateSchedule } from '../hooks/useMaintenance.js';
 import MaintenanceWindowList from '../components/MaintenanceWindowList.jsx';
@@ -18,9 +18,11 @@ import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel.jsx';
 import { formatDisplayDateTime } from '../../../shared/utils/date-format.js';
 import { filterCyclesForGeneration } from '../utils/scheduleGeneration.js';
 import { formatCycleLabel, formatWindowTitle } from '../utils/maintenanceDisplay.js';
+import '../../../shared/workspace/workspace.css';
 import './MaintenanceHomePage.css';
 
 const MaintenanceSchedulePage = () => {
+    const scheduleHintId = useId();
     const { filters, setFilter, clearFilters } = useFilterParams({ page: '1', perPage: '20' });
     const { data: result, isLoading, error, refetch, isFetching } = useWindows(filters);
     const { data: cycles = [] } = useCycles(false);
@@ -156,8 +158,23 @@ const MaintenanceSchedulePage = () => {
         <div className="maintenance-module-page maintenance-schedule-page">
             <header className="maintenance-page-header">
                 <div>
-                    <h2>Schedule workspace</h2>
-                    <p>Review upcoming maintenance windows, filter the queue, and open overdue work before it slips further.</p>
+                    <h2>
+                        <span
+                            className="workspace-panel-title-hint"
+                            tabIndex={0}
+                            aria-describedby={scheduleHintId}
+                        >
+                            Schedule workspace
+                            <span
+                                className="workspace-panel-title-hint-popup"
+                                id={scheduleHintId}
+                                role="tooltip"
+                                aria-hidden="true"
+                            >
+                                Review upcoming maintenance windows, filter the queue, and open overdue work before it slips further.
+                            </span>
+                        </span>
+                    </h2>
                 </div>
                 <div className="maintenance-page-actions">
                     <button

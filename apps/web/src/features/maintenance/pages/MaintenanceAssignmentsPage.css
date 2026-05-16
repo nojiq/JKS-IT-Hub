@@ -1,0 +1,39 @@
+.assign-policy-modal {
+  width: min(480px, 100%);
+}
+
+.assign-policy-modal__subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--ui-text-secondary);
+}
+
+.assign-policy-modal__form {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.assign-policy-modal__form select {
+  width: 100%;
+  min-height: 2.5rem;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text-primary);
+  font: inherit;
+  padding: 0 0.65rem;
+}
+
+.assignments-footnote {
+  margin: 0.75rem 0 0;
+}
+
+.maintenance-assignments-actions-col {
+  width: 5.5rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.workspace-inline-button.is-primary.is-muted {
+  opacity: 0.72;
+}

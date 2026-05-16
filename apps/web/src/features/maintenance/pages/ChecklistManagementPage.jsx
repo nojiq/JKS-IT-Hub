@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { useChecklistTemplates } from '../hooks/useMaintenance.js';
 import ChecklistTemplateList from '../components/ChecklistTemplateList.jsx';
 import ChecklistTemplateModal from '../components/ChecklistTemplateModal.jsx';
 import { DataStateBlock } from '../../../shared/workspace/DataStateBlock.jsx';
 import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel.jsx';
+import '../../../shared/workspace/workspace.css';
 import './MaintenanceHomePage.css';
 import './MaintenanceConfigPage.css';
 
 const ChecklistManagementPage = () => {
+    const checklistsHintId = useId();
     const { data: templates = [], isLoading, error } = useChecklistTemplates(true);
     const [checklistModal, setChecklistModal] = useState(null);
 
@@ -39,14 +41,29 @@ const ChecklistManagementPage = () => {
         <div className="maintenance-module-page maintenance-config-page">
             <header className="maintenance-page-header">
                 <div>
-                    <h2>Maintenance checklists</h2>
-                    <p>Define reusable checklist templates so each maintenance window starts with the right sign-off steps.</p>
+                    <h2>
+                        <span
+                            className="workspace-panel-title-hint"
+                            tabIndex={0}
+                            aria-describedby={checklistsHintId}
+                        >
+                            Maintenance checklists
+                            <span
+                                className="workspace-panel-title-hint-popup"
+                                id={checklistsHintId}
+                                role="tooltip"
+                                aria-hidden="true"
+                            >
+                                Define reusable checklist templates so each maintenance window starts with the right sign-off steps.
+                            </span>
+                        </span>
+                    </h2>
                 </div>
             </header>
             <WorkspacePanel
                 variant="table"
                 title="Checklist templates"
-                meta="Reusable sign-off steps for maintenance windows."
+                titleHint="Reusable sign-off steps for maintenance windows."
                 actions={
                     !checklistModal ? (
                         <button

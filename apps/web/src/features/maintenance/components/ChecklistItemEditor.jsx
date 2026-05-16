@@ -5,6 +5,7 @@ const EMPTY_ITEM = {
     title: '',
     description: '',
     isRequired: true,
+    evidenceRequired: false,
     orderIndex: 0
 };
 
@@ -141,6 +142,14 @@ const ChecklistItemEditor = ({ items = [], onChange }) => {
                                     onChange={(event) => updateItem(index, { isRequired: event.target.checked })}
                                 />
                                 Required for sign-off
+                            </label>
+                            <label className="checklist-item-card__required">
+                                <input
+                                    type="checkbox"
+                                    checked={Boolean(item.evidenceRequired)}
+                                    onChange={(event) => updateItem(index, { evidenceRequired: event.target.checked })}
+                                />
+                                Require evidence
                             </label>
                         </div>
                     ))}

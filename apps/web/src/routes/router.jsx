@@ -14,13 +14,9 @@ import { CredentialHistory } from "../features/credentials/history";
 import CredentialGeneratorPage from "../features/credentials/credential-generator/CredentialGeneratorPage.jsx";
 import AuditLogPage from "../features/audit/audit-log-page.jsx";
 import SystemManagementPage from "../features/system-configs/SystemManagementPage.jsx";
-import MaintenanceConfigPage from "../features/maintenance/pages/MaintenanceConfigPage.jsx";
-import MaintenanceSchedulePage from "../features/maintenance/pages/MaintenanceSchedulePage.jsx";
-import MaintenanceWindowDetailPage from "../features/maintenance/pages/MaintenanceWindowDetailPage.jsx";
 import MaintenanceHistoryPage from "../features/maintenance/pages/MaintenanceHistoryPage.jsx";
-import AssignmentRulesPage from "../features/maintenance/pages/AssignmentRulesPage.jsx";
-import MyMaintenanceTasksPage from "../features/maintenance/pages/MyMaintenanceTasksPage.jsx";
-import ChecklistManagementPage from "../features/maintenance/pages/ChecklistManagementPage.jsx";
+import MaintenanceAssignmentsPage from "../features/maintenance/pages/MaintenanceAssignmentsPage.jsx";
+import MaintenancePoliciesPage from "../features/maintenance/pages/MaintenancePoliciesPage.jsx";
 import { MaintenanceLayout } from "../features/maintenance/pages/MaintenanceLayout.jsx";
 import MaintenanceHomePage from "../features/maintenance/pages/MaintenanceHomePage.jsx";
 import SubmitRequestPage from "../features/requests/pages/SubmitRequestPage.jsx";
@@ -37,6 +33,8 @@ import { NewJoinerPage } from "../features/onboarding/pages/NewJoinerPage.jsx";
 import { RequestsLayout } from "../features/requests/pages/RequestsLayout.jsx";
 import RequestsHomePage from "../features/requests/pages/RequestsHomePage.jsx";
 import { RequestsAccessGate } from "../features/requests/pages/RequestsAccessGate.jsx";
+import AssetsListPage from "../features/assets/pages/AssetsListPage.jsx";
+import AssetDetailPage from "../features/assets/pages/AssetDetailPage.jsx";
 import { DEV_ONLY_ROLES } from "../shared/auth/workspaceRoles.js";
 
 const RequireRoles = ({ roles, children }) => {
@@ -66,6 +64,8 @@ export const router = createBrowserRouter([
     errorElement: <RouteErrorPage />,
     children: [
       { index: true, element: <HomePage /> },
+      { path: "assets", element: <AssetsListPage /> },
+      { path: "assets/:id", element: <AssetDetailPage /> },
       { path: "audit-logs", element: <AuditLogPage /> },
       {
         path: "systems",
@@ -80,13 +80,15 @@ export const router = createBrowserRouter([
         element: <MaintenanceLayout />,
         children: [
           { index: true, element: <MaintenanceHomePage /> },
-          { path: "config", element: <MaintenanceConfigPage /> },
-          { path: "checklists", element: <ChecklistManagementPage /> },
-          { path: "schedule", element: <MaintenanceSchedulePage /> },
-          { path: "schedule/:id", element: <MaintenanceWindowDetailPage /> },
           { path: "history", element: <MaintenanceHistoryPage /> },
-          { path: "assignment-rules", element: <AssignmentRulesPage /> },
-          { path: "my-tasks", element: <MyMaintenanceTasksPage /> }
+          { path: "assignments", element: <MaintenanceAssignmentsPage /> },
+          { path: "policies", element: <MaintenancePoliciesPage /> },
+          { path: "my-tasks", element: <Navigate to="/maintenance" replace /> },
+          { path: "config", element: <Navigate to="/maintenance/policies" replace /> },
+          { path: "checklists", element: <Navigate to="/maintenance/policies" replace /> },
+          { path: "schedule", element: <Navigate to="/maintenance/assignments" replace /> },
+          { path: "schedule/:id", element: <Navigate to="/maintenance/assignments" replace /> },
+          { path: "assignment-rules", element: <Navigate to="/maintenance/assignments" replace /> }
         ]
       },
       {

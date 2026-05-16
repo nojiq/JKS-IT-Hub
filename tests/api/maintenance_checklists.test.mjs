@@ -48,7 +48,7 @@ before(async () => {
     itUser = await prisma.user.create({
         data: {
             username: `it-checklists-${randomUUID()}`,
-            role: 'it',
+            role: 'dev',
             status: 'active'
         }
     });
@@ -160,6 +160,29 @@ test('Maintenance Checklists - Core Behavior', async (t) => {
         });
 
         assert.equal(response.statusCode, 409);
+    });
+
+    await t.test('it can permanently delete a checklist template', async () => {
+        const deleteResponse = await api({
+            method: 'DELETE',
+            url: `/api/v1/maintenance/checklists/${checklistB.id}?hard=true`,
+            token: itToken
+        });
+
+        assert.equal(deleteResponse.statusCode, 200);
+        const deleted = JSON.parse(deleteResponse.body).data;
+        assert.equal(deleted.id, checklistB.id);
+        assert.equal(deleted.deleted, true);
+        assert.equal(deleted.itemsDeleted, 1);
+
+        const detailResponse = await api({
+            method: 'GET',
+            url: `/api/v1/maintenance/checklists/${checklistB.id}`,
+            token: itToken
+        });
+
+        assert.equal(detailResponse.statusCode, 404);
+        testIds.checklistIds = testIds.checklistIds.filter((id) => id !== checklistB.id);
     });
 
     await t.test('attach checklist to cycle and generate window with checklist snapshot', async () => {

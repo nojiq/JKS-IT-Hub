@@ -26,41 +26,23 @@ vi.mock('../src/features/users/home-page.jsx', () => ({
     default: () => <div>Dashboard Content</div>
 }));
 
-vi.mock('../src/features/maintenance/pages/MaintenanceSchedulePage.jsx', () => ({
-    default: () => <div>Schedule View</div>
+vi.mock('../src/features/maintenance/pages/MaintenanceAssignmentsPage.jsx', () => ({
+    default: () => <div>Assignments View</div>
 }));
 
 vi.mock('../src/features/maintenance/pages/MaintenanceHistoryPage.jsx', () => ({
     default: () => <div>History View</div>
 }));
 
-vi.mock('../src/features/maintenance/pages/MaintenanceConfigPage.jsx', () => ({
-    default: () => <div>Config View</div>
-}));
-
-vi.mock('../src/features/maintenance/pages/AssignmentRulesPage.jsx', () => ({
-    default: () => <div>Rules View</div>
-}));
-
-vi.mock('../src/features/maintenance/pages/MyMaintenanceTasksPage.jsx', () => ({
-    default: () => <div>My Tasks View</div>
-}));
-
-vi.mock('../src/features/maintenance/pages/ChecklistManagementPage.jsx', () => ({
-    default: () => <div>Checklists View</div>
+vi.mock('../src/features/maintenance/pages/MaintenancePoliciesPage.jsx', () => ({
+    default: () => <div>Policies View</div>
 }));
 
 vi.mock('../src/features/maintenance/hooks/useMaintenance.js', () => ({
-    useWindows: vi.fn(),
-    useMyMaintenanceWindows: vi.fn(),
-    useMaintenanceHistory: vi.fn()
+    useMyMaintenanceRuns: vi.fn()
 }));
 
-import {
-    useMaintenanceHistory,
-    useMyMaintenanceWindows,
-    useWindows
-} from '../src/features/maintenance/hooks/useMaintenance.js';
+import { useMyMaintenanceRuns } from '../src/features/maintenance/hooks/useMaintenance.js';
 import { router as appRouter } from '../src/routes/router.jsx';
 
 const devUser = {
@@ -76,8 +58,8 @@ const createQueryClient = () => new QueryClient({
     }
 });
 
-const renderMaintenanceApp = ({ initialEntry = '/maintenance', user = devUser } = {}) => {
-    workspaceSession.setUser(user);
+const renderMaintenanceApp = ({ initialEntry = '/maintenance' } = {}) => {
+    workspaceSession.setUser(devUser);
 
     const router = createMemoryRouter(appRouter.routes, {
         initialEntries: [initialEntry]
@@ -88,98 +70,44 @@ const renderMaintenanceApp = ({ initialEntry = '/maintenance', user = devUser } 
             <RouterProvider router={router} />
         </QueryClientProvider>
     );
-
-    return { router };
 };
 
-const requesterUser = {
-    id: 'user-2',
-    username: 'riley.requester',
-    role: 'requester',
-    status: 'active'
-};
-
-describe('Maintenance module overview route', () => {
+describe('Maintenance dashboard route', () => {
     beforeEach(() => {
         vi.clearAllMocks();
 
-        useWindows.mockReturnValue({
+        useMyMaintenanceRuns.mockReturnValue({
             data: {
                 data: [
-                    { id: 'win-1', status: 'UPCOMING', cycleConfig: { name: 'Quarterly PM' } },
-                    { id: 'win-2', status: 'OVERDUE', cycleConfig: { name: 'Server Patch Window' } }
+                    {
+                        id: 'run-1',
+                        status: 'overdue',
+                        dueDate: '2026-05-10T10:00:00.000Z',
+                        asset: { assetTag: 'SRV-ALPHA', name: 'Server Rack Alpha' },
+                        profile: { name: '6-Month Major Maintenance' }
+                    },
+                    {
+                        id: 'run-2',
+                        status: 'due',
+                        dueDate: '2026-05-20T10:00:00.000Z',
+                        asset: { assetTag: 'LAP-12', name: 'Laptop 12' },
+                        profile: { name: 'Quarterly PM' }
+                    }
                 ],
                 meta: { total: 2 }
             },
             isLoading: false,
-            error: null
-        });
-
-        useMyMaintenanceWindows.mockReturnValue({
-            data: {
-                data: [
-                    { id: 'task-1', status: 'UPCOMING', cycleConfig: { name: 'Quarterly PM' } }
-                ],
-                meta: { total: 1 }
-            },
-            isLoading: false,
-            error: null
-        });
-
-        useMaintenanceHistory.mockReturnValue({
-            data: {
-                data: [
-                    { id: 'history-1', window: { id: 'win-h1', status: 'COMPLETED', cycleConfig: { name: 'Quarterly PM' } } },
-                    { id: 'history-2', window: { id: 'win-h2', status: 'COMPLETED', cycleConfig: { name: 'Server Patch' } } }
-                ],
-                meta: { total: 2 }
-            },
-            isLoading: false,
-            error: null
+            error: null,
+            isFetching: false
         });
     });
 
-    it('opens /maintenance for developer users with dashboard sections', async () => {
+    it('opens dashboard with metrics and run list', async () => {
         renderMaintenanceApp();
 
-        expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Next maintenance' })).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'My tasks' })).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Overdue' })).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Recent history' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'View schedule' })).toBeInTheDocument();
-        expect(screen.getByText('Upcoming')).toBeInTheDocument();
-    });
-
-    it('keeps history subroute reachable for developer users', async () => {
-        renderMaintenanceApp({ initialEntry: '/maintenance/history' });
-
-        expect(await screen.findByText('History View')).toBeInTheDocument();
-    });
-
-    it.each([
-        ['it'],
-        ['head_it'],
-        ['admin']
-    ])('redirects %s users away from the maintenance module', async (role) => {
-        renderMaintenanceApp({
-            user: {
-                ...devUser,
-                id: `user-${role}`,
-                username: `${role}.user`,
-                role
-            }
-        });
-
-        expect(await screen.findByText('Dashboard Content')).toBeInTheDocument();
-        expect(screen.queryByRole('heading', { name: 'Overview' })).not.toBeInTheDocument();
-    });
-
-    it('redirects unauthorized users to / and does not render the maintenance shell', async () => {
-        const { router } = renderMaintenanceApp({ user: requesterUser });
-
-        expect(await screen.findByText('Dashboard Content')).toBeInTheDocument();
-        expect(router.state.location.pathname).toBe('/');
-        expect(screen.queryByRole('heading', { name: 'Overview' })).not.toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Overdue: 1' })).toBeInTheDocument();
+        expect(screen.getByText('6-Month Major Maintenance')).toBeInTheDocument();
+        expect(screen.getByText(/Server Rack Alpha/)).toBeInTheDocument();
     });
 });

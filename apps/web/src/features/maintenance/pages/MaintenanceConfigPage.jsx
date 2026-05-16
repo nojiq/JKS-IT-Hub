@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { maintenanceConfigViewStates, useMaintenanceConfig, useGenerateSchedule } from "../hooks/useMaintenance.js";
 import CycleConfigList from "../components/CycleConfigList.jsx";
@@ -8,10 +8,12 @@ import ScheduleGenerationModal from "../components/ScheduleGenerationModal.jsx";
 import { useToast } from '../../../shared/hooks/useToast.js';
 import { DataStateBlock } from '../../../shared/workspace/DataStateBlock.jsx';
 import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel.jsx';
+import '../../../shared/workspace/workspace.css';
 import './MaintenanceHomePage.css';
 import "./MaintenanceConfigPage.css";
 
 const MaintenanceConfigPage = () => {
+    const cyclesHintId = useId();
     const { cycles, viewState, error } = useMaintenanceConfig(false);
     const generateSchedule = useGenerateSchedule();
     const toast = useToast();
@@ -72,14 +74,29 @@ const MaintenanceConfigPage = () => {
         <div className="maintenance-module-page maintenance-config-page">
             <header className="maintenance-page-header">
                 <div>
-                    <h2>Maintenance cycles</h2>
-                    <p>Define reusable cycles, generate upcoming windows, and keep related checklist templates close at hand.</p>
+                    <h2>
+                        <span
+                            className="workspace-panel-title-hint"
+                            tabIndex={0}
+                            aria-describedby={cyclesHintId}
+                        >
+                            Maintenance cycles
+                            <span
+                                className="workspace-panel-title-hint-popup"
+                                id={cyclesHintId}
+                                role="tooltip"
+                                aria-hidden="true"
+                            >
+                                Define reusable cycles, generate upcoming windows, and keep related checklist templates close at hand.
+                            </span>
+                        </span>
+                    </h2>
                 </div>
             </header>
             <WorkspacePanel
                 variant="table"
                 title="Cycle templates"
-                meta="Active and inactive maintenance cycle definitions."
+                titleHint="Active and inactive maintenance cycle definitions."
                 actions={!cycleModal ? (
                     <div className="maintenance-config-actions">
                         <button onClick={handleCreate} className="workspace-inline-button is-primary" type="button">Add New Cycle</button>
@@ -91,7 +108,7 @@ const MaintenanceConfigPage = () => {
             >
                 {viewState === maintenanceConfigViewStates.empty ? (
                     <div className="maintenance-config-state maintenance-config-state--empty" data-testid="maintenance-config-empty">
-                        No maintenance configuration available from backend data.
+                        No maintenance cycles yet. Add a cycle to start scheduling windows.
                     </div>
                 ) : (
                     <CycleConfigList

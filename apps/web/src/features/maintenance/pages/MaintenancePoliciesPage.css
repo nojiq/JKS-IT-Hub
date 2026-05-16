@@ -1,0 +1,169 @@
+.maintenance-policies-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 1rem;
+  min-height: 420px;
+}
+
+.maintenance-policies-sidebar {
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--radius-panel);
+  background: var(--ui-surface-elevated);
+  padding: 0.75rem;
+}
+
+.maintenance-policies-sidebar__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.maintenance-policies-sidebar__title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-text-muted);
+}
+
+.maintenance-policies-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.maintenance-policies-list__item {
+  width: 100%;
+  display: grid;
+  gap: 0.15rem;
+  text-align: left;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ui-text-primary);
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.maintenance-policies-list__item small {
+  color: var(--ui-text-muted);
+  font-size: 0.75rem;
+}
+
+.maintenance-policies-list__item.is-active,
+.maintenance-policies-list__item:hover {
+  background: var(--ui-surface-hover);
+  border-color: var(--ui-border-subtle);
+}
+
+.maintenance-policies-list__item.is-active {
+  border-color: color-mix(in srgb, var(--ui-accent-primary) 35%, var(--ui-border-subtle));
+}
+
+.maintenance-policies-detail {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.maintenance-policies-detail__policy,
+.maintenance-policies-detail__checklist {
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--radius-panel);
+  background: var(--ui-surface-elevated);
+  padding: 1rem;
+}
+
+.maintenance-policies-detail h3 {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+}
+
+.maintenance-policies-detail__checklist-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.maintenance-policies-detail__checklist-head h3 {
+  margin: 0;
+}
+
+.maintenance-policy-form {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.maintenance-policy-form label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ui-text-secondary);
+}
+
+.maintenance-policy-form input,
+.maintenance-policy-form textarea,
+.maintenance-policy-form select {
+  width: 100%;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text-primary);
+  font: inherit;
+  padding: 0.45rem 0.65rem;
+}
+
+.maintenance-policy-interval {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.maintenance-policy-interval__label {
+  font-weight: 700;
+  margin-right: 0.25rem;
+}
+
+.maintenance-task-drawer__readonly-badge {
+  display: inline-block;
+  margin-top: 0.35rem;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ui-text-secondary);
+  background: var(--ui-surface-muted);
+  border-radius: var(--radius-control);
+}
+
+.maintenance-task-drawer__item-audit {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: var(--ui-text-muted);
+}
+
+.assign-policy-modal__handoff {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ui-text-secondary);
+}
+
+.history-run-link {
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .maintenance-policies-layout {
+    grid-template-columns: 1fr;
+  }
+}

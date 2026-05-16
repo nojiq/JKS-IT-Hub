@@ -1,4 +1,5 @@
 import { prisma } from "../../shared/db/prisma.js";
+import { deriveRoleForDepartment } from "../../shared/auth/departmentRoleAssignment.js";
 
 export { prisma };
 
@@ -81,6 +82,7 @@ export const findUsersByUsernames = async (usernames = []) => {
     select: {
       id: true,
       username: true,
+      role: true,
       ldapAttributes: true,
       orgSnapshot: true,
       orgSyncedAt: true
@@ -122,42 +124,72 @@ export const createUser = async ({
     ...(orgSnapshot !== undefined ? { orgSnapshot } : {}),
     ...(orgSyncedAt !== undefined ? { orgSyncedAt } : {})
   };
+  const assignedRole = deriveRoleForDepartment({ currentRole: role, ldapAttributes, orgSnapshot });
 
   return prisma.user.create({
     data: {
       username,
-      role,
+      role: assignedRole,
       status,
       ...optionalData
     }
   });
 };
 
-export const findOrCreateUser = async ({ username, role = "requester" }) => {
+export const findOrCreateUser = async ({
+  username,
+  role = "requester",
+  ldapAttributes = undefined,
+  orgSnapshot = undefined,
+  orgSyncedAt = undefined
+}) => {
   const existing = await findUserByUsername(username);
   if (existing) {
+    const nextRole = deriveRoleForDepartment({
+      currentRole: existing.role,
+      ldapAttributes,
+      orgSnapshot
+    });
+    if (nextRole !== existing.role) {
+      return prisma.user.update({
+        where: { id: existing.id },
+        data: { role: nextRole }
+      });
+    }
     return existing;
   }
 
-  return createUser({ username, role, status: "active" });
+  return createUser({ username, role, status: "active", ldapAttributes, orgSnapshot, orgSyncedAt });
 };
 
 export const upsertUserFromLdap = async ({
   username,
   ldapDn,
   ldapAttributes,
+  role = undefined,
   orgSnapshot = undefined,
   orgSyncedAt = undefined,
   syncedAt = new Date()
 }) => {
+  const existing = await prisma.user.findUnique({
+    where: { username },
+    select: { role: true }
+  });
+  const assignedRole = deriveRoleForDepartment({
+    currentRole: existing?.role ?? role ?? "requester",
+    ldapAttributes,
+    orgSnapshot
+  });
   const orgData = orgSnapshot === undefined
     ? {}
     : { orgSnapshot, orgSyncedAt: orgSyncedAt ?? new Date() };
+  const updateRoleData = existing && assignedRole !== existing.role ? { role: assignedRole } : {};
 
   return prisma.user.upsert({
     where: { username },
     create: {
       username,
+      role: assignedRole,
       ldapDn,
       ldapAttributes,
       ldapSyncedAt: syncedAt,
@@ -167,6 +199,7 @@ export const upsertUserFromLdap = async ({
       ldapDn,
       ldapAttributes,
       ldapSyncedAt: syncedAt,
+      ...updateRoleData,
       ...orgData
     }
   });
@@ -209,11 +242,27 @@ export const updateUserStatus = async (id, status) => {
 };
 
 export const updateUserOrgSnapshot = async (id, orgSnapshot) => {
+  const existing = await prisma.user.findUnique({
+    where: { id },
+    select: {
+      role: true,
+      ldapAttributes: true
+    }
+  });
+  const assignedRole = existing
+    ? deriveRoleForDepartment({
+        currentRole: existing.role,
+        ldapAttributes: existing.ldapAttributes,
+        orgSnapshot
+      })
+    : null;
+
   return prisma.user.update({
     where: { id },
     data: {
       orgSnapshot: orgSnapshot === null ? null : orgSnapshot,
-      orgSyncedAt: new Date()
+      orgSyncedAt: new Date(),
+      ...(existing && assignedRole !== existing.role ? { role: assignedRole } : {})
     },
     select: {
       id: true,
@@ -228,6 +277,64 @@ export const updateUserOrgSnapshot = async (id, orgSnapshot) => {
   });
 };
 
+const LDAP_SEARCH_PATHS = [
+  "$.displayName",
+  "$.cn",
+  "$.givenName",
+  "$.sn",
+  "$.mail",
+  "$.department"
+];
+
+const toTitleCaseWords = (value) =>
+  value.replace(/\S+/g, (part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase());
+
+const buildSearchVariants = (value) => {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  return [...new Set([trimmed, trimmed.toLowerCase(), trimmed.toUpperCase(), toTitleCaseWords(trimmed)])];
+};
+
+const buildSearchClauses = (value) => buildSearchVariants(value).flatMap((variant) => [
+  { username: { contains: variant } },
+  ...LDAP_SEARCH_PATHS.map((path) => ({
+    ldapAttributes: {
+      path,
+      string_contains: variant
+    }
+  })),
+  {
+    imapProfile: {
+      is: {
+        fullName: { contains: variant }
+      }
+    }
+  }
+]);
+
+const buildUserSearchWhere = (search) => {
+  const trimmed = String(search ?? "").trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  const clauses = buildSearchClauses(trimmed);
+  const tokens = [...new Set(trimmed.split(/\s+/).map((part) => part.trim()).filter(Boolean))];
+
+  if (tokens.length > 1) {
+    clauses.push({
+      AND: tokens.map((token) => ({
+        OR: buildSearchClauses(token)
+      }))
+    });
+  }
+
+  return clauses;
+};
+
 export const listUsersFiltered = async (filters = {}, pagination = {}) => {
   const { page = 1, perPage = 20 } = pagination;
   const skip = (page - 1) * perPage;
@@ -237,52 +344,7 @@ export const listUsersFiltered = async (filters = {}, pagination = {}) => {
 
   // Text search across multiple fields
   if (filters.search) {
-    where.OR = [
-      { username: { contains: filters.search } },
-      {
-        ldapAttributes: {
-          path: '$.displayName',
-          string_contains: filters.search
-        }
-      },
-      {
-        ldapAttributes: {
-          path: '$.cn',
-          string_contains: filters.search
-        }
-      },
-      {
-        ldapAttributes: {
-          path: '$.givenName',
-          string_contains: filters.search
-        }
-      },
-      {
-        ldapAttributes: {
-          path: '$.sn',
-          string_contains: filters.search
-        }
-      },
-      {
-        ldapAttributes: {
-          path: '$.mail',
-          string_contains: filters.search
-        }
-      },
-      {
-        ldapAttributes: {
-          path: '$.department',
-          string_contains: filters.search
-        }
-      },
-      {
-        imapProfile: {
-          is: {
-            fullName: { contains: filters.search }
-          }
-        }
-      }
-    ];
+    where.OR = buildUserSearchWhere(filters.search);
   }
 
   // Exact match filters

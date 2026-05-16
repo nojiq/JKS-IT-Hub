@@ -50,6 +50,15 @@ export const workspaceGroups = [
         ]
       },
       {
+        id: "assets",
+        label: "Assets",
+        icon: "assets",
+        to: "/assets",
+        launcherPriority: 5,
+        launcherDescription: "Browse hardware inventory synced from Snipe-IT and review user assignments.",
+        launcherActionLabel: "Open Assets"
+      },
+      {
         id: "users",
         label: "Users & Credentials",
         icon: "users",
@@ -75,13 +84,10 @@ export const workspaceGroups = [
         launcherDescription: "Schedule preventive work, assign tasks, and close overdue actions.",
         launcherActionLabel: "Open Maintenance",
         children: [
-          { label: "Overview", to: "/maintenance" },
-          { label: "Schedule", to: "/maintenance/schedule" },
-          { label: "My Tasks", to: "/maintenance/my-tasks" },
+          { label: "Dashboard", to: "/maintenance" },
           { label: "History", to: "/maintenance/history" },
-          { label: "Config", to: "/maintenance/config" },
-          { label: "Rules", to: "/maintenance/assignment-rules" },
-          { label: "Checklists", to: "/maintenance/checklists" }
+          { label: "Assignments", to: "/maintenance/assignments" },
+          { label: "Policies & Checklists", to: "/maintenance/policies" }
         ]
       }
     ]

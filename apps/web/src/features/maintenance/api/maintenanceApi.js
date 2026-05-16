@@ -143,6 +143,13 @@ export const deactivateChecklistTemplate = async (id) => {
     return parsePayload(response);
 };
 
+export const deleteChecklistTemplate = async (id) => {
+    const response = await apiFetch(`${MAINTENANCE_BASE}/checklists/${id}?hard=true`, {
+        method: 'DELETE'
+    });
+    return parsePayload(response);
+};
+
 // Windows
 export const fetchWindows = async (filters = {}) => {
     const query = new URLSearchParams();

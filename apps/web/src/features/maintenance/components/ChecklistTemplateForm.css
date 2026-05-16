@@ -95,14 +95,30 @@
     margin-left: auto;
 }
 
-.checklist-template-form__btn-danger {
+.checklist-template-form__danger-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.checklist-template-form__btn-warning {
     border-color: color-mix(in srgb, var(--ui-feedback-warning) 40%, var(--ui-border-strong)) !important;
     background: color-mix(in srgb, var(--ui-feedback-warning-muted) 45%, var(--ui-surface-elevated)) !important;
     color: var(--ui-feedback-warning) !important;
 }
 
-.checklist-template-form__btn-danger:hover:not(:disabled) {
+.checklist-template-form__btn-warning:hover:not(:disabled) {
     background: color-mix(in srgb, var(--ui-feedback-warning-muted) 70%, var(--ui-surface-hover)) !important;
+}
+
+.checklist-template-form__btn-danger {
+    border-color: color-mix(in srgb, var(--ui-feedback-error) 48%, var(--ui-border-strong)) !important;
+    background: color-mix(in srgb, var(--ui-feedback-error-muted) 48%, var(--ui-surface-elevated)) !important;
+    color: var(--ui-feedback-error) !important;
+}
+
+.checklist-template-form__btn-danger:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--ui-feedback-error-muted) 75%, var(--ui-surface-hover)) !important;
 }
 
 .checklist-deactivate-confirm {

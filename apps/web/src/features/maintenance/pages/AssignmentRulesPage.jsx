@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { useAssignmentRules, useDeactivateAssignmentRule, useResetRotation } from '../hooks/useMaintenance.js';
 import AssignmentRuleList from '../components/AssignmentRuleList.jsx';
 import AssignmentRuleModal from '../components/AssignmentRuleModal.jsx';
@@ -6,10 +6,12 @@ import { MaintenanceConfirmDialog } from '../components/MaintenanceConfirmDialog
 import { useToast } from '../../../shared/hooks/useToast.js';
 import { DataStateBlock } from '../../../shared/workspace/DataStateBlock.jsx';
 import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel.jsx';
+import '../../../shared/workspace/workspace.css';
 import './MaintenanceHomePage.css';
 import './AssignmentRulesPage.css';
 
 const AssignmentRulesPage = () => {
+    const rulesHintId = useId();
     const { data: rules, isLoading, error } = useAssignmentRules(true);
     const [ruleModal, setRuleModal] = useState(null);
     const [confirmAction, setConfirmAction] = useState(null);
@@ -79,14 +81,29 @@ const AssignmentRulesPage = () => {
         <div className="maintenance-module-page assignment-rules-page">
             <header className="maintenance-page-header">
                 <div>
-                    <h2>Assignment rules</h2>
-                    <p>Control which PICs receive maintenance windows for each department and strategy.</p>
+                    <h2>
+                        <span
+                            className="workspace-panel-title-hint"
+                            tabIndex={0}
+                            aria-describedby={rulesHintId}
+                        >
+                            Assignment rules
+                            <span
+                                className="workspace-panel-title-hint-popup"
+                                id={rulesHintId}
+                                role="tooltip"
+                                aria-hidden="true"
+                            >
+                                Control which PICs receive maintenance windows for each department and strategy.
+                            </span>
+                        </span>
+                    </h2>
                 </div>
             </header>
             <WorkspacePanel
                 variant="table"
                 title="Department rules"
-                meta="Rotation and fixed assignment coverage by department."
+                titleHint="Rotation and fixed assignment coverage by department."
                 actions={
                     !ruleModal ? (
                         <button onClick={handleCreate} className="workspace-inline-button is-primary" type="button">

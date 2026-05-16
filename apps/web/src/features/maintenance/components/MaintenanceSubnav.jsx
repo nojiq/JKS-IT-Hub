@@ -1,20 +1,21 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useOutletContext } from 'react-router-dom';
+import { isMaintenanceAdmin } from '../utils/maintenanceTerminology.js';
 
-/** Order aligned with `workspaceModules` Maintenance children */
 const LINKS = [
-    { to: '/maintenance', label: 'Overview', end: true },
-    { to: '/maintenance/schedule', label: 'Schedule' },
-    { to: '/maintenance/my-tasks', label: 'My Tasks' },
+    { to: '/maintenance', label: 'Dashboard', end: true },
     { to: '/maintenance/history', label: 'History' },
-    { to: '/maintenance/config', label: 'Configuration' },
-    { to: '/maintenance/assignment-rules', label: 'Rules' },
-    { to: '/maintenance/checklists', label: 'Checklists' }
+    { to: '/maintenance/assignments', label: 'Assignments', adminOnly: true },
+    { to: '/maintenance/policies', label: 'Policies & Checklists', adminOnly: true }
 ];
 
 export function MaintenanceSubnav() {
+    const { user } = useOutletContext() ?? {};
+    const showAdmin = isMaintenanceAdmin(user);
+    const links = LINKS.filter((link) => !link.adminOnly || showAdmin);
+
     return (
         <nav className="maintenance-subnav" aria-label="Maintenance sections">
-            {LINKS.map((link) => (
+            {links.map((link) => (
                 <NavLink
                     key={link.to}
                     to={link.to}

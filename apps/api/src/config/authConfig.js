@@ -57,7 +57,12 @@ const envSchema = z.object({
   PULSE_ORG_SYNC_ENABLED: z.string().optional(),
   PULSE_MONGO_URI: z.string().optional(),
   PULSE_MONGO_DATABASE: z.string().optional(),
-  PULSE_MONGO_TIMEOUT_MS: z.string().optional()
+  PULSE_MONGO_TIMEOUT_MS: z.string().optional(),
+  SNIPE_IT_BASE_URL: z.string().optional(),
+  SNIPE_IT_API_TOKEN: z.string().optional(),
+  SNIPE_IT_SYNC_ENABLED: z.string().optional(),
+  SNIPE_IT_SYNC_CRON: z.string().optional(),
+  SNIPE_IT_SYNC_TIMEOUT_MS: z.string().optional()
 });
 
 export const getAuthConfig = () => {
@@ -112,6 +117,13 @@ export const getAuthConfig = () => {
       mongoUri: env.PULSE_MONGO_URI ?? null,
       database: env.PULSE_MONGO_DATABASE ?? "jkspulse",
       timeoutMs: toNumber(env.PULSE_MONGO_TIMEOUT_MS) ?? 2000
+    },
+    snipeIt: {
+      baseUrl: env.SNIPE_IT_BASE_URL ?? null,
+      apiToken: env.SNIPE_IT_API_TOKEN ?? null,
+      enabled: toBoolean(env.SNIPE_IT_SYNC_ENABLED, Boolean(env.SNIPE_IT_BASE_URL && env.SNIPE_IT_API_TOKEN)),
+      schedule: env.SNIPE_IT_SYNC_CRON ?? "0 */6 * * *",
+      timeoutMs: toNumber(env.SNIPE_IT_SYNC_TIMEOUT_MS) ?? 15000
     }
   };
 };

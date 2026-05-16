@@ -240,10 +240,10 @@ const MaintenanceCompletionModal = ({ window: maintenanceWindow, onClose, onSucc
         <MobileModal
             isOpen={true}
             onClose={onClose}
-            title="Maintenance Sign-Off"
+            title="Complete maintenance"
         >
             <div className="window-summary">
-                <p><strong>Cycle:</strong> {maintenanceWindow.cycleConfig?.name}</p>
+                <p><strong>Policy:</strong> {maintenanceWindow.cycleConfig?.name}</p>
                 <p><strong>Scheduled:</strong> {formatDisplayDate(maintenanceWindow.scheduledStartDate, { fallback: '-' })}</p>
                 {maintenanceWindow.assignedTo && <p><strong>Assigned To:</strong> {maintenanceWindow.assignedTo.username}</p>}
             </div>

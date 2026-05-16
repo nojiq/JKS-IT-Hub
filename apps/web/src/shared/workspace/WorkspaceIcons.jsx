@@ -59,6 +59,15 @@ export function WorkspaceNavIcon({ icon, className }) {
           <path d="M12 11V18" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
         </WorkspaceTileIcon>
       );
+    case "assets":
+      return (
+        <WorkspaceTileIcon className={className}>
+          <rect x="5" y="6" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.7" />
+          <path d="M8.5 10H15.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+          <path d="M8.5 13.5H12.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+          <path d="M9 6V5C9 4.2 9.7 3.5 10.5 3.5H13.5C14.3 3.5 15 4.2 15 5V6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+        </WorkspaceTileIcon>
+      );
     case "users":
       return (
         <WorkspaceTileIcon className={className}>

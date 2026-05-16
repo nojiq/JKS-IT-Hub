@@ -1,42 +1,38 @@
-import React, { useMemo, useState } from 'react';
-import { useMaintenanceHistory } from '../hooks/useMaintenance.js';
-import MaintenanceHistoryList from '../components/MaintenanceHistoryList.jsx';
-import { MaintenanceSearchCombobox } from '../components/MaintenanceSearchCombobox.jsx';
+import { useId, useMemo, useState } from 'react';
+import { useMaintenanceRunHistory } from '../hooks/useMaintenance.js';
+import MaintenanceTaskDrawer from '../components/MaintenanceTaskDrawer.jsx';
 import { DataStateBlock } from '../../../shared/workspace/DataStateBlock.jsx';
 import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel.jsx';
-import { FilterSelect } from '../../../shared/components/FilterPanel/FilterSelect';
+import { formatTechnician } from '../utils/maintenanceDisplay.js';
+import { formatTaskAssetLabel, formatTaskPolicyLabel } from '../utils/taskUrgency.js';
+import { formatDisplayDate } from '../../../shared/utils/date-format.js';
+import '../../../shared/workspace/workspace.css';
 import './MaintenanceHomePage.css';
 
 const MaintenanceHistoryPage = () => {
-    const [filters, setFilters] = useState({ page: 1, perPage: 20, deviceType: '', search: '' });
-    const { data: result, isLoading, error, isFetching } = useMaintenanceHistory(filters);
+    const historyHintId = useId();
+    const [filters, setFilters] = useState({ page: 1, perPage: 20, search: '' });
+    const [auditRun, setAuditRun] = useState(null);
 
-    const completions = result?.data || [];
+    const { data: result, isLoading, error, isFetching } = useMaintenanceRunHistory(filters);
+    const runs = result?.data || [];
     const meta = result?.meta || { page: 1, totalPages: 1 };
 
-    const historyWindows = useMemo(
-        () => completions.map((entry) => entry.window).filter(Boolean),
-        [completions]
-    );
-
-    const filteredCompletions = useMemo(() => {
+    const filteredRuns = useMemo(() => {
         const query = String(filters.search || '').trim().toLowerCase();
-        if (!query) return completions;
-        return completions.filter((record) => {
-            const cycleName = record.window?.cycleConfig?.name || '';
-            return [cycleName, record.completedBy?.username, record.notes]
-                .some((value) => String(value || '').toLowerCase().includes(query));
+        if (!query) return runs;
+        return runs.filter((run) => {
+            const asset = formatTaskAssetLabel(run).toLowerCase();
+            const policy = formatTaskPolicyLabel(run).toLowerCase();
+            const tech = run.assignedTo?.username?.toLowerCase() || '';
+            return [asset, policy, tech, run.status].some((v) => v.includes(query));
         });
-    }, [completions, filters.search]);
+    }, [runs, filters.search]);
 
     if (isLoading) {
         return (
             <section className="maintenance-module-page">
-                <DataStateBlock
-                    variant="loading"
-                    title="Loading maintenance history"
-                    description="Preparing sign-off history and completed work records."
-                />
+                <DataStateBlock variant="loading" title="Loading history" description="Gathering completed maintenance runs." />
             </section>
         );
     }
@@ -44,83 +40,143 @@ const MaintenanceHistoryPage = () => {
     if (error) {
         return (
             <section className="maintenance-module-page">
-                <DataStateBlock
-                    variant="error"
-                    title="Unable to load maintenance history"
-                    description={error.message}
-                />
+                <DataStateBlock variant="error" title="Unable to load history" description={error.message} />
             </section>
         );
     }
 
-    const { page, totalPages } = meta;
-
-    const handlePageChange = (newPage) => {
-        setFilters((prev) => ({ ...prev, page: newPage }));
-    };
-
     return (
-        <div className="maintenance-module-page maintenance-schedule-page">
+        <div className="maintenance-module-page maintenance-history-page">
             <header className="maintenance-page-header">
                 <div>
-                    <h2>Maintenance history</h2>
-                    <p>Review completed windows, sign-off methods, and checklist snapshots.</p>
+                    <h2>
+                        <span className="workspace-panel-title-hint" tabIndex={0} aria-describedby={historyHintId}>
+                            History
+                            <span
+                                className="workspace-panel-title-hint-popup"
+                                id={historyHintId}
+                                role="tooltip"
+                                aria-hidden="true"
+                            >
+                                Audit trail of completed, skipped, or cancelled maintenance runs.
+                            </span>
+                        </span>
+                    </h2>
                 </div>
             </header>
 
-            <div className="maintenance-toolbar">
-                <MaintenanceSearchCombobox
-                    value={filters.search || ''}
-                    onChange={(value) => setFilters((prev) => ({ ...prev, page: 1, search: value }))}
-                    windows={historyWindows}
-                    placeholder="Search completed records…"
-                    isLoading={isFetching}
-                />
-                <FilterSelect
-                    label="Device type"
-                    value={filters.deviceType}
-                    onChange={(value) => setFilters((prev) => ({ ...prev, page: 1, deviceType: value }))}
-                    options={[
-                        { value: 'LAPTOP', label: 'Laptop' },
-                        { value: 'DESKTOP_PC', label: 'Desktop PC' },
-                        { value: 'SERVER', label: 'Server' }
-                    ]}
-                />
-            </div>
+            <motionlessHistoryToolbar filters={filters} setFilters={setFilters} isFetching={isFetching} />
 
             <WorkspacePanel
                 variant="table"
-                title="Completed records"
-                meta={`${meta?.total ?? filteredCompletions.length} maintenance record${(meta?.total ?? filteredCompletions.length) === 1 ? '' : 's'}`}
+                title="Maintenance audit log"
+                meta={`${meta.total ?? filteredRuns.length} record${(meta.total ?? filteredRuns.length) === 1 ? '' : 's'}`}
             >
-                <MaintenanceHistoryList completions={filteredCompletions} />
+                <div className="maintenance-table-container">
+                    <table className="workspace-table maintenance-windows-table" aria-label="Maintenance history">
+                        <thead>
+                            <tr>
+                                <th>Completed</th>
+                                <th>Asset</th>
+                                <th>Policy</th>
+                                <th>Technician</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredRuns.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="maintenance-table-empty">
+                                        No maintenance records match your filters.
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredRuns.map((run) => {
+                                    const tech = formatTechnician(run.assignedTo);
+                                    return (
+                                        <tr key={run.id}>
+                                            <td>
+                                                <button
+                                                    type="button"
+                                                    className="workspace-inline-link history-run-link"
+                                                    onClick={() => setAuditRun(run)}
+                                                >
+                                                    {formatDisplayDate(run.completedAt || run.dueDate, {
+                                                        fallback: '—'
+                                                    })}
+                                                </button>
+                                            </td>
+                                            <td>{formatTaskAssetLabel(run)}</td>
+                                            <td>{formatTaskPolicyLabel(run)}</td>
+                                            <td>{tech.primary}</td>
+                                            <td>
+                                                <span className={`maintenance-status-badge ${run.status}`}>
+                                                    {run.status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
 
-                {totalPages > 1 ? (
+                {meta.totalPages > 1 ? (
                     <div className="maintenance-pagination-bar">
-                        <p className="maintenance-pagination-summary">Page {page} of {totalPages}</p>
-                        <div className="maintenance-pagination-controls">
-                            <button
-                                type="button"
-                                className="workspace-inline-button"
-                                disabled={page <= 1}
-                                onClick={() => handlePageChange(page - 1)}
-                            >
-                                Previous
-                            </button>
-                            <button
-                                type="button"
-                                className="workspace-inline-button"
-                                disabled={page >= totalPages}
-                                onClick={() => handlePageChange(page + 1)}
-                            >
-                                Next
-                            </button>
-                        </div>
+                        <p className="maintenance-pagination-summary">
+                            Page {meta.page} of {meta.totalPages}
+                        </p>
+                        <motionlessPagination filters={filters} setFilters={setFilters} meta={meta} />
                     </div>
                 ) : null}
             </WorkspacePanel>
+
+            {auditRun ? (
+                <MaintenanceTaskDrawer task={auditRun} readOnly onClose={() => setAuditRun(null)} />
+            ) : null}
         </div>
     );
 };
+
+function motionlessHistoryToolbar({ filters, setFilters, isFetching }) {
+    return (
+        <div className="maintenance-toolbar">
+            <label className="filter-item">
+                <span className="filter-label">Search</span>
+                <input
+                    type="search"
+                    value={filters.search}
+                    placeholder="Asset, policy, technician…"
+                    onChange={(e) => setFilters((p) => ({ ...p, page: 1, search: e.target.value }))}
+                />
+            </label>
+            {isFetching ? <span className="maintenance-muted">Refreshing…</span> : null}
+        </div>
+    );
+}
+
+function motionlessPagination({ filters, setFilters, meta }) {
+    return (
+        <div className="maintenance-pagination-controls">
+            <button
+                type="button"
+                className="workspace-inline-button"
+                disabled={meta.page <= 1}
+                onClick={() => setFilters((p) => ({ ...p, page: meta.page - 1 }))}
+            >
+                Previous
+            </button>
+            <button
+                type="button"
+                className="workspace-inline-button"
+                disabled={meta.page >= meta.totalPages}
+                onClick={() => setFilters((p) => ({ ...p, page: meta.page + 1 }))}
+            >
+                Next
+            </button>
+        </div>
+    );
+}
 
 export default MaintenanceHistoryPage;

@@ -19,7 +19,7 @@ const CycleConfigModal = ({ isOpen, mode, cycle = null, onClose }) => {
 
     if (!isOpen) return null;
 
-    const title = mode === 'create' ? 'New maintenance cycle' : 'Edit maintenance cycle';
+    const title = mode === 'create' ? 'New maintenance policy' : 'Edit maintenance policy';
 
     return (
         <div

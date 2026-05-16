@@ -191,6 +191,7 @@ export default function UsersListPage() {
   const showRoleColumn = !isMobile;
   const showUsernameColumn = !isTablet && !isCompactDesktop;
   const showDepartmentColumn = !isTablet && !isCompactDesktop;
+  const hasFilteredEmptyState = Boolean(filterContract.filters.search || filterContract.hasActiveFilters);
 
   useEffect(() => {
     setSelectedUsers((previous) => {
@@ -302,8 +303,8 @@ export default function UsersListPage() {
         </div>
       ) : null}
 
-      {users.length ? (
-        isMobile ? (
+      {isMobile ? (
+        users.length ? (
           <div className="users-mobile-list" role="list" aria-label="Users list">
             {isItUser ? (
               <div className="users-mobile-selection-bar">
@@ -379,13 +380,25 @@ export default function UsersListPage() {
               );
             })}
           </div>
+        ) : hasFilteredEmptyState ? (
+          <SearchEmptyState
+            searchTerm={filterContract.filters.search}
+            onClear={filterContract.reset}
+          />
         ) : (
+          <DataStateBlock
+            variant="empty"
+            title="No users found"
+            description="Run LDAP sync to populate the directory."
+          />
+        )
+      ) : users.length || hasFilteredEmptyState ? (
           <WorkspacePanel
             variant="table"
             className="users-management-card"
             title="User Directory"
             actions={<LdapSyncPanel />}
-            footer={
+            footer={users.length ? (
               <div className="users-pagination-bar">
                 <p className="users-pagination-summary">
                   Showing {showingFrom}-{showingTo} of {totalResults} results
@@ -424,7 +437,7 @@ export default function UsersListPage() {
                   </button>
                 </div>
               </div>
-            }
+            ) : null}
           >
             <div className="users-table-toolbar">
               <div className="users-toolbar-search">
@@ -467,115 +480,116 @@ export default function UsersListPage() {
               </button>
             </div>
 
-            <div className="workspace-table-container users-table-container">
-              <table className="workspace-table users-management-table">
-                <thead>
-                  <tr>
-                    {isItUser ? (
-                      <th className="users-table-selection-cell">
-                        <input
-                          type="checkbox"
-                          checked={allUsersSelected}
-                          onChange={handleSelectAll}
-                          aria-label="Select all users"
-                        />
-                      </th>
-                    ) : null}
-                    <th data-column="user">User</th>
-                    {showRoleColumn ? <th data-column="role">Role</th> : null}
-                    <th data-column="status">Status</th>
-                    {showUsernameColumn ? <th data-column="username">Username</th> : null}
-                    {showDepartmentColumn ? <th data-column="department">Department</th> : null}
-                    <th data-column="actions">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((entry) => {
-                    const userProfile = buildUserProfile(entry);
-                    return (
-                      <tr
-                        key={entry.id}
-                        className={selectedUsers.has(entry.id) ? "workspace-table-row-selected" : ""}
-                      >
-                        {isItUser ? (
-                          <td className="users-table-selection-cell">
-                            <input
-                              type="checkbox"
-                              checked={selectedUsers.has(entry.id)}
-                              onChange={() => handleSelectUser(entry.id)}
-                              aria-label={`Select ${entry.username}`}
-                            />
+            {users.length ? (
+              <div className="workspace-table-container users-table-container">
+                <table className="workspace-table users-management-table">
+                  <thead>
+                    <tr>
+                      {isItUser ? (
+                        <th className="users-table-selection-cell">
+                          <input
+                            type="checkbox"
+                            checked={allUsersSelected}
+                            onChange={handleSelectAll}
+                            aria-label="Select all users"
+                          />
+                        </th>
+                      ) : null}
+                      <th data-column="user">User</th>
+                      {showRoleColumn ? <th data-column="role">Role</th> : null}
+                      <th data-column="status">Status</th>
+                      {showUsernameColumn ? <th data-column="username">Username</th> : null}
+                      {showDepartmentColumn ? <th data-column="department">Department</th> : null}
+                      <th data-column="actions">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((entry) => {
+                      const userProfile = buildUserProfile(entry);
+                      return (
+                        <tr
+                          key={entry.id}
+                          className={selectedUsers.has(entry.id) ? "workspace-table-row-selected" : ""}
+                        >
+                          {isItUser ? (
+                            <td className="users-table-selection-cell">
+                              <input
+                                type="checkbox"
+                                checked={selectedUsers.has(entry.id)}
+                                onChange={() => handleSelectUser(entry.id)}
+                                aria-label={`Select ${entry.username}`}
+                              />
+                            </td>
+                          ) : null}
+
+                          <td data-column="user">
+                            <div className="users-user-cell">
+                              <div className="users-user-avatar" aria-hidden="true">
+                                {userProfile.avatarSrc ? (
+                                  <img src={userProfile.avatarSrc} alt="" />
+                                ) : (
+                                  <span>{userProfile.initials}</span>
+                                )}
+                              </div>
+
+                              <div className="users-user-details">
+                                <Link className="users-name" to={`/users/${entry.id}`}>
+                                  {userProfile.displayName}
+                                </Link>
+                                <span className="users-meta">
+                                  {userProfile.mail}
+                                  {!showUsernameColumn ? ` • ${userProfile.samAccountName}` : ""}
+                                  {!showDepartmentColumn && userProfile.department !== "-" ? ` • ${userProfile.department}` : ""}
+                                </span>
+                              </div>
+                            </div>
                           </td>
-                        ) : null}
 
-                        <td data-column="user">
-                          <div className="users-user-cell">
-                            <div className="users-user-avatar" aria-hidden="true">
-                              {userProfile.avatarSrc ? (
-                                <img src={userProfile.avatarSrc} alt="" />
-                              ) : (
-                                <span>{userProfile.initials}</span>
-                              )}
-                            </div>
-
-                            <div className="users-user-details">
-                              <Link className="users-name" to={`/users/${entry.id}`}>
-                                {userProfile.displayName}
-                              </Link>
-                              <span className="users-meta">
-                                {userProfile.mail}
-                                {!showUsernameColumn ? ` • ${userProfile.samAccountName}` : ""}
-                                {!showDepartmentColumn && userProfile.department !== "-" ? ` • ${userProfile.department}` : ""}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-
-                        {showRoleColumn ? <td data-column="role">{userProfile.roleLabel}</td> : null}
-                        <td data-column="status">
-                          <span className={`users-status-badge ${userProfile.statusClassName}`}>
-                            {userProfile.statusLabel}
-                          </span>
-                        </td>
-                        {showUsernameColumn ? <td data-column="username">{userProfile.samAccountName}</td> : null}
-                        {showDepartmentColumn ? <td data-column="department">{userProfile.department}</td> : null}
-                        <td data-column="actions">
-                          <Link
-                            className="workspace-inline-button users-row-action users-row-action--icon"
-                            to={`/users/${entry.id}`}
-                            aria-label={`Open profile for ${userProfile.displayName}`}
-                            title="Open user profile"
-                          >
-                            <svg
-                              aria-hidden="true"
-                              className="users-row-action-icon"
-                              width="18"
-                              height="18"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
+                          {showRoleColumn ? <td data-column="role">{userProfile.roleLabel}</td> : null}
+                          <td data-column="status">
+                            <span className={`users-status-badge ${userProfile.statusClassName}`}>
+                              {userProfile.statusLabel}
+                            </span>
+                          </td>
+                          {showUsernameColumn ? <td data-column="username">{userProfile.samAccountName}</td> : null}
+                          {showDepartmentColumn ? <td data-column="department">{userProfile.department}</td> : null}
+                          <td data-column="actions">
+                            <Link
+                              className="workspace-inline-button users-row-action users-row-action--icon"
+                              to={`/users/${entry.id}`}
+                              aria-label={`Open profile for ${userProfile.displayName}`}
+                              title="Open user profile"
                             >
-                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                              <circle cx="12" cy="12" r="3" />
-                            </svg>
-                          </Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                              <svg
+                                aria-hidden="true"
+                                className="users-row-action-icon"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
+                              </svg>
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <SearchEmptyState
+                searchTerm={filterContract.filters.search}
+                onClear={filterContract.reset}
+              />
+            )}
           </WorkspacePanel>
-        )
-      ) : filterContract.filters.search || filterContract.hasActiveFilters ? (
-        <SearchEmptyState
-          searchTerm={filterContract.filters.search}
-          onClear={filterContract.reset}
-        />
       ) : (
         <DataStateBlock
           variant="empty"

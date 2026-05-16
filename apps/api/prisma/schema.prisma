@@ -56,36 +56,64 @@ enum DeviceType {
   SERVER
 }
 
-model User {
-  id        String     @id @default(uuid()) @db.Char(36) @map("id")
-  username  String     @unique @map("username")
-  status    UserStatus @default(active) @map("status")
-  role      UserRole   @default(requester) @map("role")
-  ldapDn        String?   @db.Text @map("ldap_dn")
-  ldapAttributes Json?    @map("ldap_attributes")
-  ldapSyncedAt  DateTime? @map("ldap_synced_at")
-  orgSnapshot   Json?     @map("org_snapshot")
-  orgSyncedAt   DateTime? @map("org_synced_at")
-  createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @updatedAt @map("updated_at")
+enum MaintenanceAssignmentStatus {
+  active
+  paused
+  archived
+}
 
-  ldapSyncRuns LdapSyncRun[]
-  auditLogs    AuditLog[]
-  credentialTemplates CredentialTemplate[]
-  credentials  UserCredential[]
-  imapProfile  UserImapProfile?
-  generatedCredentials UserCredential[] @relation("GeneratedBy")
-  credentialVersions CredentialVersion[]
-  createdMaintenanceWindows MaintenanceWindow[]
-  assignmentTechnicians DepartmentAssignmentTechnician[]
-  assignedMaintenanceWindows MaintenanceWindow[] @relation("AssignedTo")
-  completedMaintenance MaintenanceCompletion[]
-  submittedRequests  ItemRequest[]
-  reviewedRequests   ItemRequest[] @relation("ITReviewedBy")
-  approvedRequests   ItemRequest[] @relation("ApprovedBy")
-  notifications      EmailNotification[]
-  inAppNotifications InAppNotification[]
-  profileFieldValues UserFieldValue[]
+enum MaintenanceRunStatus {
+  scheduled
+  due
+  in_progress
+  completed
+  overdue
+  skipped
+  cancelled
+}
+
+enum MaintenanceRunItemStatus {
+  pending
+  pass
+  fail
+  na
+}
+
+model User {
+  id             String     @id @default(uuid()) @map("id") @db.Char(36)
+  username       String     @unique @map("username")
+  status         UserStatus @default(active) @map("status")
+  role           UserRole   @default(requester) @map("role")
+  ldapDn         String?    @map("ldap_dn") @db.Text
+  ldapAttributes Json?      @map("ldap_attributes")
+  ldapSyncedAt   DateTime?  @map("ldap_synced_at")
+  orgSnapshot    Json?      @map("org_snapshot")
+  orgSyncedAt    DateTime?  @map("org_synced_at")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  ldapSyncRuns                           LdapSyncRun[]
+  auditLogs                              AuditLog[]
+  credentialTemplates                    CredentialTemplate[]
+  credentials                            UserCredential[]
+  imapProfile                            UserImapProfile?
+  generatedCredentials                   UserCredential[]                 @relation("GeneratedBy")
+  credentialVersions                     CredentialVersion[]
+  createdMaintenanceWindows              MaintenanceWindow[]
+  assignmentTechnicians                  DepartmentAssignmentTechnician[]
+  assignedMaintenanceWindows             MaintenanceWindow[]              @relation("AssignedTo")
+  completedMaintenance                   MaintenanceCompletion[]
+  submittedRequests                      ItemRequest[]
+  reviewedRequests                       ItemRequest[]                    @relation("ITReviewedBy")
+  approvedRequests                       ItemRequest[]                    @relation("ApprovedBy")
+  notifications                          EmailNotification[]
+  inAppNotifications                     InAppNotification[]
+  profileFieldValues                     UserFieldValue[]
+  assets                                 Asset[]                          @relation("AssignedAssets")
+  preventiveMaintenanceAssignments       MaintenanceAssignment[]          @relation("MaintenanceAssignmentUser")
+  preventiveMaintenanceRuns              MaintenanceRun[]                 @relation("MaintenanceRunUser")
+  completedPreventiveMaintenanceRuns     MaintenanceRun[]                 @relation("MaintenanceRunCompletedBy")
+  completedPreventiveMaintenanceRunItems MaintenanceRunItem[]             @relation("MaintenanceRunItemCompletedBy")
 
   @@index([status])
   @@index([role])
@@ -93,10 +121,10 @@ model User {
 }
 
 model UserFieldDefinition {
-  id        String   @id @default(uuid()) @db.Char(36) @map("id")
-  fieldKey  String   @unique @db.VarChar(191) @map("field_key")
-  label     String   @db.VarChar(191) @map("label")
-  fieldType String   @db.VarChar(50) @map("field_type")
+  id        String   @id @default(uuid()) @map("id") @db.Char(36)
+  fieldKey  String   @unique @map("field_key") @db.VarChar(191)
+  label     String   @map("label") @db.VarChar(191)
+  fieldType String   @map("field_type") @db.VarChar(50)
   required  Boolean  @default(false) @map("required")
   sensitive Boolean  @default(false) @map("sensitive")
   isActive  Boolean  @default(true) @map("is_active")
@@ -111,11 +139,11 @@ model UserFieldDefinition {
 }
 
 model UserFieldValue {
-  id                String   @id @default(uuid()) @db.Char(36) @map("id")
-  userId            String   @db.Char(36) @map("user_id")
-  fieldDefinitionId String   @db.Char(36) @map("field_definition_id")
-  value             String?  @db.Text @map("value")
-  updatedBy         String?  @db.Char(36) @map("updated_by")
+  id                String   @id @default(uuid()) @map("id") @db.Char(36)
+  userId            String   @map("user_id") @db.Char(36)
+  fieldDefinitionId String   @map("field_definition_id") @db.Char(36)
+  value             String?  @map("value") @db.Text
+  updatedBy         String?  @map("updated_by") @db.Char(36)
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
@@ -129,30 +157,79 @@ model UserFieldValue {
 }
 
 model LdapSyncRun {
-  id               String          @id @default(uuid()) @db.Char(36) @map("id")
-  status           LdapSyncStatus  @default(started) @map("status")
-  startedAt        DateTime        @default(now()) @map("started_at")
-  completedAt      DateTime?       @map("completed_at")
-  processedCount   Int             @default(0) @map("processed_count")
-  createdCount     Int             @default(0) @map("created_count")
-  updatedCount     Int             @default(0) @map("updated_count")
-  skippedCount     Int             @default(0) @map("skipped_count")
-  errorMessage     String?         @db.Text @map("error_message")
-  triggeredByUserId String?         @db.Char(36) @map("triggered_by_user_id")
-  triggeredByUser  User?            @relation(fields: [triggeredByUserId], references: [id])
+  id                String         @id @default(uuid()) @map("id") @db.Char(36)
+  status            LdapSyncStatus @default(started) @map("status")
+  startedAt         DateTime       @default(now()) @map("started_at")
+  completedAt       DateTime?      @map("completed_at")
+  processedCount    Int            @default(0) @map("processed_count")
+  createdCount      Int            @default(0) @map("created_count")
+  updatedCount      Int            @default(0) @map("updated_count")
+  skippedCount      Int            @default(0) @map("skipped_count")
+  errorMessage      String?        @map("error_message") @db.Text
+  triggeredByUserId String?        @map("triggered_by_user_id") @db.Char(36)
+  triggeredByUser   User?          @relation(fields: [triggeredByUserId], references: [id])
 
   @@map("ldap_sync_runs")
 }
 
+model Asset {
+  id                    String   @id @default(uuid()) @map("id") @db.Char(36)
+  snipeAssetId          Int      @unique @map("snipe_asset_id")
+  assetTag              String   @unique @map("asset_tag") @db.VarChar(191)
+  name                  String?  @map("name") @db.VarChar(255)
+  serial                String?  @map("serial") @db.VarChar(255)
+  modelName             String?  @map("model_name") @db.VarChar(255)
+  categoryName          String?  @map("category_name") @db.VarChar(191)
+  statusLabel           String?  @map("status_label") @db.VarChar(191)
+  snipeAssignedId       Int?     @map("snipe_assigned_id")
+  snipeAssignedType     String?  @map("snipe_assigned_type") @db.VarChar(50)
+  snipeAssignedName     String?  @map("snipe_assigned_name") @db.VarChar(255)
+  snipeAssignedUsername String?  @map("snipe_assigned_username") @db.VarChar(191)
+  snipeAssignedEmail    String?  @map("snipe_assigned_email") @db.VarChar(255)
+  assignedToUserId      String?  @map("assigned_to_user_id") @db.Char(36)
+  assignmentSource      String   @default("unassigned") @map("assignment_source") @db.VarChar(50)
+  assignmentFingerprint String?  @map("assignment_fingerprint") @db.VarChar(500)
+  lastSyncedAt          DateTime @default(now()) @map("last_synced_at")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  assignedToUser                   User?                   @relation("AssignedAssets", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  preventiveMaintenanceAssignments MaintenanceAssignment[]
+  preventiveMaintenanceRuns        MaintenanceRun[]
+
+  @@index([assignedToUserId], map: "idx_assets_assigned_to_user_id")
+  @@index([assignmentSource], map: "idx_assets_assignment_source")
+  @@index([statusLabel], map: "idx_assets_status_label")
+  @@index([categoryName], map: "idx_assets_category_name")
+  @@index([lastSyncedAt], map: "idx_assets_last_synced_at")
+  @@map("assets")
+}
+
+model AssetSyncRun {
+  id             String    @id @default(uuid()) @map("id") @db.Char(36)
+  status         String    @default("started") @map("status") @db.VarChar(50)
+  startedAt      DateTime  @default(now()) @map("started_at")
+  finishedAt     DateTime? @map("finished_at")
+  fetchedCount   Int       @default(0) @map("fetched_count")
+  upsertedCount  Int       @default(0) @map("upserted_count")
+  matchedCount   Int       @default(0) @map("matched_count")
+  unmatchedCount Int       @default(0) @map("unmatched_count")
+  errorMessage   String?   @map("error_message") @db.Text
+
+  @@index([status], map: "idx_asset_sync_runs_status")
+  @@index([startedAt], map: "idx_asset_sync_runs_started_at")
+  @@map("asset_sync_runs")
+}
+
 model AuditLog {
-  id           String   @id @default(uuid()) @db.Char(36) @map("id")
-  action       String   @db.VarChar(191) @map("action")
-  actorUserId  String?   @db.Char(36) @map("actor_user_id")
-  entityType   String?  @db.VarChar(191) @map("entity_type")
-  entityId     String?  @db.VarChar(191) @map("entity_id")
-  metadata     Json?    @map("metadata")
-  createdAt    DateTime @default(now()) @map("created_at")
-  actorUser    User?     @relation(fields: [actorUserId], references: [id])
+  id          String   @id @default(uuid()) @map("id") @db.Char(36)
+  action      String   @map("action") @db.VarChar(191)
+  actorUserId String?  @map("actor_user_id") @db.Char(36)
+  entityType  String?  @map("entity_type") @db.VarChar(191)
+  entityId    String?  @map("entity_id") @db.VarChar(191)
+  metadata    Json?    @map("metadata")
+  createdAt   DateTime @default(now()) @map("created_at")
+  actorUser   User?    @relation(fields: [actorUserId], references: [id])
 
   @@index([action], map: "idx_audit_logs_action")
   @@index([createdAt], map: "idx_audit_logs_created_at")
@@ -160,13 +237,13 @@ model AuditLog {
 }
 
 model CredentialTemplate {
-  id          String   @id @default(uuid()) @db.Char(36) @map("id")
-  name        String   @db.VarChar(191) @map("name")
-  description String?  @db.Text @map("description")
+  id          String   @id @default(uuid()) @map("id") @db.Char(36)
+  name        String   @map("name") @db.VarChar(191)
+  description String?  @map("description") @db.Text
   structure   Json     @map("structure")
   version     Int      @default(1) @map("version")
   isActive    Boolean  @default(true) @map("is_active")
-  createdBy   String   @db.Char(36) @map("created_by")
+  createdBy   String   @map("created_by") @db.Char(36)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -176,15 +253,15 @@ model CredentialTemplate {
 }
 
 model SystemConfig {
-  id                String   @id @default(uuid()) @db.Char(36) @map("id")
-  systemId          String   @unique @db.VarChar(191) @map("system_id")
-  usernameLdapField String   @db.VarChar(191) @map("username_ldap_field")
+  id                String   @id @default(uuid()) @map("id") @db.Char(36)
+  systemId          String   @unique @map("system_id") @db.VarChar(191)
+  usernameLdapField String   @map("username_ldap_field") @db.VarChar(191)
   isItOnly          Boolean  @default(false) @map("is_it_only")
-  description       String?  @db.Text @map("description")
+  description       String?  @map("description") @db.Text
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
-  credentials UserCredential[]
+  credentials        UserCredential[]
   normalizationRules NormalizationRule[]
 
   @@index([systemId], map: "idx_system_configs_system_id")
@@ -192,16 +269,16 @@ model SystemConfig {
 }
 
 model NormalizationRule {
-  id          String   @id @default(uuid()) @db.Char(36) @map("id")
-  systemId    String?  @db.VarChar(191) @map("system_id")
-  ruleType    String   @db.VarChar(191) @map("rule_type")
-  ruleConfig  Json     @map("rule_config")
-  priority    Int      @default(0) @map("priority")
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id         String   @id @default(uuid()) @map("id") @db.Char(36)
+  systemId   String?  @map("system_id") @db.VarChar(191)
+  ruleType   String   @map("rule_type") @db.VarChar(191)
+  ruleConfig Json     @map("rule_config")
+  priority   Int      @default(0) @map("priority")
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
-  system      SystemConfig? @relation(fields: [systemId], references: [systemId])
+  system SystemConfig? @relation(fields: [systemId], references: [systemId])
 
   @@index([systemId], map: "idx_normalization_rules_system_id")
   @@index([isActive], map: "idx_normalization_rules_is_active")
@@ -210,28 +287,28 @@ model NormalizationRule {
 }
 
 model OnboardingCatalogItem {
-  id         String   @id @default(uuid()) @db.Char(36) @map("id")
-  itemKey    String   @unique @db.VarChar(191) @map("item_key")
-  label      String   @db.VarChar(191) @map("label")
-  loginUrl   String   @db.Text @map("login_url")
-  notes      String?  @db.Text @map("notes")
-  isItOnly   Boolean  @default(false) @map("is_it_only")
-  createdById String? @db.Char(36) @map("created_by_id")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  id          String   @id @default(uuid()) @map("id") @db.Char(36)
+  itemKey     String   @unique @map("item_key") @db.VarChar(191)
+  label       String   @map("label") @db.VarChar(191)
+  loginUrl    String   @map("login_url") @db.Text
+  notes       String?  @map("notes") @db.Text
+  isItOnly    Boolean  @default(false) @map("is_it_only")
+  createdById String?  @map("created_by_id") @db.Char(36)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  bundleItems       OnboardingDepartmentBundleItem[]
-  draftCredentials  OnboardingDraftCredential[]
+  bundleItems      OnboardingDepartmentBundleItem[]
+  draftCredentials OnboardingDraftCredential[]
 
   @@index([itemKey], map: "idx_onboarding_catalog_items_item_key")
   @@map("onboarding_catalog_items")
 }
 
 model OnboardingDepartmentBundle {
-  id          String   @id @default(uuid()) @db.Char(36) @map("id")
-  department  String   @unique @db.VarChar(191) @map("department")
+  id          String   @id @default(uuid()) @map("id") @db.Char(36)
+  department  String   @unique @map("department") @db.VarChar(191)
   isActive    Boolean  @default(true) @map("is_active")
-  createdById String?  @db.Char(36) @map("created_by_id")
+  createdById String?  @map("created_by_id") @db.Char(36)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -242,9 +319,9 @@ model OnboardingDepartmentBundle {
 }
 
 model OnboardingDepartmentBundleItem {
-  id            String   @id @default(uuid()) @db.Char(36) @map("id")
-  bundleId      String   @db.Char(36) @map("bundle_id")
-  catalogItemId String   @db.Char(36) @map("catalog_item_id")
+  id            String   @id @default(uuid()) @map("id") @db.Char(36)
+  bundleId      String   @map("bundle_id") @db.Char(36)
+  catalogItemId String   @map("catalog_item_id") @db.Char(36)
   position      Int      @default(0) @map("position")
   createdAt     DateTime @default(now()) @map("created_at")
 
@@ -258,16 +335,16 @@ model OnboardingDepartmentBundleItem {
 }
 
 model OnboardingDraft {
-  id           String   @id @default(uuid()) @db.Char(36) @map("id")
-  fullName     String   @db.VarChar(191) @map("full_name")
-  email        String   @db.VarChar(191) @map("email")
-  department   String   @db.VarChar(191) @map("department")
-  dob          String?  @db.VarChar(10) @map("dob")
-  linkedUserId String?  @db.Char(36) @map("linked_user_id")
-  createdById  String?  @db.Char(36) @map("created_by_id")
+  id           String    @id @default(uuid()) @map("id") @db.Char(36)
+  fullName     String    @map("full_name") @db.VarChar(191)
+  email        String    @map("email") @db.VarChar(191)
+  department   String    @map("department") @db.VarChar(191)
+  dob          String?   @map("dob") @db.VarChar(10)
+  linkedUserId String?   @map("linked_user_id") @db.Char(36)
+  createdById  String?   @map("created_by_id") @db.Char(36)
   linkedAt     DateTime? @map("linked_at")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   credentials OnboardingDraftCredential[]
 
@@ -278,18 +355,18 @@ model OnboardingDraft {
 }
 
 model OnboardingDraftCredential {
-  id            String   @id @default(uuid()) @db.Char(36) @map("id")
-  draftId       String   @db.Char(36) @map("draft_id")
-  catalogItemId String   @db.Char(36) @map("catalog_item_id")
-  username      String   @db.VarChar(191) @map("username")
-  password      String   @db.Text @map("password")
-  templateVersion Int    @map("template_version")
-  isActive      Boolean  @default(true) @map("is_active")
-  createdById   String?  @db.Char(36) @map("created_by_id")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(uuid()) @map("id") @db.Char(36)
+  draftId         String   @map("draft_id") @db.Char(36)
+  catalogItemId   String   @map("catalog_item_id") @db.Char(36)
+  username        String   @map("username") @db.VarChar(191)
+  password        String   @map("password") @db.Text
+  templateVersion Int      @map("template_version")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdById     String?  @map("created_by_id") @db.Char(36)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  draft       OnboardingDraft      @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  draft       OnboardingDraft       @relation(fields: [draftId], references: [id], onDelete: Cascade)
   catalogItem OnboardingCatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
 
   @@index([draftId], map: "idx_onboarding_draft_credentials_draft_id")
@@ -299,19 +376,19 @@ model OnboardingDraftCredential {
 }
 
 model UserImapProfile {
-  id                      String   @id @default(uuid()) @db.Char(36) @map("id")
-  userId                  String   @unique @db.Char(36) @map("user_id")
-  deterministicSubjectKey String   @db.VarChar(191) @map("deterministic_subject_key")
-  email                   String?  @db.VarChar(191) @map("email")
-  firstName               String?  @db.VarChar(191) @map("first_name")
-  lastName                String?  @db.VarChar(191) @map("last_name")
-  fullName                String?  @db.VarChar(191) @map("full_name")
-  dob                     String?  @db.VarChar(191) @map("dob")
-  phone                   String?  @db.VarChar(191) @map("phone")
-  resolvedLdapFingerprints Json?   @map("resolved_ldap_fingerprints")
-  updatedBy               String   @db.Char(36) @map("updated_by")
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  id                       String   @id @default(uuid()) @map("id") @db.Char(36)
+  userId                   String   @unique @map("user_id") @db.Char(36)
+  deterministicSubjectKey  String   @map("deterministic_subject_key") @db.VarChar(191)
+  email                    String?  @map("email") @db.VarChar(191)
+  firstName                String?  @map("first_name") @db.VarChar(191)
+  lastName                 String?  @map("last_name") @db.VarChar(191)
+  fullName                 String?  @map("full_name") @db.VarChar(191)
+  dob                      String?  @map("dob") @db.VarChar(191)
+  phone                    String?  @map("phone") @db.VarChar(191)
+  resolvedLdapFingerprints Json?    @map("resolved_ldap_fingerprints")
+  updatedBy                String   @map("updated_by") @db.Char(36)
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -319,23 +396,23 @@ model UserImapProfile {
 }
 
 model UserCredential {
-  id               String   @id @default(uuid()) @db.Char(36) @map("id")
-  userId           String   @db.Char(36) @map("user_id")
-  systemId         String?  @db.VarChar(191) @map("system_id")
-  username         String   @db.VarChar(191) @map("username")
-  password         String   @db.Text @map("password")
-  metadata         Json?    @map("metadata")
-  templateVersion  Int      @map("template_version")
-  isActive         Boolean  @default(true) @map("is_active")
-  generatedBy      String   @db.Char(36) @map("generated_by")
-  generatedAt      DateTime @default(now()) @map("generated_at")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(uuid()) @map("id") @db.Char(36)
+  userId          String   @map("user_id") @db.Char(36)
+  systemId        String?  @map("system_id") @db.VarChar(191)
+  username        String   @map("username") @db.VarChar(191)
+  password        String   @map("password") @db.Text
+  metadata        Json?    @map("metadata")
+  templateVersion Int      @map("template_version")
+  isActive        Boolean  @default(true) @map("is_active")
+  generatedBy     String   @map("generated_by") @db.Char(36)
+  generatedAt     DateTime @default(now()) @map("generated_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  user        User              @relation(fields: [userId], references: [id])
-  generatedByUser User          @relation("GeneratedBy", fields: [generatedBy], references: [id])
-  systemConfig SystemConfig?    @relation(fields: [systemId], references: [systemId])
-  versions    CredentialVersion[]
+  user            User                @relation(fields: [userId], references: [id])
+  generatedByUser User                @relation("GeneratedBy", fields: [generatedBy], references: [id])
+  systemConfig    SystemConfig?       @relation(fields: [systemId], references: [systemId])
+  versions        CredentialVersion[]
 
   @@index([userId], map: "idx_user_credentials_user_id")
   @@index([systemId], map: "idx_user_credentials_system_id")
@@ -345,17 +422,17 @@ model UserCredential {
 }
 
 model CredentialVersion {
-  id            String   @id @default(uuid()) @db.Char(36) @map("id")
-  credentialId  String   @db.Char(36) @map("credential_id")
-  username      String   @db.VarChar(191) @map("username")
-  password      String   @db.Text @map("password")
-  metadata      Json?    @map("metadata")
-  reason        String   @db.VarChar(191) @map("reason")
-  createdBy     String   @db.Char(36) @map("created_by")
-  createdAt     DateTime @default(now()) @map("created_at")
+  id           String   @id @default(uuid()) @map("id") @db.Char(36)
+  credentialId String   @map("credential_id") @db.Char(36)
+  username     String   @map("username") @db.VarChar(191)
+  password     String   @map("password") @db.Text
+  metadata     Json?    @map("metadata")
+  reason       String   @map("reason") @db.VarChar(191)
+  createdBy    String   @map("created_by") @db.Char(36)
+  createdAt    DateTime @default(now()) @map("created_at")
 
-  credential  UserCredential  @relation(fields: [credentialId], references: [id], onDelete: Cascade)
-  createdByUser User          @relation(fields: [createdBy], references: [id])
+  credential    UserCredential @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+  createdByUser User           @relation(fields: [createdBy], references: [id])
 
   @@index([createdAt], map: "idx_credential_versions_created_at")
   @@index([credentialId, createdAt], map: "idx_credential_versions_credential_id_created_at")
@@ -364,51 +441,51 @@ model CredentialVersion {
 }
 
 model MaintenanceCycleConfig {
-  id             String    @id @default(uuid())
+  id             String   @id @default(uuid())
   name           String
   description    String?
-  intervalMonths Int       // 3 for quarterly, 6 for biannual
-  isActive       Boolean   @default(true)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  intervalMonths Int // 3 for quarterly, 6 for biannual
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   maintenanceWindows MaintenanceWindow[]
-  
-  defaultChecklistTemplateId String? @map("default_checklist_template_id")
-  defaultChecklist MaintenanceChecklistTemplate? @relation(fields: [defaultChecklistTemplateId], references: [id])
+
+  defaultChecklistTemplateId String?                       @map("default_checklist_template_id")
+  defaultChecklist           MaintenanceChecklistTemplate? @relation(fields: [defaultChecklistTemplateId], references: [id])
 
   @@index([name])
   @@map("maintenance_cycle_configs")
 }
 
 model MaintenanceWindow {
-  id                 String       @id @default(uuid())
-  cycleConfigId      String
-  scheduledStartDate DateTime
-  scheduledEndDate   DateTime?
-  status             WindowStatus @default(SCHEDULED)
-  createdById        String
+  id                         String       @id @default(uuid())
+  cycleConfigId              String
+  scheduledStartDate         DateTime
+  scheduledEndDate           DateTime?
+  status                     WindowStatus @default(SCHEDULED)
+  createdById                String
   // NEW: Notification tracking fields (Story 6-3)
-  upcomingNotificationSentAt  DateTime?    @map("upcoming_notification_sent_at")
-  overdueNotificationSentAt   DateTime?    @map("overdue_notification_sent_at")
+  upcomingNotificationSentAt DateTime?    @map("upcoming_notification_sent_at")
+  overdueNotificationSentAt  DateTime?    @map("overdue_notification_sent_at")
 
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   checklistTemplateId String? @map("checklist_template_id")
   checklistVersion    Int?    @map("checklist_version")
   checklistSnapshot   Json?   @map("checklist_snapshot")
-  
+
   // Assignment fields
   assignedToId        String?   @map("assigned_to_id")
   assignmentTimestamp DateTime? @map("assignment_timestamp")
   assignmentReason    String?   @map("assignment_reason")
   departmentId        String?   @map("department_id")
-  
-  cycleConfig MaintenanceCycleConfig @relation(fields: [cycleConfigId], references: [id])
-  createdBy   User                   @relation(fields: [createdById], references: [id])
+
+  cycleConfig MaintenanceCycleConfig        @relation(fields: [cycleConfigId], references: [id])
+  createdBy   User                          @relation(fields: [createdById], references: [id])
   checklist   MaintenanceChecklistTemplate? @relation(fields: [checklistTemplateId], references: [id])
-  assignedTo  User?                  @relation("AssignedTo", fields: [assignedToId], references: [id])
+  assignedTo  User?                         @relation("AssignedTo", fields: [assignedToId], references: [id])
   completion  MaintenanceCompletion?
 
   deviceTypes MaintenanceWindowDeviceType[]
@@ -422,36 +499,185 @@ model MaintenanceWindow {
 }
 
 model MaintenanceChecklistTemplate {
-  id          String    @id @default(uuid())
-  name        String    @unique
+  id          String   @id @default(uuid())
+  name        String   @unique
   description String?
-  isActive    Boolean   @default(true) @map("is_active")
-  version     Int       @default(1)
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  isActive    Boolean  @default(true) @map("is_active")
+  version     Int      @default(1)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  items MaintenanceChecklistItem[]
-  cycleConfigs MaintenanceCycleConfig[]
+  items              MaintenanceChecklistItem[]
+  cycleConfigs       MaintenanceCycleConfig[]
   maintenanceWindows MaintenanceWindow[]
 
   @@map("maintenance_checklist_templates")
 }
 
 model MaintenanceChecklistItem {
-  id          String    @id @default(uuid())
-  templateId  String    @map("template_id")
+  id          String   @id @default(uuid())
+  templateId  String   @map("template_id")
   title       String
   description String?
-  isRequired  Boolean   @default(true) @map("is_required")
-  orderIndex  Int       @map("order_index")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  isRequired  Boolean  @default(true) @map("is_required")
+  orderIndex  Int      @map("order_index")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   template MaintenanceChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
 
   @@index([templateId, orderIndex])
   @@map("maintenance_checklist_items")
 }
+
+model MaintenanceProfile {
+  id               String   @id @default(uuid()) @db.Char(36)
+  name             String   @db.VarChar(191)
+  description      String?  @db.Text
+  intervalMonths   Int      @map("interval_months")
+  gracePeriodDays  Int      @default(0) @map("grace_period_days")
+  activeTemplateId String?  @map("active_template_id") @db.Char(36)
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  activeTemplate ChecklistTemplate?      @relation("ActiveProfileTemplate", fields: [activeTemplateId], references: [id], onDelete: SetNull)
+  templates      ChecklistTemplate[]
+  assignments    MaintenanceAssignment[]
+  runs           MaintenanceRun[]
+
+  @@unique([name])
+  @@index([isActive])
+  @@map("maintenance_profiles")
+}
+
+model ChecklistTemplate {
+  id        String   @id @default(uuid()) @db.Char(36)
+  profileId String   @map("profile_id") @db.Char(36)
+  name      String   @db.VarChar(191)
+  version   Int
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  profile   MaintenanceProfile   @relation(fields: [profileId], references: [id], onDelete: Restrict)
+  activeFor MaintenanceProfile[] @relation("ActiveProfileTemplate")
+  items     ChecklistItem[]
+  runs      MaintenanceRun[]
+
+  @@unique([profileId, version])
+  @@index([profileId, isActive])
+  @@map("checklist_templates")
+}
+
+model ChecklistItem {
+  id               String   @id @default(uuid()) @db.Char(36)
+  templateId       String   @map("template_id") @db.Char(36)
+  sortOrder        Int      @map("sort_order")
+  title            String   @db.VarChar(255)
+  description      String?  @db.Text
+  required         Boolean  @default(true)
+  evidenceRequired Boolean  @default(false) @map("evidence_required")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  template ChecklistTemplate    @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  runItems MaintenanceRunItem[]
+
+  @@unique([templateId, sortOrder])
+  @@index([templateId])
+  @@map("checklist_items")
+}
+
+model MaintenanceAssignment {
+  id            String                      @id @default(uuid()) @db.Char(36)
+  profileId     String                      @map("profile_id") @db.Char(36)
+  userId        String?                     @map("user_id") @db.Char(36)
+  assetId       String                      @map("asset_id") @db.Char(36)
+  status        MaintenanceAssignmentStatus @default(active)
+  startDate     DateTime                    @map("start_date")
+  endDate       DateTime?                   @map("end_date")
+  archivedAt    DateTime?                   @map("archived_at")
+  archiveReason String?                     @map("archive_reason") @db.Text
+  activeKey     String?                     @map("active_key") @db.VarChar(191)
+  createdAt     DateTime                    @default(now()) @map("created_at")
+  updatedAt     DateTime                    @updatedAt @map("updated_at")
+
+  profile MaintenanceProfile @relation(fields: [profileId], references: [id], onDelete: Restrict)
+  user    User?              @relation("MaintenanceAssignmentUser", fields: [userId], references: [id], onDelete: SetNull)
+  asset   Asset              @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  runs    MaintenanceRun[]
+
+  @@unique([activeKey], map: "uniq_active_pm_assignment")
+  @@index([profileId])
+  @@index([assetId])
+  @@index([userId])
+  @@index([status])
+  @@map("maintenance_assignments")
+}
+
+model MaintenanceRun {
+  id                  String               @id @default(uuid()) @db.Char(36)
+  assignmentId        String               @map("assignment_id") @db.Char(36)
+  profileId           String               @map("profile_id") @db.Char(36)
+  assetId             String               @map("asset_id") @db.Char(36)
+  userId              String?              @map("user_id") @db.Char(36)
+  checklistTemplateId String?              @map("checklist_template_id") @db.Char(36)
+  checklistVersion    Int?                 @map("checklist_version")
+  checklistSnapshot   Json?                @map("checklist_snapshot")
+  dueDate             DateTime             @map("due_date")
+  status              MaintenanceRunStatus @default(scheduled)
+  startedAt           DateTime?            @map("started_at")
+  completedAt         DateTime?            @map("completed_at")
+  completedById       String?              @map("completed_by_id") @db.Char(36)
+  cancelledAt         DateTime?            @map("cancelled_at")
+  cancelReason        String?              @map("cancel_reason") @db.Text
+  skippedAt           DateTime?            @map("skipped_at")
+  skipReason          String?              @map("skip_reason") @db.Text
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+
+  assignment        MaintenanceAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  profile           MaintenanceProfile    @relation(fields: [profileId], references: [id], onDelete: Restrict)
+  asset             Asset                 @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  user              User?                 @relation("MaintenanceRunUser", fields: [userId], references: [id], onDelete: SetNull)
+  completedBy       User?                 @relation("MaintenanceRunCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+  checklistTemplate ChecklistTemplate?    @relation(fields: [checklistTemplateId], references: [id], onDelete: SetNull)
+  items             MaintenanceRunItem[]
+
+  @@unique([assignmentId, dueDate], map: "uniq_assignment_due_date")
+  @@index([status, dueDate])
+  @@index([assetId])
+  @@index([userId])
+  @@map("maintenance_runs")
+}
+
+model MaintenanceRunItem {
+  id               String                   @id @default(uuid()) @db.Char(36)
+  runId            String                   @map("run_id") @db.Char(36)
+  checklistItemId  String?                  @map("checklist_item_id") @db.Char(36)
+  sortOrder        Int                      @map("sort_order")
+  title            String                   @db.VarChar(255)
+  description      String?                  @db.Text
+  required         Boolean
+  evidenceRequired Boolean                  @map("evidence_required")
+  status           MaintenanceRunItemStatus @default(pending)
+  notes            String?                  @db.Text
+  evidenceUrl      String?                  @map("evidence_url") @db.Text
+  completedById    String?                  @map("completed_by_id") @db.Char(36)
+  completedAt      DateTime?                @map("completed_at")
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
+
+  run           MaintenanceRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  checklistItem ChecklistItem? @relation(fields: [checklistItemId], references: [id], onDelete: SetNull)
+  completedBy   User?          @relation("MaintenanceRunItemCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+
+  @@unique([runId, sortOrder])
+  @@index([runId])
+  @@map("maintenance_run_items")
+}
+
 model DepartmentAssignmentRule {
   id                 String             @id @default(uuid())
   department         String             @unique
@@ -494,21 +720,21 @@ model DepartmentRotationState {
 }
 
 model MaintenanceCompletion {
-  id            String    @id @default(uuid())
-  windowId      String    @unique @map("window_id")
-  completedById String    @map("completed_by_id")
-  completedAt   DateTime  @default(now()) @map("completed_at")
-  notes         String?   @db.Text
-  deviceTypes   Json?     @map("device_types")
-  signerName         String?      @map("signer_name")
-  signerSignatureUrl String?      @map("signer_signature_url")
-  signerConfirmedAt  DateTime?    @map("signer_confirmed_at")
-  signoffMode        SignoffMode  @default(STANDARD) @map("signoff_mode")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id                 String      @id @default(uuid())
+  windowId           String      @unique @map("window_id")
+  completedById      String      @map("completed_by_id")
+  completedAt        DateTime    @default(now()) @map("completed_at")
+  notes              String?     @db.Text
+  deviceTypes        Json?       @map("device_types")
+  signerName         String?     @map("signer_name")
+  signerSignatureUrl String?     @map("signer_signature_url")
+  signerConfirmedAt  DateTime?   @map("signer_confirmed_at")
+  signoffMode        SignoffMode @default(STANDARD) @map("signoff_mode")
+  createdAt          DateTime    @default(now()) @map("created_at")
+  updatedAt          DateTime    @updatedAt @map("updated_at")
 
-  window         MaintenanceWindow @relation(fields: [windowId], references: [id])
-  completedBy    User              @relation(fields: [completedById], references: [id])
+  window         MaintenanceWindow         @relation(fields: [windowId], references: [id])
+  completedBy    User                      @relation(fields: [completedById], references: [id])
   checklistItems ChecklistItemCompletion[]
 
   @@index([completedById])
@@ -517,15 +743,15 @@ model MaintenanceCompletion {
 }
 
 model ChecklistItemCompletion {
-  id               String    @id @default(uuid())
-  completionId     String    @map("completion_id")
-  checklistItemId  String    @map("checklist_item_id")
-  itemTitle        String    @map("item_title")
-  itemDescription  String?   @map("item_description") @db.Text
-  isRequired       Boolean   @map("is_required")
-  isCompleted      Boolean   @map("is_completed")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
+  id              String   @id @default(uuid())
+  completionId    String   @map("completion_id")
+  checklistItemId String   @map("checklist_item_id")
+  itemTitle       String   @map("item_title")
+  itemDescription String?  @map("item_description") @db.Text
+  isRequired      Boolean  @map("is_required")
+  isCompleted     Boolean  @map("is_completed")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   completion MaintenanceCompletion @relation(fields: [completionId], references: [id], onDelete: Cascade)
 
@@ -563,25 +789,25 @@ enum RequestPriority {
 }
 
 model ItemRequest {
-  id             String          @id @default(uuid()) @db.Char(36)
-  requesterId    String          @map("requester_id") @db.Char(36)
-  itemName       String          @map("item_name") @db.VarChar(200)
-  description    String?         @db.Text
-  justification  String          @db.Text
-  status         RequestStatus   @default(SUBMITTED)
-  priority       RequestPriority? @default(MEDIUM)
-  category       String?         @db.VarChar(100)
-  invoiceFileUrl String?         @map("invoice_file_url") @db.VarChar(500)
-  itReview       String?         @map("it_review") @db.Text
-  itReviewedById String?         @map("it_reviewed_by_id") @db.Char(36)
-  itReviewedAt   DateTime?       @map("it_reviewed_at")
-  approvedById   String?         @map("approved_by_id") @db.Char(36)
-  approvedAt     DateTime?       @map("approved_at")
-  rejectionReason String?        @map("rejection_reason") @db.Text
-  createdAt      DateTime        @default(now()) @map("created_at")
-  updatedAt      DateTime        @updatedAt @map("updated_at")
+  id              String           @id @default(uuid()) @db.Char(36)
+  requesterId     String           @map("requester_id") @db.Char(36)
+  itemName        String           @map("item_name") @db.VarChar(200)
+  description     String?          @db.Text
+  justification   String           @db.Text
+  status          RequestStatus    @default(SUBMITTED)
+  priority        RequestPriority? @default(MEDIUM)
+  category        String?          @db.VarChar(100)
+  invoiceFileUrl  String?          @map("invoice_file_url") @db.VarChar(500)
+  itReview        String?          @map("it_review") @db.Text
+  itReviewedById  String?          @map("it_reviewed_by_id") @db.Char(36)
+  itReviewedAt    DateTime?        @map("it_reviewed_at")
+  approvedById    String?          @map("approved_by_id") @db.Char(36)
+  approvedAt      DateTime?        @map("approved_at")
+  rejectionReason String?          @map("rejection_reason") @db.Text
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
 
-  requester   User  @relation(fields: [requesterId], references: [id])
+  requester    User  @relation(fields: [requesterId], references: [id])
   itReviewedBy User? @relation("ITReviewedBy", fields: [itReviewedById], references: [id])
   approvedBy   User? @relation("ApprovedBy", fields: [approvedById], references: [id])
 
@@ -594,17 +820,17 @@ model ItemRequest {
 }
 
 model InAppNotification {
-  id            String   @id @default(uuid()) @db.Char(36)
-  userId        String   @map("user_id") @db.Char(36)
-  title         String   @db.VarChar(200)
-  message       String   @db.Text
-  type          String   @map("type") @db.VarChar(100) // e.g., "request_submitted", "request_reviewed"
-  referenceType String?  @map("reference_type") @db.VarChar(100) // e.g., "item_request"
-  referenceId   String?  @map("reference_id") @db.Char(36)
-  isRead        Boolean  @default(false) @map("is_read")
+  id            String    @id @default(uuid()) @db.Char(36)
+  userId        String    @map("user_id") @db.Char(36)
+  title         String    @db.VarChar(200)
+  message       String    @db.Text
+  type          String    @map("type") @db.VarChar(100) // e.g., "request_submitted", "request_reviewed"
+  referenceType String?   @map("reference_type") @db.VarChar(100) // e.g., "item_request"
+  referenceId   String?   @map("reference_id") @db.Char(36)
+  isRead        Boolean   @default(false) @map("is_read")
   readAt        DateTime? @map("read_at")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id])
 
@@ -615,18 +841,18 @@ model InAppNotification {
 }
 
 model EmailNotification {
-  id            String   @id @default(uuid()) @db.Char(36)
-  recipientEmail String  @map("recipient_email") @db.VarChar(255)
-  recipientUserId String? @map("recipient_user_id") @db.Char(36)
-  subject       String   @db.VarChar(500)
-  templateType  String   @map("template_type") @db.VarChar(100)
-  referenceType String?  @map("reference_type") @db.VarChar(100) // e.g., "item_request"
-  referenceId   String?  @map("reference_id") @db.Char(36)
-  status        String   @default("pending") @db.VarChar(50) // pending, sent, failed
-  errorMessage  String?  @map("error_message") @db.Text
-  sentAt        DateTime? @map("sent_at")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id              String    @id @default(uuid()) @db.Char(36)
+  recipientEmail  String    @map("recipient_email") @db.VarChar(255)
+  recipientUserId String?   @map("recipient_user_id") @db.Char(36)
+  subject         String    @db.VarChar(500)
+  templateType    String    @map("template_type") @db.VarChar(100)
+  referenceType   String?   @map("reference_type") @db.VarChar(100) // e.g., "item_request"
+  referenceId     String?   @map("reference_id") @db.Char(36)
+  status          String    @default("pending") @db.VarChar(50) // pending, sent, failed
+  errorMessage    String?   @map("error_message") @db.Text
+  sentAt          DateTime? @map("sent_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   recipientUser User? @relation(fields: [recipientUserId], references: [id])
 

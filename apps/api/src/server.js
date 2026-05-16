@@ -61,6 +61,7 @@ export default async function app(fastify, options) {
   const auditRepo = await import("./features/audit/repo.js");
   const requestRepo = await import("./features/requests/repo.js");
   const maintenanceRepo = await import("./features/maintenance/repo.js");
+  const assetRepo = await import("./features/assets/repo.js");
 
   // Static file serving for uploads (with authentication)
   await fastify.register(import("./plugins/staticFiles.js"), {
@@ -179,6 +180,36 @@ export default async function app(fastify, options) {
     fastify.log.info("Maintenance scheduled job is disabled");
   } else {
     fastify.log.warn("Scheduler not available, Maintenance status job NOT registered");
+  }
+
+  // Asset Routes & Snipe-IT Sync Job
+  const { createSnipeClient } = await import("./features/assets/client.js");
+  const { createAssetService } = await import("./features/assets/service.js");
+  const { createAssetSyncJob } = await import("./features/assets/jobs.js");
+  const assetService = createAssetService({
+    repo: assetRepo,
+    client: createSnipeClient({ config: config.snipeIt }),
+    userRepo,
+    logger: fastify.log,
+    enabled: config.snipeIt?.enabled
+  });
+
+  await fastify.register(import("./features/assets/routes.js"), {
+    prefix: "/api/v1/assets",
+    config,
+    userRepo,
+    assetService,
+    auditRepo
+  });
+
+  const assetSyncJob = createAssetSyncJob({ assetService, logger: fastify.log, config });
+  if (assetSyncJob && fastify.scheduler) {
+    fastify.scheduler.addCronJob(assetSyncJob);
+    fastify.log.info("Snipe-IT asset sync job registered");
+  } else if (!assetSyncJob) {
+    fastify.log.info("Snipe-IT asset sync job is disabled");
+  } else {
+    fastify.log.warn("Scheduler not available, Snipe-IT asset sync job NOT registered");
   }
 
   // Request Routes

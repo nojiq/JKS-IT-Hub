@@ -53,7 +53,7 @@ export default function UsersHomePage() {
       <WorkspacePanel
         variant="detail"
         title="Recent Access Actions"
-        meta="See recent account changes in history."
+        titleHint="See recent account changes in history."
       >
         <div className="onboarding-actions">
           <Link className="workspace-inline-link" to="/users/history">
@@ -65,7 +65,7 @@ export default function UsersHomePage() {
       <WorkspacePanel
         variant="detail"
         title="Password Generation"
-        meta="Set or reset passwords on each user's page."
+        titleHint="Set or reset passwords on each user's page."
       >
         <div className="onboarding-actions">
           <Link className="workspace-inline-link" to="/users/directory">

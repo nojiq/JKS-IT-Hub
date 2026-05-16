@@ -597,6 +597,59 @@ export const deactivateChecklistTemplate = async (id, tx = prisma) => {
     });
 };
 
+export const deleteChecklistTemplate = async (id, tx = prisma) => {
+    return tx.$transaction(async (client) => {
+        const template = await client.maintenanceChecklistTemplate.findUnique({
+            where: { id },
+            include: {
+                _count: {
+                    select: {
+                        items: true,
+                        maintenanceWindows: true,
+                        cycleConfigs: true
+                    }
+                }
+            }
+        });
+
+        if (!template) {
+            const error = new Error('Template not found');
+            error.code = 'P2025';
+            throw error;
+        }
+
+        await client.maintenanceCycleConfig.updateMany({
+            where: { defaultChecklistTemplateId: id },
+            data: { defaultChecklistTemplateId: null }
+        });
+
+        await client.maintenanceWindow.updateMany({
+            where: { checklistTemplateId: id },
+            data: {
+                checklistTemplateId: null,
+                checklistVersion: null
+            }
+        });
+
+        const itemsDeleted = await client.maintenanceChecklistItem.deleteMany({
+            where: { templateId: id }
+        });
+
+        await client.maintenanceChecklistTemplate.delete({
+            where: { id }
+        });
+
+        return {
+            id: template.id,
+            name: template.name,
+            deleted: true,
+            itemsDeleted: itemsDeleted.count,
+            detachedCycleCount: template._count.cycleConfigs,
+            detachedWindowCount: template._count.maintenanceWindows
+        };
+    });
+};
+
 export const createChecklistItems = async (templateId, items, tx = prisma) => {
     if (!items?.length) return [];
     await tx.maintenanceChecklistItem.createMany({

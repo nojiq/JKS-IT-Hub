@@ -37,7 +37,7 @@ export function MaintenanceWindowsTable({
     ariaLabel = 'Maintenance windows'
 }) {
     if (!windows.length) {
-        return <div className="maintenance-table-empty">No maintenance windows found.</div>;
+        return <div className="maintenance-table-empty">No maintenance tasks found.</div>;
     }
 
     const showAssignee = !dense || Boolean(onAssign);
@@ -48,8 +48,8 @@ export function MaintenanceWindowsTable({
             <table className="workspace-table maintenance-windows-table" aria-label={ariaLabel}>
                 <thead>
                     <tr>
-                        <th>Window</th>
-                        {!dense ? <th>Cycle</th> : null}
+                        <th>Task</th>
+                        {!dense ? <th>Policy</th> : null}
                         <th>Schedule</th>
                         <th>Status</th>
                         {showAssignee ? <th>Assignee</th> : null}
