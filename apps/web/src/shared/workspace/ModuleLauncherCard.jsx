@@ -4,7 +4,6 @@ import "./workspace.css";
 
 export function ModuleLauncherCard({
   title,
-  description,
   to,
   icon,
   actionLabel,
@@ -16,12 +15,10 @@ export function ModuleLauncherCard({
         <span className="workspace-module-card-icon" aria-hidden="true">
           <WorkspaceNavIcon icon={icon} className="workspace-module-card-icon-svg" />
         </span>
-        <span className="workspace-module-card-kicker">Priority Workflow</span>
       </div>
 
       <div className="workspace-module-card-copy">
         <h2 className="workspace-module-card-title">{title}</h2>
-        <p className="workspace-module-card-description">{description}</p>
       </div>
 
       {metrics.length ? (

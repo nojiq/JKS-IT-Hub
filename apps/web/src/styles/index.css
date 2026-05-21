@@ -166,10 +166,18 @@
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: hidden;
   background: var(--bg-body);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+html,
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 h1,
@@ -1488,6 +1496,7 @@ select.user-detail-input {
 .system-config-list .table-container {
   width: 100%;
   max-width: 100%;
+  overflow-x: auto;
 }
 
 .scope-selector {

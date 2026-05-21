@@ -70,7 +70,6 @@ export const workspaceGroups = [
         children: [
           { label: "Overview", to: "/users" },
           { label: "Directory", to: "/users/directory" },
-          { label: "Credential Generator", to: "/users/credential-generator" },
           { label: "History", to: "/users/history" }
         ]
       },

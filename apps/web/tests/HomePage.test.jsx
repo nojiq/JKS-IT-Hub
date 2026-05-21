@@ -93,12 +93,13 @@ describe('HomePage', () => {
         expect(container.querySelector('.workspace-module-launcher-grid')).toBeInTheDocument();
 
         const moduleTitles = [...container.querySelectorAll('.workspace-module-card-title')].map((node) => node.textContent);
-        expect(moduleTitles).toEqual(['Requests', 'Onboarding', 'Users & Credentials', 'Maintenance']);
+        expect(moduleTitles).toEqual(['Requests', 'Onboarding', 'Users & Credentials', 'Maintenance', 'Assets']);
 
         expect(screen.getByRole('link', { name: /open requests/i })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /open onboarding/i })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /open users & credentials/i })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /open maintenance/i })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /open assets/i })).toBeInTheDocument();
         expect(screen.getByText(hasExactText('3 need IT review'))).toBeInTheDocument();
         expect(screen.getByText(hasExactText('1 waiting for approval'))).toBeInTheDocument();
         expect(screen.getByText(hasExactText('3 total users'))).toBeInTheDocument();
@@ -136,7 +137,9 @@ describe('HomePage', () => {
 
         expect(screen.getByRole('heading', { name: 'Operations' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /open users & credentials/i })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /open onboarding/i })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /open assets/i })).toBeInTheDocument();
         expect(screen.queryByRole('link', { name: /open requests/i })).not.toBeInTheDocument();
-        expect(screen.queryByRole('link', { name: /open onboarding/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /open maintenance/i })).not.toBeInTheDocument();
     });
 });

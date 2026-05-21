@@ -1,6 +1,9 @@
 .workspace-shell {
   display: flex;
+  width: 100%;
+  max-width: 100vw;
   min-height: 100vh;
+  overflow-x: hidden;
   background: var(--ui-surface-canvas);
   color: var(--ui-text-primary);
 }
@@ -391,6 +394,9 @@
 .workspace-body {
   flex: 1;
   min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
   padding: 1.25rem;
 }
 
@@ -399,6 +405,7 @@
   gap: 1rem;
   min-width: 0;
   width: 100%;
+  max-width: 100%;
 }
 
 .workspace-page.users-page {
@@ -594,6 +601,8 @@
 }
 
 .workspace-panel {
+  min-width: 0;
+  max-width: 100%;
   border-top: 1px solid var(--ui-border-subtle);
   border-right: 0;
   border-bottom: 1px solid var(--ui-border-subtle);
@@ -686,6 +695,8 @@
 }
 
 .workspace-panel-body {
+  min-width: 0;
+  max-width: 100%;
   padding: 1rem 0;
 }
 
@@ -1029,10 +1040,14 @@
 }
 
 .workspace-table-container {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   border: 1px solid var(--ui-border-subtle);
   border-radius: 14px;
   background: var(--ui-surface-elevated);
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
   max-height: min(66vh, 680px);
   box-shadow: var(--shadow-sm);
 }
@@ -1080,6 +1095,9 @@
 }
 
 .workspace-page.users-page .users-table-container {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   border: 0;
   border-radius: 0;
   box-shadow: none;

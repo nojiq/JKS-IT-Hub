@@ -83,15 +83,10 @@ export default function HomePage() {
     ]
   };
 
-  const descriptionOverrides = {
-    onboarding: "Start a new joiner setup or manage defaults."
-  };
-
   return (
     <section className="workspace-page dashboard-page">
       <WorkspacePageHeader
         title="Operations"
-        description="Choose a workflow to continue. Each module owns its own search, filters, and next-step context."
         meta={`${formatRoleLabel(user.role)} workspace`}
       />
 
@@ -100,7 +95,6 @@ export default function HomePage() {
           <ModuleLauncherCard
             key={module.id}
             actionLabel={module.launcherActionLabel}
-            description={descriptionOverrides[module.id] ?? module.launcherDescription}
             icon={module.icon}
             metrics={metricsByModule[module.id] ?? []}
             title={module.label}
