@@ -57,7 +57,7 @@ before(async () => {
         requester: await prisma.user.create({
             data: {
                 username: `requester-device-types-${randomUUID()}`,
-                role: "requester",
+                role: "user",
                 status: "active"
             }
         })

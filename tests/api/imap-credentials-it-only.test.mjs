@@ -74,7 +74,7 @@ before(async () => {
     nonItUser = await prisma.user.create({
         data: {
             username: `requester-${randomUUID()}`,
-            role: "requester",
+            role: "user",
             status: "active"
         }
     });

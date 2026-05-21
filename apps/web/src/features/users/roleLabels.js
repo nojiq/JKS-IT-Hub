@@ -1,6 +1,6 @@
 /** Shared display labels for UserRole (keep aligned with directory filters). */
 export const ROLE_LABELS = {
-  requester: "Requester",
+  user: "User",
   it: "IT Support",
   admin: "Administrator",
   head_it: "Head of IT",

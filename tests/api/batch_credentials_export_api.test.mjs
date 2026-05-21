@@ -101,7 +101,7 @@ test.describe('Batch Credential Export API', () => {
         testRequesterUser = await prisma.user.create({
             data: {
                 username: `batch-api-req-${randomUUID()}`,
-                role: 'requester',
+                role: 'user',
                 status: 'active'
             }
         });

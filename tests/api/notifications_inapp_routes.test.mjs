@@ -31,7 +31,7 @@ before(async () => {
     user1 = await prisma.user.create({
         data: {
             username: `user1-${randomUUID()}`,
-            role: "requester",
+            role: "user",
             status: "active"
         }
     });
@@ -40,7 +40,7 @@ before(async () => {
     user2 = await prisma.user.create({
         data: {
             username: `user2-${randomUUID()}`,
-            role: "requester",
+            role: "user",
             status: "active"
         }
     });

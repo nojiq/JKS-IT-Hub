@@ -109,7 +109,7 @@ test.describe('Credential Export API Integration', () => {
         testRequesterUser = await prisma.user.create({
             data: {
                 username: `test-requester-${randomUUID()}`,
-                role: 'requester',
+                role: 'user',
                 status: 'active',
                 ldapAttributes: { mail: 'test-requester@example.com' }
             }
@@ -279,7 +279,7 @@ test.describe('Credential Export API Integration', () => {
         const targetUser = await prisma.user.create({
             data: {
                 username: `test-export-target-${randomUUID()}`,
-                role: 'requester',
+                role: 'user',
                 status: 'active',
                 ldapAttributes: { mail: 'test-export-target@example.com' }
             }

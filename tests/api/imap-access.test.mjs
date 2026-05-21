@@ -52,7 +52,7 @@ describe('requireItRole Middleware', () => {
     });
 
     it('should deny "requester" role and log audit', async () => {
-        const req = { user: { id: 'u4', role: 'requester' }, params: { userId: 'target-user' } };
+        const req = { user: { id: 'u4', role: 'user' }, params: { userId: 'target-user' } };
         const reply = createMockReply();
         const auditRepo = { createAuditLog: mock.fn() };
 

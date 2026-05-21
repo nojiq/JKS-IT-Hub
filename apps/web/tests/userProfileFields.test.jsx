@@ -90,7 +90,7 @@ describe("User profile fields", () => {
       user: {
         id: "user-1",
         username: "abdullah.fauzi",
-        role: "requester",
+        role: "user",
         status: "active",
         ldapSyncedAt: "2026-05-12T04:00:00.000Z",
         ldapFields: {
@@ -170,9 +170,9 @@ describe("User profile fields", () => {
     });
   });
 
-  it("hides the edit button for requester users", async () => {
+  it("hides the edit button for user role", async () => {
     fetchSession.mockResolvedValue({
-      user: { id: "requester-1", username: "requester", role: "requester", status: "active" }
+      user: { id: "requester-1", username: "requester", role: "user", status: "active" }
     });
 
     renderUserDetail();

@@ -80,20 +80,20 @@ export const hasItDepartment = ({ ldapAttributes, orgSnapshot, department } = {}
 };
 
 export const deriveRoleForDepartment = ({
-  currentRole = "requester",
+  currentRole = "user",
   role,
   ldapAttributes,
   orgSnapshot,
   department
 } = {}) => {
-  const baseRole = role ?? currentRole ?? "requester";
+  const baseRole = role ?? currentRole ?? "user";
 
   if (!hasItDepartment({ ldapAttributes, orgSnapshot, department })) {
     return baseRole;
   }
 
   const baseRank = ROLE_RANK[baseRole];
-  if (baseRank === undefined || baseRank > ROLE_RANK.requester) {
+  if (baseRank === undefined || baseRank > ROLE_RANK.user) {
     return baseRole;
   }
 

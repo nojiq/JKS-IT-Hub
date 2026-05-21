@@ -7,6 +7,7 @@ const require = createRequire(new URL("../../apps/api/package.json", import.meta
 const Fastify = require("fastify");
 const cookie = require("@fastify/cookie");
 import { requireAdminOrHead } from "../../apps/api/src/shared/auth/requireAdminOrHead.js";
+import { requireAuthenticated } from "../../apps/api/src/shared/auth/requireAuthenticated.js";
 import { signSessionToken } from "../../apps/api/src/shared/auth/jwt.js";
 
 const baseConfig = {
@@ -41,6 +42,15 @@ const createTestApp = async ({ userRepo }) => {
             userRepo
         });
         if (!user) return; // Middleware handled the response
+        return { status: "ok", role: user.role };
+    });
+
+    app.get("/test-authenticated", async (req, reply) => {
+        const user = await requireAuthenticated(req, reply, {
+            config: baseConfig,
+            userRepo
+        });
+        if (!user) return;
         return { status: "ok", role: user.role };
     });
 
@@ -106,8 +116,8 @@ test("requireAdminOrHead blocks it user", async () => {
     assert.equal(response.statusCode, 403);
 });
 
-test("requireAdminOrHead blocks requester", async () => {
-    const user = { id: "u4", username: "req", role: "requester", status: "active" };
+test("requireAdminOrHead blocks user role", async () => {
+    const user = { id: "u4", username: "req", role: "user", status: "active" };
     const userRepo = createInMemoryUserRepo([user]);
     const app = await createTestApp({ userRepo });
 
@@ -123,4 +133,24 @@ test("requireAdminOrHead blocks requester", async () => {
     });
 
     assert.equal(response.statusCode, 403);
+});
+
+test("requireAuthenticated blocks user role from app access", async () => {
+    const user = { id: "u5", username: "basic", role: "user", status: "active" };
+    const userRepo = createInMemoryUserRepo([user]);
+    const app = await createTestApp({ userRepo });
+
+    const token = await signSessionToken({
+        subject: user.id,
+        payload: { username: user.username, role: user.role }
+    }, baseConfig.jwt);
+
+    const response = await app.inject({
+        method: "GET",
+        url: "/test-authenticated",
+        headers: { cookie: `${baseConfig.cookie.name}=${token}` }
+    });
+
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json().detail, "Your account does not have access to this app.");
 });

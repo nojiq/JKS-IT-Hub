@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavLink, Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { fetchSession, logout } from "../../features/users/auth-api";
-import { DEV_ONLY_ROLES } from "../auth/workspaceRoles.js";
+import { APP_ACCESS_ROLES, DEV_ONLY_ROLES } from "../auth/workspaceRoles.js";
 import { NotificationBell } from "../../features/notifications/components/NotificationBell";
 import ConnectionStatus from "../components/ConnectionStatus.jsx";
 import { ThemeToggle } from "../ui/ThemeToggle/ThemeToggle";
@@ -184,6 +184,20 @@ export function WorkspaceLayout() {
 
   if (!user) {
     return <Navigate replace to="/login" />;
+  }
+
+  if (!APP_ACCESS_ROLES.includes(user.role)) {
+    return (
+      <main className="workspace-body">
+        <DataStateBlock
+          variant="error"
+          title="Access unavailable"
+          description="Your account does not have access to this app. Contact IT if you need access."
+          actionLabel="Sign out"
+          onAction={() => logoutMutation.mutate()}
+        />
+      </main>
+    );
   }
 
   /** Desktop: follow persisted collapse. Mobile drawer open: always show labels, subtrees, brand subtitle. */

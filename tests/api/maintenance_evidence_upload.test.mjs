@@ -80,10 +80,10 @@ test("Maintenance run item evidence upload", async (t) => {
             data: { username: `pm-evidence-it-${randomUUID()}`, role: "it", status: "active" }
         });
         assigneeUser = await prisma.user.create({
-            data: { username: `pm-evidence-assignee-${randomUUID()}`, role: "requester", status: "active" }
+            data: { username: `pm-evidence-assignee-${randomUUID()}`, role: "user", status: "active" }
         });
         otherUser = await prisma.user.create({
-            data: { username: `pm-evidence-other-${randomUUID()}`, role: "requester", status: "active" }
+            data: { username: `pm-evidence-other-${randomUUID()}`, role: "user", status: "active" }
         });
 
         itToken = await signSessionToken({

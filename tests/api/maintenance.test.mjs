@@ -36,11 +36,11 @@ before(async () => {
         }
     });
 
-    // Create Requester User
+    // Create User Role
     requesterUser = await prisma.user.create({
         data: {
             username: `req-maint-${randomUUID()}`,
-            role: "requester",
+            role: "user",
             status: "active"
         }
     });
@@ -86,7 +86,7 @@ test("Maintenance Features - RBAC & Functionality", async (t) => {
         cycleId = body.data.id;
     });
 
-    await t.test("2. Requester User CANNOT create maintenance cycle", async () => {
+    await t.test("2. User Role CANNOT create maintenance cycle", async () => {
         const response = await app.inject({
             method: "POST",
             url: "/api/v1/maintenance/cycles",
@@ -115,7 +115,7 @@ test("Maintenance Features - RBAC & Functionality", async (t) => {
         assert.equal(body.data.description, "Updated description");
     });
 
-    await t.test("4. Requester User CANNOT update maintenance cycle", async () => {
+    await t.test("4. User Role CANNOT update maintenance cycle", async () => {
         const response = await app.inject({
             method: "PATCH",
             url: `/api/v1/maintenance/cycles/${cycleId}`,
@@ -143,7 +143,7 @@ test("Maintenance Features - RBAC & Functionality", async (t) => {
         assert.equal(body.data.windows[0].status, "SCHEDULED");
     });
 
-    await t.test("6. Requester User CANNOT generate schedule", async () => {
+    await t.test("6. User Role CANNOT generate schedule", async () => {
         const response = await app.inject({
             method: "POST",
             url: `/api/v1/maintenance/cycles/${cycleId}/generate-schedule`,

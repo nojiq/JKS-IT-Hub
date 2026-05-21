@@ -18,7 +18,7 @@ enum UserRole {
   it
   admin
   head_it
-  requester
+  user
   dev
 
   @@map("user_role")
@@ -84,7 +84,7 @@ model User {
   id             String     @id @default(uuid()) @map("id") @db.Char(36)
   username       String     @unique @map("username")
   status         UserStatus @default(active) @map("status")
-  role           UserRole   @default(requester) @map("role")
+  role           UserRole   @default(user) @map("role")
   ldapDn         String?    @map("ldap_dn") @db.Text
   ldapAttributes Json?      @map("ldap_attributes")
   ldapSyncedAt   DateTime?  @map("ldap_synced_at")

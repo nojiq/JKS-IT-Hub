@@ -42,7 +42,7 @@ const createHybridUserRepo = (existingDbUser = null) => {
   }
 
   return {
-    findOrCreateUser: async ({ username, role = "requester" }) => {
+    findOrCreateUser: async ({ username, role = "user" }) => {
       const existing = users.get(username);
       if (existing) {
         return existing;

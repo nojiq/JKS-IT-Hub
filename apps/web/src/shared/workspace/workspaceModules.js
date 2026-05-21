@@ -14,9 +14,9 @@ export const workspaceGroups = [
         label: "Requests",
         icon: "requests",
         to: "/requests",
-        roles: DEV_ONLY_ROLES,
+        roles: IT_ROLES,
         launcherPriority: 1,
-        launcherDescription: "Review purchase requests, move approvals forward, and resolve blocked items.",
+        launcherDescription: "Submit purchase requests, track progress, and manage request queues.",
         launcherActionLabel: "Open Requests",
         children: [
           { label: "Overview", to: "/requests" },
@@ -30,7 +30,7 @@ export const workspaceGroups = [
               return !!detailMatch && !excluded.has(detailMatch[1]);
             }
           },
-          { label: "Review Queue", to: "/requests/review" },
+          { label: "Review Queue", to: "/requests/review", roles: DEV_ONLY_ROLES },
           { label: "Approvals", to: "/requests/approvals", roles: DEV_ONLY_ROLES }
         ]
       },
@@ -39,6 +39,7 @@ export const workspaceGroups = [
         label: "Onboarding",
         icon: "onboarding",
         to: "/onboarding",
+        roles: IT_ROLES,
         launcherPriority: 2,
         launcherDescription: "Prepare access, assign defaults, and generate credentials for new joiners.",
         launcherActionLabel: "Open Onboarding",
@@ -54,6 +55,7 @@ export const workspaceGroups = [
         label: "Assets",
         icon: "assets",
         to: "/assets",
+        roles: IT_ROLES,
         launcherPriority: 5,
         launcherDescription: "Browse hardware inventory synced from Snipe-IT and review user assignments.",
         launcherActionLabel: "Open Assets"

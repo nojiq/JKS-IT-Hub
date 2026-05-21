@@ -16,13 +16,13 @@ test("Requests Review - Service Layer", async (t) => {
     await t.test("Setup", async () => {
         // Create users
         requesterUser = await prisma.user.create({
-            data: { username: `req-${randomUUID()}`, role: "requester", status: "active" }
+            data: { username: `req-${randomUUID()}`, role: "user", status: "active" }
         });
         itUser = await prisma.user.create({
             data: { username: `it-${randomUUID()}`, role: "it", status: "active" }
         });
         otherUser = await prisma.user.create({
-            data: { username: `other-${randomUUID()}`, role: "requester", status: "active" }
+            data: { username: `other-${randomUUID()}`, role: "user", status: "active" }
         });
 
         // Create request

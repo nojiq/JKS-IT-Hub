@@ -25,7 +25,7 @@ describe('Requests Notifications Integration', () => {
 
         // Create users
         requester = await prisma.user.create({
-            data: { username: 'requester_notif', role: 'requester', status: 'active', ldapAttributes: { mail: 'req@example.com' } }
+            data: { username: 'requester_notif', role: 'user', status: 'active', ldapAttributes: { mail: 'req@example.com' } }
         });
         itStaff = await prisma.user.create({
             data: { username: 'it_notif', role: 'it', status: 'active', ldapAttributes: { mail: 'it@example.com' } }

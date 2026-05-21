@@ -85,7 +85,7 @@ test("GET /users forbids non-IT roles", async () => {
   const user = {
     id: "user-1",
     username: "requester",
-    role: "requester",
+    role: "user",
     status: "active"
   };
   const app = await createTestApp({

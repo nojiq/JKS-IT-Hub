@@ -37,11 +37,11 @@ test("Requests Search API", async (t) => {
 
         // Create Requesters
         requester1 = await prisma.user.create({
-            data: { username: `req1-search-${randomUUID()}`, role: "requester", status: "active" }
+            data: { username: `req1-search-${randomUUID()}`, role: "user", status: "active" }
         });
 
         requester2 = await prisma.user.create({
-            data: { username: `req2-search-${randomUUID()}`, role: "requester", status: "active" }
+            data: { username: `req2-search-${randomUUID()}`, role: "user", status: "active" }
         });
 
         // Tokens

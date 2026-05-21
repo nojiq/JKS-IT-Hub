@@ -58,7 +58,7 @@ describe('Batch Credential Export Service', () => {
             const user1 = await prisma.user.create({
                 data: {
                     username: `batch-user1-${randomUUID()}`,
-                    role: 'requester',
+                    role: 'user',
                     status: 'active'
                 }
             });
@@ -66,7 +66,7 @@ describe('Batch Credential Export Service', () => {
             const user2 = await prisma.user.create({
                 data: {
                     username: `batch-user2-${randomUUID()}`,
-                    role: 'requester',
+                    role: 'user',
                     status: 'active'
                 }
             });

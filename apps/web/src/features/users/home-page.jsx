@@ -68,10 +68,10 @@ export default function HomePage() {
   const overdueMaintenance = maintenanceItems.filter((entry) => entry.status === "OVERDUE").length;
 
   const metricsByModule = {
-    requests: [
+    requests: isDevUser ? [
       { value: String(requestReviewCount), label: "need IT review" },
       { value: String(requestApprovalCount), label: "waiting for approval" }
-    ],
+    ] : [],
     onboarding: [],
     users: [
       { value: String(totalUsers), label: "total users" },

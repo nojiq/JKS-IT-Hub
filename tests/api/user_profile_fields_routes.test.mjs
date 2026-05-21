@@ -83,7 +83,7 @@ test("GET /users/:id includes dynamic profile fields", async () => {
   const target = {
     id: "user-1",
     username: "abdullah.fauzi",
-    role: "requester",
+    role: "user",
     status: "active",
     ldapSyncedAt: new Date("2026-05-12T04:00:00.000Z"),
     ldapAttributes: { cn: "Abdullah Fauzi", mail: "abdullah.fauzi@jkseng.com" }
@@ -135,7 +135,7 @@ test("GET /users/:id includes dynamic profile fields", async () => {
 
 test("PATCH /users/:id/profile-fields allows IT to update profile fields", async () => {
   const actor = { id: "it-1", username: "it-user", role: "it", status: "active" };
-  const target = { id: "user-1", username: "abdullah.fauzi", role: "requester", status: "active" };
+  const target = { id: "user-1", username: "abdullah.fauzi", role: "user", status: "active" };
   const auditRepo = createAuditRepo();
   const userFieldRepo = {
     updateProfileFieldValues: async ({ userId, values, updatedBy }) => {
@@ -192,15 +192,15 @@ test("PATCH /users/:id/profile-fields allows IT to update profile fields", async
   await app.close();
 });
 
-test("PATCH /users/:id/profile-fields rejects requester role", async () => {
-  const actor = { id: "requester-1", username: "requester", role: "requester", status: "active" };
-  const target = { id: "user-1", username: "abdullah.fauzi", role: "requester", status: "active" };
+test("PATCH /users/:id/profile-fields rejects user role", async () => {
+  const actor = { id: "requester-1", username: "requester", role: "user", status: "active" };
+  const target = { id: "user-1", username: "abdullah.fauzi", role: "user", status: "active" };
   const app = await createTestApp({
     users: [actor, target],
     userFieldRepo: {
       listProfileFieldsForUser: async () => [],
       updateProfileFieldValues: async () => {
-        throw new Error("should not update profile fields for requester");
+        throw new Error("should not update profile fields for user role");
       }
     }
   });

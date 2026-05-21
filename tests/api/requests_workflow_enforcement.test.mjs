@@ -52,7 +52,7 @@ test("Requests Workflow Enforcement", async (t) => {
 
             // Create request by requester for status test
             const requesterUser = await prisma.user.create({
-                data: { username: `reg-user-${randomUUID()}`, role: "requester", status: "active" }
+                data: { username: `reg-user-${randomUUID()}`, role: "user", status: "active" }
             });
             const req2 = await prisma.itemRequest.create({
                 data: {

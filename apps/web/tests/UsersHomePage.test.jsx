@@ -116,7 +116,7 @@ describe('Users module overview route', () => {
                 {
                     id: 'user-1',
                     username: 'jane.doe',
-                    role: 'requester',
+                    role: 'user',
                     status: 'active',
                     ldapFields: { mail: 'jane@example.com', department: 'Finance' }
                 }
@@ -174,7 +174,7 @@ describe('Users module overview route', () => {
             user: {
                 id: 'user-2',
                 username: 'riley.requester',
-                role: 'requester',
+                role: 'user',
                 status: 'active'
             }
         });
@@ -183,7 +183,7 @@ describe('Users module overview route', () => {
             user: {
                 id: 'user-2',
                 username: 'riley.requester',
-                role: 'requester',
+                role: 'user',
                 status: 'active'
             }
         });

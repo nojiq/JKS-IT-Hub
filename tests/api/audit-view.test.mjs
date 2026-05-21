@@ -149,7 +149,7 @@ test("GET /audit-logs returns paged logs for authenticated IT user", async () =>
 test("GET /users/:id/audit-logs returns history for specific user", async () => {
     const targetUser = await createUser({
         username: `target-user-${randomUUID()}`,
-        role: "requester",
+        role: "user",
         status: "active"
     });
     createdUserIds.push(targetUser.id);
@@ -238,7 +238,7 @@ test("Security: Non-IT user access forbidden", async () => {
     // Create a requester user
     const actor = await createUser({
         username: `requester-${randomUUID()}`,
-        role: "requester",
+        role: "user",
         status: "active"
     });
     createdUserIds.push(actor.id);

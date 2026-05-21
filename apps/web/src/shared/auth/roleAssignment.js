@@ -3,20 +3,20 @@
  */
 
 export const ROLE_RANK = {
-  requester: 0,
+  user: 0,
   it: 1,
   admin: 2,
   head_it: 3,
   dev: 4
 };
 
-export const ASSIGNABLE_ROLES = ["requester", "it", "admin", "head_it"];
+export const ASSIGNABLE_ROLES = ["user", "it", "admin", "head_it"];
 
 const ASSIGNABLE_BY_ACTOR = {
-  dev: new Set(["requester", "it", "admin", "head_it"]),
+  dev: new Set(["user", "it", "admin", "head_it"]),
   head_it: new Set(["admin", "it"]),
   admin: new Set(["admin", "it"]),
-  it: new Set(["requester"])
+  it: new Set(["user"])
 };
 
 export const getAssignableRoles = (actorRole) => {

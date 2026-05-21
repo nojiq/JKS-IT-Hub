@@ -109,7 +109,7 @@ export const findUsersByIds = async (ids = []) => {
 
 export const createUser = async ({
   username,
-  role = "requester",
+  role = "user",
   status = "active",
   ldapDn = undefined,
   ldapAttributes = undefined,
@@ -138,7 +138,7 @@ export const createUser = async ({
 
 export const findOrCreateUser = async ({
   username,
-  role = "requester",
+  role = "user",
   ldapAttributes = undefined,
   orgSnapshot = undefined,
   orgSyncedAt = undefined
@@ -176,7 +176,7 @@ export const upsertUserFromLdap = async ({
     select: { role: true }
   });
   const assignedRole = deriveRoleForDepartment({
-    currentRole: existing?.role ?? role ?? "requester",
+    currentRole: existing?.role ?? role ?? "user",
     ldapAttributes,
     orgSnapshot
   });

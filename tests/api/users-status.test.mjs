@@ -90,7 +90,7 @@ const generateAuthHeader = async (user) => {
 
 test("PATCH /users/:id/status updates status for legitimate admin", async () => {
     const adminUser = { id: "admin-1", username: "admin", role: "admin", status: "active" };
-    const targetUser = { id: "user-1", username: "john", role: "requester", status: "active" };
+    const targetUser = { id: "user-1", username: "john", role: "user", status: "active" };
 
     const userRepo = createMockUserRepo([adminUser, targetUser]);
     const auditRepo = createMockAuditRepo();
@@ -121,7 +121,7 @@ test("PATCH /users/:id/status updates status for legitimate admin", async () => 
 
 test("PATCH /users/:id/status forbids non-admin users", async () => {
     const itUser = { id: "it-1", username: "it", role: "it", status: "active" };
-    const targetUser = { id: "user-1", username: "john", role: "requester", status: "active" };
+    const targetUser = { id: "user-1", username: "john", role: "user", status: "active" };
 
     const userRepo = createMockUserRepo([itUser, targetUser]);
     const auditRepo = createMockAuditRepo();
@@ -148,7 +148,7 @@ test("PATCH /users/:id/status forbids non-admin users", async () => {
 
 test("PATCH /users/:id/status forbids invalid status", async () => {
     const adminUser = { id: "admin-1", username: "admin", role: "admin", status: "active" };
-    const targetUser = { id: "user-1", username: "john", role: "requester", status: "active" };
+    const targetUser = { id: "user-1", username: "john", role: "user", status: "active" };
 
     const userRepo = createMockUserRepo([adminUser, targetUser]);
     const auditRepo = createMockAuditRepo();

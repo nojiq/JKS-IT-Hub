@@ -37,8 +37,8 @@ test.beforeEach(() => {
 test('emitToUser sends SSE envelope to all active user connections', () => {
     const connA = createConnection();
     const connB = createConnection();
-    __test.addConnection('user-1', 'requester', connA);
-    __test.addConnection('user-1', 'requester', connB);
+    __test.addConnection('user-1', 'user', connA);
+    __test.addConnection('user-1', 'user', connB);
 
     emitToUser('user-1', {
         type: 'request.updated',
@@ -60,7 +60,7 @@ test('emitToRole only targets connected users with that role', () => {
     const itConn = createConnection();
     const requesterConn = createConnection();
     __test.addConnection('user-it', 'it', itConn);
-    __test.addConnection('user-req', 'requester', requesterConn);
+    __test.addConnection('user-req', 'user', requesterConn);
 
     emitToRole('it', {
         type: 'request.created',
@@ -80,7 +80,7 @@ test('emitToITStaff fans out to it/admin/head_it roles', () => {
     __test.addConnection('u-it', 'it', itConn);
     __test.addConnection('u-admin', 'admin', adminConn);
     __test.addConnection('u-head', 'head_it', headConn);
-    __test.addConnection('u-req', 'requester', requesterConn);
+    __test.addConnection('u-req', 'user', requesterConn);
 
     emitToITStaff({
         type: 'maintenance.updated',
@@ -99,7 +99,7 @@ test('emitToUsers and emitToAll deliver to expected recipients', () => {
     const c = createConnection();
 
     __test.addConnection('user-a', 'it', a);
-    __test.addConnection('user-b', 'requester', b);
+    __test.addConnection('user-b', 'user', b);
     __test.addConnection('user-c', 'admin', c);
 
     emitToUsers(['user-a', 'user-c'], {
@@ -125,7 +125,7 @@ test('connection stats and connected-role lookup reflect active connections', ()
     __test.addConnection('u1', 'it', createConnection());
     __test.addConnection('u1', 'it', createConnection());
     __test.addConnection('u2', 'admin', createConnection());
-    __test.addConnection('u3', 'requester', createConnection());
+    __test.addConnection('u3', 'user', createConnection());
 
     const stats = getConnectionStats();
     assert.equal(stats.uniqueUsers, 3);

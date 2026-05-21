@@ -114,8 +114,7 @@ describe('Onboarding navigation', () => {
     it.each([
         ['it'],
         ['head_it'],
-        ['admin'],
-        ['requester']
+        ['admin']
     ])('renders onboarding shell for %s users', async (role) => {
         const sessionUser = {
             id: `user-${role}`,
@@ -129,6 +128,21 @@ describe('Onboarding navigation', () => {
 
         expect(await screen.findByRole('heading', { name: 'Onboarding' })).toBeInTheDocument();
         expect(screen.getByText('Overview Content')).toBeInTheDocument();
+    });
+
+    it('redirects user role away from onboarding', async () => {
+        const sessionUser = {
+            id: 'user-basic',
+            username: 'basic.user',
+            role: 'user',
+            status: 'active'
+        };
+        fetchSession.mockResolvedValue({ user: sessionUser });
+
+        const { router } = renderApp({ user: sessionUser });
+
+        expect(await screen.findByText('Dashboard Content')).toBeInTheDocument();
+        expect(router.state.location.pathname).toBe('/');
     });
 
     it('redirects unauthenticated visitors away from onboarding', async () => {

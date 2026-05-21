@@ -454,7 +454,7 @@ export default function UsersListPage() {
                 value={filterContract.filters.role}
                 onChange={(value) => setFilterAndResetPage("role", value)}
                 options={[
-                  { value: "requester", label: "Requester" },
+                  { value: "user", label: "User" },
                   { value: "it", label: "IT Support" },
                   { value: "admin", label: "Administrator" },
                   { value: "head_it", label: "Head of IT" }

@@ -16,7 +16,7 @@ test("Requests Approval - Repository Layer", async (t) => {
         const requester = await prisma.user.create({
             data: {
                 username: `requester-approval-${randomUUID()}`,
-                role: "requester",
+                role: "user",
                 status: "active"
             }
         });

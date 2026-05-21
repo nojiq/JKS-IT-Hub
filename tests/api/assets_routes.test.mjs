@@ -24,7 +24,7 @@ const config = {
 };
 
 const users = [
-  { id: "00000000-0000-4000-8000-000000000001", username: "requester", role: "requester", status: "active" },
+  { id: "00000000-0000-4000-8000-000000000001", username: "requester", role: "user", status: "active" },
   { id: "00000000-0000-4000-8000-000000000002", username: "it.user", role: "it", status: "active" }
 ];
 

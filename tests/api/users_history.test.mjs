@@ -61,7 +61,7 @@ test("GET /users/:id/audit-logs returns history", async () => {
     const targetUser = {
         id: randomUUID(),
         username: "target",
-        role: "requester",
+        role: "user",
         status: "active"
     };
 

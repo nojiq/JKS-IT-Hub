@@ -20,7 +20,7 @@ describe('Credential Generation Normalization Integration', () => {
             testUser = await prisma.user.create({
                 data: {
                     username: `testuser-${randomUUID()}`,
-                    role: 'requester',
+                    role: 'user',
                     status: 'active',
                     ldapAttributes: {
                         mail: 'John.DOE@Example.com',

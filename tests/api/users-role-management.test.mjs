@@ -84,7 +84,7 @@ const generateAuthHeader = async (user) => {
 
 test("PATCH /users/:id/role updates role for legitimate admin", async () => {
     const adminUser = { id: "admin-1", username: "admin", role: "admin", status: "active" };
-    const targetUser = { id: "user-1", username: "john", role: "requester", status: "active" };
+    const targetUser = { id: "user-1", username: "john", role: "user", status: "active" };
 
     const userRepo = createMockUserRepo([adminUser, targetUser]);
     const auditRepo = createMockAuditRepo();
@@ -108,14 +108,14 @@ test("PATCH /users/:id/role updates role for legitimate admin", async () => {
     assert.equal(logs.length, 1);
     assert.equal(logs[0].action, "user.role_update");
     assert.equal(logs[0].metadata.changes[0].field, "role");
-    assert.equal(logs[0].metadata.changes[0].old, "requester");
+    assert.equal(logs[0].metadata.changes[0].old, "user");
     assert.equal(logs[0].metadata.changes[0].new, "it");
     assert.equal(logs[0].actorUserId, adminUser.id);
 });
 
 test("PATCH /users/:id/role forbids IT from assigning disallowed roles (e.g. admin)", async () => {
     const itUser = { id: "it-1", username: "it", role: "it", status: "active" };
-    const targetUser = { id: "user-1", username: "john", role: "requester", status: "active" };
+    const targetUser = { id: "user-1", username: "john", role: "user", status: "active" };
 
     const userRepo = createMockUserRepo([itUser, targetUser]);
     const auditRepo = createMockAuditRepo();
@@ -133,7 +133,7 @@ test("PATCH /users/:id/role forbids IT from assigning disallowed roles (e.g. adm
     assert.equal(response.statusCode, 403);
 });
 
-test("PATCH /users/:id/role allows IT to assign requester to peer IT", async () => {
+test("PATCH /users/:id/role allows IT to assign user to peer IT", async () => {
     const itUser = { id: "it-1", username: "it", role: "it", status: "active" };
     const targetUser = { id: "user-2", username: "jane", role: "it", status: "active" };
 
@@ -146,11 +146,11 @@ test("PATCH /users/:id/role allows IT to assign requester to peer IT", async () 
         method: "PATCH",
         url: `/users/${targetUser.id}/role`,
         headers,
-        payload: { role: "requester" }
+        payload: { role: "user" }
     });
 
     assert.equal(response.statusCode, 200);
-    assert.equal(response.json().data.user.role, "requester");
+    assert.equal(response.json().data.user.role, "user");
 });
 
 test("PATCH /users/:id/role forbids IT from changing users above IT rank", async () => {
@@ -166,7 +166,7 @@ test("PATCH /users/:id/role forbids IT from changing users above IT rank", async
         method: "PATCH",
         url: `/users/${adminUser.id}/role`,
         headers,
-        payload: { role: "requester" }
+        payload: { role: "user" }
     });
 
     assert.equal(response.statusCode, 403);
@@ -174,7 +174,7 @@ test("PATCH /users/:id/role forbids IT from changing users above IT rank", async
 
 test("PATCH /users/:id/role allows dev to grant admin", async () => {
     const devUser = { id: "dev-1", username: "dev", role: "dev", status: "active" };
-    const targetUser = { id: "user-1", username: "john", role: "requester", status: "active" };
+    const targetUser = { id: "user-1", username: "john", role: "user", status: "active" };
 
     const userRepo = createMockUserRepo([devUser, targetUser]);
     const auditRepo = createMockAuditRepo();
@@ -194,7 +194,7 @@ test("PATCH /users/:id/role allows dev to grant admin", async () => {
 
 test("PATCH /users/:id/role rejects dev role in body", async () => {
     const devUser = { id: "dev-1", username: "dev", role: "dev", status: "active" };
-    const targetUser = { id: "user-1", username: "john", role: "requester", status: "active" };
+    const targetUser = { id: "user-1", username: "john", role: "user", status: "active" };
 
     const userRepo = createMockUserRepo([devUser, targetUser]);
     const auditRepo = createMockAuditRepo();
@@ -232,7 +232,7 @@ test("PATCH /users/:id/role forbids changing your own role", async () => {
 
 test("PATCH /users/:id/role forbids invalid role", async () => {
     const adminUser = { id: "admin-1", username: "admin", role: "admin", status: "active" };
-    const targetUser = { id: "user-1", username: "john", role: "requester", status: "active" };
+    const targetUser = { id: "user-1", username: "john", role: "user", status: "active" };
 
     const userRepo = createMockUserRepo([adminUser, targetUser]);
     const auditRepo = createMockAuditRepo();
@@ -251,7 +251,7 @@ test("PATCH /users/:id/role forbids invalid role", async () => {
 });
 
 test("GET /users/:id/audit-logs returns history", async () => {
-    const user = { id: "user-1", username: "john", role: "requester", status: "active" };
+    const user = { id: "user-1", username: "john", role: "user", status: "active" };
     const itUser = { id: "it-1", username: "it", role: "it", status: "active" };
 
     // Mock audit logs

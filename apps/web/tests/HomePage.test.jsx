@@ -136,10 +136,23 @@ describe('HomePage', () => {
         renderPage({ role: 'it', username: 'it.user', status: 'active' });
 
         expect(screen.getByRole('heading', { name: 'Operations' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /open requests/i })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /open users & credentials/i })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /open onboarding/i })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /open assets/i })).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /open maintenance/i })).not.toBeInTheDocument();
+    });
+
+    it('shows no launcher modules for user role', () => {
+        useQuery.mockImplementation(() => createQueryResult());
+
+        renderPage({ role: 'user', username: 'basic.user', status: 'active' });
+
+        expect(screen.getByRole('heading', { name: 'Operations' })).toBeInTheDocument();
         expect(screen.queryByRole('link', { name: /open requests/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /open onboarding/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /open assets/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /open users & credentials/i })).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: /open maintenance/i })).not.toBeInTheDocument();
     });
 });

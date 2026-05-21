@@ -1,11 +1,12 @@
 import { Navigate, Outlet, useOutletContext } from "react-router-dom";
 import { WorkspacePageHeader } from "../../shared/workspace/WorkspacePageHeader";
+import { APP_ACCESS_ROLES } from "../../shared/auth/workspaceRoles.js";
 import "./onboarding.css";
 
 export function OnboardingLayout() {
   const { user } = useOutletContext() ?? {};
 
-  if (!user) {
+  if (!user || !APP_ACCESS_ROLES.includes(user.role)) {
     return <Navigate replace to="/" />;
   }
 

@@ -1,6 +1,8 @@
 import { getSessionFromRequest } from "./session.js";
 import { createProblemDetails, sendProblem } from "../errors/problemDetails.js";
 
+const APP_ACCESS_ROLES = new Set(["dev", "it", "admin", "head_it"]);
+
 const isUserDisabled = (user, userRepo) => {
     if (userRepo?.isUserDisabled) {
         return userRepo.isUserDisabled(user);
@@ -64,6 +66,19 @@ export const requireAuthenticated = async (
                 title: "Account disabled",
                 type: "/problems/auth/account-disabled",
                 detail: "Your account is disabled. Contact IT to regain access."
+            })
+        );
+        return null;
+    }
+
+    if (!APP_ACCESS_ROLES.has(user.role)) {
+        sendProblem(
+            reply,
+            createProblemDetails({
+                status: 403,
+                title: "Forbidden",
+                type: "/problems/auth/forbidden",
+                detail: "Your account does not have access to this app."
             })
         );
         return null;

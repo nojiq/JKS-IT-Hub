@@ -90,7 +90,7 @@ test("PATCH /users/:id/pulse-org updates org snapshot for IT user", async () => 
   const target = {
     id: "user-1",
     username: "abdullah.fauzi",
-    role: "requester",
+    role: "user",
     status: "active",
     ldapSyncedAt: new Date("2026-05-12T04:00:00.000Z"),
     ldapAttributes: { mail: "abdullah.fauzi@jkseng.com" },

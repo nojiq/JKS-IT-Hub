@@ -64,10 +64,10 @@ const adminUser = {
     status: 'active'
 };
 
-const requesterUser = {
+const basicUser = {
     id: 'user-2',
-    username: 'riley.requester',
-    role: 'requester',
+    username: 'basic.user',
+    role: 'user',
     status: 'active'
 };
 
@@ -204,15 +204,25 @@ describe('RequestsHomePage', () => {
         expect(router.state.location.pathname).toBe('/');
     });
 
-    it('allows requester users to open my requests', async () => {
-        renderProductionRequestsRoute({ initialEntry: '/requests/my-requests', user: requesterUser });
+    it('redirects user role away from my requests', async () => {
+        const { router } = renderProductionRequestsRoute({ initialEntry: '/requests/my-requests', user: basicUser });
 
-        expect(await screen.findByText('My Requests View')).toBeInTheDocument();
+        expect(await screen.findByText('Dashboard Content')).toBeInTheDocument();
+        expect(router.state.location.pathname).toBe('/');
         expect(screen.queryByRole('heading', { name: 'Approval Queue' })).not.toBeInTheDocument();
     });
 
-    it('redirects requester users away from /requests/approvals', async () => {
-        const { router } = renderProductionRequestsRoute({ initialEntry: '/requests/approvals', user: requesterUser });
+    it('redirects user role away from requests overview', async () => {
+        const { router } = renderProductionRequestsRoute({ initialEntry: '/requests', user: basicUser });
+
+        expect(await screen.findByText('Dashboard Content')).toBeInTheDocument();
+        expect(router.state.location.pathname).toBe('/');
+        expect(screen.queryByRole('heading', { name: 'Approval Queue' })).not.toBeInTheDocument();
+        expect(fetchAllRequests).not.toHaveBeenCalled();
+    });
+
+    it('redirects user role away from /requests/approvals', async () => {
+        const { router } = renderProductionRequestsRoute({ initialEntry: '/requests/approvals', user: basicUser });
 
         expect(await screen.findByText('Dashboard Content')).toBeInTheDocument();
         expect(router.state.location.pathname).toBe('/');

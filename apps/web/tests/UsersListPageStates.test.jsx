@@ -103,7 +103,7 @@ describe('UsersListPage states', () => {
                     {
                         id: '1',
                         username: 'alice',
-                        role: 'requester',
+                        role: 'user',
                         status: 'active',
                         ldapFields: { mail: 'alice@example.com' }
                     }
@@ -133,7 +133,7 @@ describe('UsersListPage states', () => {
                     {
                         id: '1',
                         username: 'alice',
-                        role: 'requester',
+                        role: 'user',
                         status: 'active',
                         ldapFields: { mail: 'alice@example.com' }
                     }
@@ -208,7 +208,7 @@ describe('UsersListPage states', () => {
                     {
                         id: '1',
                         username: 'alice',
-                        role: 'requester',
+                        role: 'user',
                         status: 'active',
                         ldapFields: { mail: 'alice@example.com' }
                     }
@@ -238,7 +238,7 @@ describe('UsersListPage states', () => {
                     {
                         id: '1',
                         username: 'alice',
-                        role: 'requester',
+                        role: 'user',
                         status: 'active',
                         ldapFields: { mail: 'alice@example.com', department: 'Legacy LDAP' },
                         orgSnapshot: {
@@ -269,7 +269,7 @@ describe('UsersListPage states', () => {
                     {
                         id: '1',
                         username: 'alice',
-                        role: 'requester',
+                        role: 'user',
                         status: 'active',
                         ldapFields: { mail: 'alice@example.com', department: 'IT' }
                     }
@@ -299,7 +299,7 @@ describe('UsersListPage states', () => {
                     {
                         id: '1',
                         username: 'alice',
-                        role: 'requester',
+                        role: 'user',
                         status: 'active',
                         ldapFields: { mail: 'alice@example.com' }
                     }

@@ -295,7 +295,7 @@ export const createLdapSyncRunner = ({
 
       const isNewUser = !existingUser;
       const role = deriveRoleForDepartment({
-        currentRole: existingUser?.role ?? "requester",
+        currentRole: existingUser?.role ?? "user",
         ldapAttributes: newLdapAttributes,
         ...(orgResolved ? { orgSnapshot } : {})
       });

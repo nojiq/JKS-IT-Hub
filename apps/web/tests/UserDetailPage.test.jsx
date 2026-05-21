@@ -66,7 +66,7 @@ const userDetailPayload = Object.freeze({
     user: Object.freeze({
         id: 'user-1',
         username: 'jane.doe',
-        role: 'requester',
+        role: 'user',
         status: 'active',
         ldapSyncedAt: '2026-04-16T01:00:00.000Z',
         orgSyncedAt: '2026-05-13T00:00:00.000Z',

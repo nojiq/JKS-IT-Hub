@@ -39,11 +39,11 @@ test('request.created reaches requester + IT/Admin/Head recipients only', () => 
     const headUser = createConnection();
     const unrelatedRequester = createConnection();
 
-    __test.addConnection('req-1', 'requester', requester);
+    __test.addConnection('req-1', 'user', requester);
     __test.addConnection('it-1', 'it', itUser);
     __test.addConnection('admin-1', 'admin', adminUser);
     __test.addConnection('head-1', 'head_it', headUser);
-    __test.addConnection('req-2', 'requester', unrelatedRequester);
+    __test.addConnection('req-2', 'user', unrelatedRequester);
 
     emitRequestCreated({
         id: 'request-1',
@@ -68,7 +68,7 @@ test('request.updated includes actor metadata in payload', () => {
     const requester = createConnection();
     const itUser = createConnection();
 
-    __test.addConnection('req-3', 'requester', requester);
+    __test.addConnection('req-3', 'user', requester);
     __test.addConnection('it-2', 'it', itUser);
 
     emitRequestUpdated({
@@ -89,7 +89,7 @@ test('status change emits canonical and status-specific request events', () => {
     const requester = createConnection();
     const adminUser = createConnection();
 
-    __test.addConnection('req-4', 'requester', requester);
+    __test.addConnection('req-4', 'user', requester);
     __test.addConnection('admin-4', 'admin', adminUser);
 
     emitRequestStatusChanged({

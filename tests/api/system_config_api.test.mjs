@@ -148,7 +148,7 @@ test("System Config API - Create (POST /api/v1/system-configs)", async (t) => {
         const regularUser = await prisma.user.create({
             data: {
                 username: `regular-${randomUUID()}`,
-                role: "requester"
+                role: "user"
             }
         });
 
@@ -191,7 +191,7 @@ test("System Config API - List (GET /api/v1/system-configs)", async (t) => {
         const regularUser = await prisma.user.create({
             data: {
                 username: `regular-list-${randomUUID()}`,
-                role: "requester"
+                role: "user"
             }
         });
 
@@ -373,7 +373,7 @@ test("System Config API - Delete (DELETE /api/v1/system-configs/:systemId)", asy
         const targetUser = await prisma.user.create({
             data: {
                 username: `blocked-owner-${randomUUID()}`,
-                role: "requester"
+                role: "user"
             }
         });
 
@@ -425,7 +425,7 @@ test("System Config API - LDAP Fields (GET /api/v1/system-configs/ldap-fields/av
         const regularUser = await prisma.user.create({
             data: {
                 username: `regular-ldap-${randomUUID()}`,
-                role: "requester"
+                role: "user"
             }
         });
 

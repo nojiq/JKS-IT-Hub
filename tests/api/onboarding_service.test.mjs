@@ -105,7 +105,7 @@ test("createManualOnboardingUser creates real user from manual identity and reus
     assert.equal(second.id, first.id);
     assert.equal(createdUsers.length, 1);
     assert.equal(createdUsers[0].username, "afendimohd");
-    assert.equal(createdUsers[0].role, "requester");
+    assert.equal(createdUsers[0].role, "user");
     assert.equal(createdUsers[0].status, "active");
     assert.equal(createdUsers[0].ldapSyncedAt, null);
     assert.deepEqual(createdUsers[0].ldapAttributes, {

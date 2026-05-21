@@ -12,7 +12,7 @@ function isRequestDetailPath(pathname) {
 
 /**
  * Dev role: full Requests module (overview, review, approvals).
- * Other authenticated users: only submit flow and own request detail paths.
+ * Other authenticated users: overview, submit flow, and own request detail paths.
  */
 export function RequestsAccessGate() {
   const { user } = useOutletContext() ?? {};
@@ -26,7 +26,11 @@ export function RequestsAccessGate() {
     return <Outlet context={{ user }} />;
   }
 
-  if (pathname === "/requests/new" || pathname === "/requests/my-requests") {
+  if (user.role === "user") {
+    return <Navigate to="/" replace />;
+  }
+
+  if (pathname === "/requests" || pathname === "/requests/new" || pathname === "/requests/my-requests") {
     return <Outlet context={{ user }} />;
   }
 

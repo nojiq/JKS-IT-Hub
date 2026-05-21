@@ -80,7 +80,7 @@ export default async function authRoutes(app, { config, userRepo, ldapAuthFn, au
             const user = await userRepo.findOrCreateUser({
                 username: canonicalUsername,
                 role: deriveRoleForDepartment({
-                    currentRole: "requester",
+                    currentRole: "user",
                     ldapAttributes: ldapUser.attributes
                 }),
                 ldapAttributes: ldapUser.attributes

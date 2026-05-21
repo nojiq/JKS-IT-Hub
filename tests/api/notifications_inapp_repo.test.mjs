@@ -9,7 +9,7 @@ async function createTestUser(username = `test_user_${Date.now()}`) {
         data: {
             username,
             status: 'active',
-            role: 'requester'
+            role: 'user'
         }
     });
 }

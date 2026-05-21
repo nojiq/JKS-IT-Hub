@@ -59,11 +59,11 @@ before(async () => {
         }
     });
 
-    // Create Requester User
+    // Create User Role
     requesterUser = await prisma.user.create({
         data: {
             username: `req-review-${randomUUID()}`,
-            role: "requester",
+            role: "user",
             status: "active"
         }
     });

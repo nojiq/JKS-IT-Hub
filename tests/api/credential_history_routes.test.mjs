@@ -60,7 +60,7 @@ test("GET /users/:userId/history rejects non-IT roles", async () => {
     const requester = {
         id: randomUUID(),
         username: "requester.user",
-        role: "requester",
+        role: "user",
         status: "active"
     };
 

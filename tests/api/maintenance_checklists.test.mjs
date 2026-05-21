@@ -56,7 +56,7 @@ before(async () => {
     requesterUser = await prisma.user.create({
         data: {
             username: `req-checklists-${randomUUID()}`,
-            role: 'requester',
+            role: 'user',
             status: 'active'
         }
     });

@@ -50,7 +50,7 @@ const createInMemoryUserRepo = (initialUsers = []) => {
   }));
 
   return {
-    findOrCreateUser: async ({ username, role = "requester" }) => {
+    findOrCreateUser: async ({ username, role = "user" }) => {
       const existing = users.get(username);
       if (existing) {
         return existing;
@@ -184,7 +184,7 @@ test("POST /auth/login blocks disabled users", async () => {
     authenticate: async () => ({ dn: "uid=disabled,dc=example,dc=com" })
   };
   const userRepo = createInMemoryUserRepo([
-    { id: "user-3", username: "disabled", role: "requester", status: "disabled" }
+    { id: "user-3", username: "disabled", role: "user", status: "disabled" }
   ]);
   const app = await createTestApp({ ldapService, userRepo });
 
@@ -202,7 +202,7 @@ test("POST /auth/login blocks disabled users", async () => {
 });
 
 test("GET /auth/me returns the session user when active", async () => {
-  const user = { id: "user-10", username: "jane", role: "requester", status: "active" };
+  const user = { id: "user-10", username: "jane", role: "user", status: "active" };
   const token = await signSessionToken(
     {
       subject: user.id,
@@ -236,7 +236,7 @@ test("GET /auth/me returns the session user when active", async () => {
 });
 
 test("GET /auth/me blocks disabled users even with a valid token", async () => {
-  const user = { id: "user-11", username: "blocked", role: "requester", status: "disabled" };
+  const user = { id: "user-11", username: "blocked", role: "user", status: "disabled" };
   const token = await signSessionToken(
     {
       subject: user.id,

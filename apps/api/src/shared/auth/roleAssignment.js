@@ -1,13 +1,13 @@
 /**
  * Hierarchical role assignment — keep in sync with apps/web/src/shared/auth/roleAssignment.js
  *
- * - dev: requester, it, admin, head_it (never dev via API)
+ * - dev: user, it, admin, head_it (never dev via API)
  * - head_it / admin: admin, it only
- * - it: requester only, for targets at or below IT in the ladder
+ * - it: user only, for targets at or below IT in the ladder
  */
 
 export const ROLE_RANK = {
-  requester: 0,
+  user: 0,
   it: 1,
   admin: 2,
   head_it: 3,
@@ -15,13 +15,13 @@ export const ROLE_RANK = {
 };
 
 /** Roles accepted in PATCH /users/:id/role body (never dev). */
-export const ASSIGNABLE_ROLES = ["requester", "it", "admin", "head_it"];
+export const ASSIGNABLE_ROLES = ["user", "it", "admin", "head_it"];
 
 const ASSIGNABLE_BY_ACTOR = {
-  dev: new Set(["requester", "it", "admin", "head_it"]),
+  dev: new Set(["user", "it", "admin", "head_it"]),
   head_it: new Set(["admin", "it"]),
   admin: new Set(["admin", "it"]),
-  it: new Set(["requester"])
+  it: new Set(["user"])
 };
 
 /** Roles this actor may grant to another user (before rank checks). */

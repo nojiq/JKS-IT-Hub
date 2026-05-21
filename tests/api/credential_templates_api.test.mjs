@@ -118,8 +118,8 @@ test("GET /api/v1/credential-templates allows admin role to view templates", asy
     assert.equal(response.json().data[0].id, "template-1");
 });
 
-test("template endpoints reject requester role", async () => {
-    const actor = { id: randomUUID(), username: "requester_user", role: "requester", status: "active" };
+test("template endpoints reject user role", async () => {
+    const actor = { id: randomUUID(), username: "requester_user", role: "user", status: "active" };
 
     const userRepoMock = {
         findUserByUsername: async (username) => (username === actor.username ? actor : null)
@@ -138,7 +138,7 @@ test("template endpoints reject requester role", async () => {
     });
 
     assert.equal(response.statusCode, 403);
-    assert.match(response.json().detail, /Only IT roles can view credential templates/);
+    assert.match(response.json().detail, /does not have access to this app/);
 });
 
 test("POST /api/v1/credential-templates rejects invalid structure payload", async () => {

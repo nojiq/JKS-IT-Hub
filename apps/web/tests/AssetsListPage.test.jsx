@@ -24,7 +24,7 @@ const createQueryResult = (overrides = {}) => ({
   ...overrides
 });
 
-const sessionUser = { id: "u1", username: "viewer", role: "requester", status: "active" };
+const sessionUser = { id: "u1", username: "viewer", role: "user", status: "active" };
 
 const renderPage = () => {
   const router = createMemoryRouter(

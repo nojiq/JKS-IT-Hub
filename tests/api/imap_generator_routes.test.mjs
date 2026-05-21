@@ -110,7 +110,7 @@ test("IMAP Generator API allows IT roles to load workbench state", async () => {
 });
 
 test("IMAP Generator API rejects non-IT roles", async () => {
-    const { app, authHeader } = await buildApp({ role: "requester" });
+    const { app, authHeader } = await buildApp({ role: "user" });
 
     const response = await app.inject({
         method: "GET",
@@ -197,7 +197,7 @@ test("Credential Generator API rejects invalid email on Yahoo actual preview", a
 });
 
 test("Credential Generator API rejects actual-password preview for non-IT roles", async () => {
-    const { app, authHeader } = await buildApp({ role: "requester" });
+    const { app, authHeader } = await buildApp({ role: "user" });
 
     const response = await app.inject({
         method: "POST",

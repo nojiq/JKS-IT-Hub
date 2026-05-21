@@ -78,14 +78,14 @@ test("Requests Invoice Upload API", async (t) => {
         ownerUser = await prisma.user.create({
             data: {
                 username: `invoice-owner-${randomUUID()}`,
-                role: "requester",
+                role: "user",
                 status: "active"
             }
         });
         otherRequester = await prisma.user.create({
             data: {
                 username: `invoice-other-${randomUUID()}`,
-                role: "requester",
+                role: "user",
                 status: "active"
             }
         });

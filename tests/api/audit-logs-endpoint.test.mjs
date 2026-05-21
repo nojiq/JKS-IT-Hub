@@ -106,7 +106,7 @@ test("GET /audit-logs returns paginated audit logs", async () => {
 });
 
 test("GET /audit-logs is accessible to non-IT users", async () => {
-    const requester = await createUser({ username: `audit-api-test-requester-${randomUUID()}`, role: "requester" });
+    const requester = await createUser({ username: `audit-api-test-requester-${randomUUID()}`, role: "user" });
 
     const userRepoMock = {
         findUserByUsername: async (username) => {

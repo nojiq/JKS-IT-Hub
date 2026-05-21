@@ -163,7 +163,7 @@ test("System Config Service - Delete", async (t) => {
             usernameLdapField: "mail"
         }, actor.id);
 
-        const credentialOwner = await createUser({ username: `owner-${randomUUID()}`, role: "requester" });
+        const credentialOwner = await createUser({ username: `owner-${randomUUID()}`, role: "user" });
         await prisma.userCredential.create({
             data: {
                 userId: credentialOwner.id,

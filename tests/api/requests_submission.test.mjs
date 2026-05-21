@@ -66,7 +66,7 @@ test("Requests Submission API", async (t) => {
         requesterUser = await prisma.user.create({
             data: {
                 username: `requester-submit-${randomUUID()}`,
-                role: "requester",
+                role: "user",
                 status: "active"
             }
         });
@@ -74,7 +74,7 @@ test("Requests Submission API", async (t) => {
         disabledRequesterUser = await prisma.user.create({
             data: {
                 username: `requester-disabled-${randomUUID()}`,
-                role: "requester",
+                role: "user",
                 status: "disabled"
             }
         });

@@ -44,9 +44,9 @@ test("Requests Approval API Endpoints", async (t) => {
             data: { username: `it-api-${randomUUID()}`, role: "it", status: "active" }
         });
 
-        // Create Requester User
+        // Create User Role
         requesterUser = await prisma.user.create({
-            data: { username: `req-api-${randomUUID()}`, role: "requester", status: "active" }
+            data: { username: `req-api-${randomUUID()}`, role: "user", status: "active" }
         });
 
         // Tokens

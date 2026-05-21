@@ -31,10 +31,10 @@ test("Requests Details API", async (t) => {
 
         // Create Users
         requester1 = await prisma.user.create({
-            data: { username: `req1-${randomUUID()}`, role: "requester", status: "active" }
+            data: { username: `req1-${randomUUID()}`, role: "user", status: "active" }
         });
         requester2 = await prisma.user.create({
-            data: { username: `req2-${randomUUID()}`, role: "requester", status: "active" }
+            data: { username: `req2-${randomUUID()}`, role: "user", status: "active" }
         });
         itUser = await prisma.user.create({
             data: { username: `it-${randomUUID()}`, role: "it", status: "active" }

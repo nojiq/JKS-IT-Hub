@@ -109,7 +109,7 @@ const testUsers = [
     {
         id: "user-1",
         username: "john.doe",
-        role: "requester",
+        role: "user",
         status: "active",
         ldapAttributes: { displayName: "John Doe", department: "Engineering" }
     },
@@ -137,7 +137,7 @@ const testUsers = [
     {
         id: "user-5",
         username: "charlie.brown",
-        role: "requester",
+        role: "user",
         status: "active",
         ldapAttributes: { displayName: "Charlie Brown", department: "Finance" }
     }
@@ -221,7 +221,7 @@ test("GET /users with role filter", async () => {
 
     const response = await app.inject({
         method: "GET",
-        url: "/users?role=requester",
+        url: "/users?role=user",
         headers: {
             cookie: await createSessionCookie(itUser)
         }
@@ -267,7 +267,7 @@ test("GET /users with combined filters (role AND status)", async () => {
 
     const response = await app.inject({
         method: "GET",
-        url: "/users?role=requester&status=active",
+        url: "/users?role=user&status=active",
         headers: {
             cookie: await createSessionCookie(itUser)
         }

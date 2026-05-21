@@ -63,7 +63,7 @@ test('Maintenance signature uploads are accessible to authenticated users', asyn
         assigneeUser = await prisma.user.create({
             data: {
                 username: `pm-sign-assignee-${randomUUID()}`,
-                role: 'requester',
+                role: 'user',
                 status: 'active'
             }
         });
@@ -71,7 +71,7 @@ test('Maintenance signature uploads are accessible to authenticated users', asyn
         otherRequester = await prisma.user.create({
             data: {
                 username: `pm-sign-other-${randomUUID()}`,
-                role: 'requester',
+                role: 'user',
                 status: 'active'
             }
         });

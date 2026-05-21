@@ -18,7 +18,7 @@ test("Requests Approval - Service Layer", async (t) => {
     await t.test("Setup", async () => {
         // Create users
         requesterUser = await prisma.user.create({
-            data: { username: `req-app-${randomUUID()}`, role: "requester", status: "active" }
+            data: { username: `req-app-${randomUUID()}`, role: "user", status: "active" }
         });
         adminUser = await prisma.user.create({
             data: { username: `admin-app-${randomUUID()}`, role: "admin", status: "active" }
@@ -30,7 +30,7 @@ test("Requests Approval - Service Layer", async (t) => {
             data: { username: `dev-app-${randomUUID()}`, role: "dev", status: "active" }
         });
         otherUser = await prisma.user.create({
-            data: { username: `other-app-${randomUUID()}`, role: "requester", status: "active" }
+            data: { username: `other-app-${randomUUID()}`, role: "user", status: "active" }
         });
 
         // Create request in IT_REVIEWED

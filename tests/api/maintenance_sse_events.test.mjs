@@ -40,11 +40,11 @@ test('maintenance.updated/upcoming are sent to assignee + IT/Admin/Head only', (
     const headUser = createConnection();
     const unrelatedRequester = createConnection();
 
-    __test.addConnection('tech-1', 'requester', technician);
+    __test.addConnection('tech-1', 'user', technician);
     __test.addConnection('it-1', 'it', itUser);
     __test.addConnection('admin-1', 'admin', adminUser);
     __test.addConnection('head-1', 'head_it', headUser);
-    __test.addConnection('req-1', 'requester', unrelatedRequester);
+    __test.addConnection('req-1', 'user', unrelatedRequester);
 
     emitMaintenanceStatusChanged({
         id: 'mw-1',
@@ -70,7 +70,7 @@ test('maintenance.completed emits completed event with expected payload', () => 
     const technician = createConnection();
     const itUser = createConnection();
 
-    __test.addConnection('tech-2', 'requester', technician);
+    __test.addConnection('tech-2', 'user', technician);
     __test.addConnection('it-2', 'it', itUser);
 
     emitMaintenanceCompleted({
@@ -102,7 +102,7 @@ test('explicit upcoming/overdue emitters publish dedicated event types', () => {
     const technician = createConnection();
     const adminUser = createConnection();
 
-    __test.addConnection('tech-3', 'requester', technician);
+    __test.addConnection('tech-3', 'user', technician);
     __test.addConnection('admin-3', 'admin', adminUser);
 
     const maintenanceWindow = {

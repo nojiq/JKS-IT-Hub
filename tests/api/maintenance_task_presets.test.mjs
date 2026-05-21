@@ -53,7 +53,7 @@ before(async () => {
         requester: await prisma.user.create({
             data: {
                 username: `requester-task-presets-${randomUUID()}`,
-                role: "requester",
+                role: "user",
                 status: "active"
             }
         })

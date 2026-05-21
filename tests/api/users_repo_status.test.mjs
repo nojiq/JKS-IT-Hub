@@ -13,7 +13,7 @@ describe('User Repository - Status Management', () => {
         // Create a test user
         const user = await createUser({
             username: 'repo-status-test',
-            role: 'requester',
+            role: 'user',
             status: 'active'
         });
         userId = user.id;

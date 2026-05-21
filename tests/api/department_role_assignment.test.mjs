@@ -19,9 +19,9 @@ test("isItDepartment does not match unrelated departments containing it", () => 
   assert.equal(isItDepartment({ name: "Security" }), false);
 });
 
-test("deriveRoleForDepartment promotes IT department requesters to technicians", () => {
+test("deriveRoleForDepartment promotes IT department users to technicians", () => {
   const role = deriveRoleForDepartment({
-    currentRole: "requester",
+    currentRole: "user",
     ldapAttributes: { Department: "IT" }
   });
 

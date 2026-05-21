@@ -143,7 +143,7 @@ export const createManualOnboardingUser = async (manualIdentity, deps = {}) => {
   return userRepoApi.createUser({
     username,
     role: deriveRoleForDepartment({
-      currentRole: "requester",
+      currentRole: "user",
       ldapAttributes,
       orgSnapshot
     }),
