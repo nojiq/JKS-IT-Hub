@@ -38,7 +38,7 @@ const ManualAssignmentModal = ({ window, onClose }) => {
         e.preventDefault();
 
         if (!selectedTechnicianId) {
-            setError('Please select a technician');
+            setError('Please select a PIC');
             return;
         }
 
@@ -73,7 +73,7 @@ const ManualAssignmentModal = ({ window, onClose }) => {
                     <form onSubmit={handleAssign}>
                         <div className="form-group">
                             <label htmlFor="technician">
-                                Select technician <span className="required">*</span>
+                                Select PIC <span className="required">*</span>
                             </label>
                             {isLoadingTechnicians ? (
                                 <p className="loading-text">Loading IT staff...</p>

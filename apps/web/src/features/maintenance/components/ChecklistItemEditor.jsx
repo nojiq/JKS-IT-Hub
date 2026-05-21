@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './ChecklistItemEditor.css';
 
 const EMPTY_ITEM = {
+    taskPresetId: null,
     title: '',
     description: '',
     isRequired: true,
-    evidenceRequired: false,
     orderIndex: 0
 };
 
@@ -29,9 +29,16 @@ function IconChevronUp() {
     );
 }
 
-const ChecklistItemEditor = ({ items = [], onChange }) => {
+const findPresetByTitle = (taskPresets, value) => {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized) return null;
+    return taskPresets.find((preset) => preset.title?.trim().toLowerCase() === normalized) || null;
+};
+
+const ChecklistItemEditor = ({ items = [], taskPresets = [], onChange, onDeleteTaskPreset }) => {
+    const [deletingPresetId, setDeletingPresetId] = useState(null);
     const sync = (next) => {
-        onChange(next.map((item, index) => ({ ...item, orderIndex: index })));
+        onChange(next.map((item, index) => ({ ...item, isRequired: true, orderIndex: index })));
     };
 
     const addItem = () => {
@@ -42,6 +49,26 @@ const ChecklistItemEditor = ({ items = [], onChange }) => {
         const next = [...items];
         next[index] = { ...next[index], ...patch };
         sync(next);
+    };
+
+    const updateTaskTitle = (index, value) => {
+        const preset = findPresetByTitle(taskPresets, value);
+        updateItem(index, {
+            taskPresetId: preset?.id ?? null,
+            title: value,
+            description: preset ? preset.description || '' : items[index]?.description || ''
+        });
+    };
+
+    const handleDeletePreset = async (index, presetId) => {
+        if (!onDeleteTaskPreset || !presetId) return;
+        setDeletingPresetId(presetId);
+        try {
+            await onDeleteTaskPreset(presetId);
+            updateItem(index, { taskPresetId: null });
+        } finally {
+            setDeletingPresetId(null);
+        }
     };
 
     const removeItem = (index) => {
@@ -67,6 +94,7 @@ const ChecklistItemEditor = ({ items = [], onChange }) => {
                     Add item
                 </button>
             </div>
+            <p className="checklist-item-editor__note">All tasks must be completed before finishing.</p>
 
             {items.length === 0 ? (
                 <p className="checklist-item-editor__empty" role="status">
@@ -112,16 +140,39 @@ const ChecklistItemEditor = ({ items = [], onChange }) => {
                             </div>
 
                             <div className="form-group">
-                                <label htmlFor={`checklist-item-title-${index}`}>Title</label>
-                                <input
+                                <label htmlFor={`checklist-item-title-${index}`}>Task</label>
+                                <div className="checklist-item-card__task-field">
+                                    <input
                                     id={`checklist-item-title-${index}`}
+                                    list={`checklist-task-options-${index}`}
+                                    role="combobox"
+                                    aria-autocomplete="list"
                                     type="text"
                                     className="form-control"
                                     value={item.title || ''}
-                                    onChange={(event) => updateItem(index, { title: event.target.value })}
+                                    onChange={(event) => updateTaskTitle(index, event.target.value)}
+                                    placeholder="Choose a saved task or type a new one"
                                     required
                                     aria-required="true"
-                                />
+                                    />
+                                    <datalist id={`checklist-task-options-${index}`}>
+                                        {taskPresets.map((preset) => (
+                                            <option key={preset.id} value={preset.title}>
+                                                {preset.description || preset.category || preset.title}
+                                            </option>
+                                        ))}
+                                    </datalist>
+                                    {item.taskPresetId && onDeleteTaskPreset ? (
+                                        <button
+                                            type="button"
+                                            className="checklist-item-editor__secondary-action"
+                                            onClick={() => handleDeletePreset(index, item.taskPresetId)}
+                                            disabled={deletingPresetId === item.taskPresetId}
+                                        >
+                                            {deletingPresetId === item.taskPresetId ? 'Removing…' : 'Remove saved task'}
+                                        </button>
+                                    ) : null}
+                                </div>
                             </div>
 
                             <div className="form-group">
@@ -135,22 +186,6 @@ const ChecklistItemEditor = ({ items = [], onChange }) => {
                                 />
                             </div>
 
-                            <label className="checklist-item-card__required">
-                                <input
-                                    type="checkbox"
-                                    checked={item.isRequired !== false}
-                                    onChange={(event) => updateItem(index, { isRequired: event.target.checked })}
-                                />
-                                Required for sign-off
-                            </label>
-                            <label className="checklist-item-card__required">
-                                <input
-                                    type="checkbox"
-                                    checked={Boolean(item.evidenceRequired)}
-                                    onChange={(event) => updateItem(index, { evidenceRequired: event.target.checked })}
-                                />
-                                Require evidence
-                            </label>
                         </div>
                     ))}
                 </div>

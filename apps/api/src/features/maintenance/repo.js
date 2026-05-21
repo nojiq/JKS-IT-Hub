@@ -1,5 +1,12 @@
 import { prisma } from "../../shared/db/prisma.js";
 
+export const getRunItemByEvidenceUrl = async (evidenceUrl) => {
+    return prisma.maintenanceRunItem.findFirst({
+        where: { evidenceUrl },
+        include: { run: true }
+    });
+};
+
 // Maintenance Cycle Config Operations
 
 export const createCycleConfig = async (data, tx = prisma) => {

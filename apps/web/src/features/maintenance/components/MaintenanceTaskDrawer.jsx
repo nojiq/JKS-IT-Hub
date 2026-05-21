@@ -4,8 +4,10 @@ import {
     useCompleteMaintenanceRun,
     useMaintenanceRun,
     useStartMaintenanceRun,
-    useUpdateMaintenanceRunItem
+    useUpdateMaintenanceRunItem,
+    useUploadMaintenanceRunItemEvidence
 } from '../hooks/useMaintenance.js';
+import { buildApiUrl } from '../../../shared/utils/api-client.js';
 import { formatTechnician } from '../utils/maintenanceDisplay.js';
 import { formatTaskAssetLabel, formatTaskPolicyLabel } from '../utils/taskUrgency.js';
 import { formatDisplayDate } from '../../../shared/utils/date-format.js';
@@ -14,6 +16,7 @@ import './MaintenanceTaskDrawer.css';
 const RESULT = Object.freeze({
     pass: 'pass',
     fail: 'fail',
+    repair: 'repair',
     na: 'na',
     pending: 'pending'
 });
@@ -21,12 +24,13 @@ const RESULT = Object.freeze({
 const statusFromResult = (result) => {
     if (result === RESULT.pass) return 'pass';
     if (result === RESULT.fail) return 'fail';
+    if (result === RESULT.repair) return 'repair';
     if (result === RESULT.na) return 'na';
     return 'pending';
 };
 
 const resultFromStatus = (status) => {
-    if (status === 'pass' || status === 'fail' || status === 'na') return status;
+    if (status === 'pass' || status === 'fail' || status === 'repair' || status === 'na') return status;
     return null;
 };
 
@@ -36,6 +40,7 @@ function SegmentButtons({ value, onChange, disabled }) {
             {[
                 { id: RESULT.pass, label: 'Pass' },
                 { id: RESULT.fail, label: 'Fail' },
+                { id: RESULT.repair, label: 'Repair' },
                 { id: RESULT.na, label: 'N/A' }
             ].map((option) => (
                 <button
@@ -71,11 +76,14 @@ const MaintenanceTaskDrawer = ({ task, readOnly = false, onClose, onSuccess }) =
     const { data: runDetail } = useMaintenanceRun(runId, Boolean(runId));
     const startRun = useStartMaintenanceRun();
     const updateItem = useUpdateMaintenanceRunItem();
+    const uploadEvidence = useUploadMaintenanceRunItemEvidence();
     const completeRun = useCompleteMaintenanceRun();
 
     const run = runDetail || task;
     const [itemNotes, setItemNotes] = useState({});
-    const [expandedEvidence, setExpandedEvidence] = useState({});
+    const [itemEvidenceUrls, setItemEvidenceUrls] = useState({});
+    const [uploadingItemId, setUploadingItemId] = useState(null);
+    const [uploadErrors, setUploadErrors] = useState({});
     const [error, setError] = useState(null);
 
     useEffect(() => {
@@ -124,6 +132,31 @@ const MaintenanceTaskDrawer = ({ task, readOnly = false, onClose, onSuccess }) =
             });
         } catch (err) {
             setError(err.message || 'Failed to save checklist item');
+        }
+    };
+
+    const getRemarksPlaceholder = (result, item) => {
+        if (result === RESULT.repair) return 'What was repaired?';
+        return 'Add a short note if needed.';
+    };
+
+    const handleEvidenceUpload = async (item, file) => {
+        if (!file || readOnly) return;
+        setUploadingItemId(item.id);
+        setUploadErrors((prev) => ({ ...prev, [item.id]: null }));
+        try {
+            const uploaded = await uploadEvidence.mutateAsync({ itemId: item.id, file });
+            setItemEvidenceUrls((prev) => ({
+                ...prev,
+                [item.id]: uploaded.evidenceUrl
+            }));
+        } catch (err) {
+            setUploadErrors((prev) => ({
+                ...prev,
+                [item.id]: err.message || 'Failed to upload file.'
+            }));
+        } finally {
+            setUploadingItemId(null);
         }
     };
 
@@ -183,6 +216,7 @@ const MaintenanceTaskDrawer = ({ task, readOnly = false, onClose, onSuccess }) =
                         <ul className="maintenance-task-drawer__checklist">
                             {items.map((item) => {
                                 const result = resultFromStatus(item.status);
+                                const evidenceUrl = itemEvidenceUrls[item.id] || item.evidenceUrl;
                                 return (
                                     <li key={item.id} className="maintenance-task-drawer__item">
                                         <div className="maintenance-task-drawer__item-head">
@@ -208,33 +242,65 @@ const MaintenanceTaskDrawer = ({ task, readOnly = false, onClose, onSuccess }) =
                                             disabled={readOnly}
                                             onChange={(next) => handleItemResult(item, next)}
                                         />
-                                        {item.evidenceRequired &&
-                                        (result === RESULT.pass || result === RESULT.fail) ? (
-                                            <div className="maintenance-task-drawer__evidence">
-                                                <label className="maintenance-task-drawer__notes-label" htmlFor={`evidence-${item.id}`}>
-                                                    Evidence / notes
+                                        <div className="maintenance-task-drawer__attachment">
+                                            {!readOnly ? (
+                                                <label className="maintenance-task-drawer__file-button">
+                                                    <input
+                                                        type="file"
+                                                        accept=".pdf,.png,.jpg,.jpeg,.webp"
+                                                        disabled={uploadingItemId === item.id}
+                                                        onChange={(event) => {
+                                                            const file = event.target.files?.[0];
+                                                            event.target.value = '';
+                                                            handleEvidenceUpload(item, file);
+                                                        }}
+                                                    />
+                                                    {evidenceUrl ? 'Replace file' : 'Attach file'}
                                                 </label>
-                                                <textarea
-                                                    id={`evidence-${item.id}`}
-                                                    className="maintenance-task-drawer__evidence-input"
-                                                    rows={3}
-                                                    readOnly={readOnly}
-                                                    placeholder="Notes or evidence reference…"
-                                                    value={itemNotes[item.id] ?? item.notes ?? ''}
-                                                    onChange={(event) =>
-                                                        setItemNotes((prev) => ({
-                                                            ...prev,
-                                                            [item.id]: event.target.value
-                                                        }))
+                                            ) : null}
+                                            {uploadingItemId === item.id ? (
+                                                <span className="maintenance-task-drawer__uploading">Uploading…</span>
+                                            ) : null}
+                                            {evidenceUrl ? (
+                                                <a
+                                                    className="maintenance-task-drawer__evidence-link"
+                                                    href={buildApiUrl(evidenceUrl)}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                >
+                                                    View attached file
+                                                </a>
+                                            ) : null}
+                                            {uploadErrors[item.id] ? (
+                                                <p className="maintenance-task-drawer__upload-error" role="alert">
+                                                    {uploadErrors[item.id]}
+                                                </p>
+                                            ) : null}
+                                        </div>
+                                        <div className="maintenance-task-drawer__evidence">
+                                            <label className="maintenance-task-drawer__notes-label" htmlFor={`remarks-${item.id}`}>
+                                                Remarks
+                                            </label>
+                                            <textarea
+                                                id={`remarks-${item.id}`}
+                                                className="maintenance-task-drawer__evidence-input"
+                                                rows={3}
+                                                readOnly={readOnly}
+                                                placeholder={getRemarksPlaceholder(result, item)}
+                                                value={itemNotes[item.id] ?? item.notes ?? ''}
+                                                onChange={(event) =>
+                                                    setItemNotes((prev) => ({
+                                                        ...prev,
+                                                        [item.id]: event.target.value
+                                                    }))
+                                                }
+                                                onBlur={() => {
+                                                    if (!readOnly && itemNotes[item.id] != null && result) {
+                                                        handleItemResult(item, result);
                                                     }
-                                                    onBlur={() => {
-                                                        if (!readOnly && itemNotes[item.id] != null) {
-                                                            handleItemResult(item, result || RESULT.pass);
-                                                        }
-                                                    }}
-                                                />
-                                            </div>
-                                        ) : null}
+                                                }}
+                                            />
+                                        </div>
                                     </li>
                                 );
                             })}

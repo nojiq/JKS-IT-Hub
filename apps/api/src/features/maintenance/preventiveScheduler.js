@@ -39,11 +39,12 @@ export const addMonthsClamped = (date, months) => {
 
 const copyChecklistItem = (item) => ({
     id: item.id,
+    taskPresetId: item.taskPresetId ?? null,
     sortOrder: item.sortOrder,
     title: item.title,
     description: item.description ?? null,
     required: item.required,
-    evidenceRequired: item.evidenceRequired
+    evidenceRequired: false
 });
 
 const buildChecklistSnapshot = (template) => {
@@ -117,11 +118,12 @@ const createRunForAssignment = async (tx, assignment, dueDate) => {
                     items: {
                         create: items.map((item) => ({
                             checklistItemId: item.id,
+                            taskPresetId: item.taskPresetId,
                             sortOrder: item.sortOrder,
                             title: item.title,
                             description: item.description,
                             required: item.required,
-                            evidenceRequired: item.evidenceRequired,
+                            evidenceRequired: false,
                             status: "pending"
                         }))
                     }

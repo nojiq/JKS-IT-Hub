@@ -9,8 +9,7 @@ export const MAINTENANCE_TERMS = Object.freeze({
     assignee: 'Assignee',
     assignment: 'Assignment',
     assignments: 'Assignments',
-    checklist: 'Checklist',
-    evidence: 'Require evidence'
+    checklist: 'Checklist'
 });
 
 export const isMaintenanceAdmin = (user) =>

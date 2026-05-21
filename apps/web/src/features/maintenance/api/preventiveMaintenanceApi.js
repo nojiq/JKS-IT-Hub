@@ -53,6 +53,26 @@ export const saveProfileChecklist = async (profileId, items) => {
     return payload.data;
 };
 
+export const fetchTaskPresets = async (filters = {}) => {
+    const query = new URLSearchParams();
+    if (filters.includeInactive) query.append('includeInactive', 'true');
+    if (filters.search) query.append('search', filters.search);
+    if (filters.category) query.append('category', filters.category);
+
+    const qs = query.toString();
+    const response = await apiFetch(`${MAINTENANCE_BASE}/task-presets${qs ? `?${qs}` : ''}`);
+    const payload = await parseJson(response);
+    return payload.data ?? [];
+};
+
+export const deleteTaskPreset = async (presetId) => {
+    const response = await apiFetch(`${MAINTENANCE_BASE}/task-presets/${presetId}`, {
+        method: 'DELETE'
+    });
+    const payload = await parseJson(response);
+    return payload.data;
+};
+
 export const fetchAssignmentMatrix = async () => {
     const response = await apiFetch(`${MAINTENANCE_BASE}/assignments/matrix`);
     const payload = await parseJson(response);
@@ -106,6 +126,17 @@ export const updateMaintenanceRunItem = async (itemId, data) => {
     const response = await apiFetch(`${MAINTENANCE_BASE}/runs/items/${itemId}`, {
         method: 'PATCH',
         body: JSON.stringify(data)
+    });
+    const payload = await parseJson(response);
+    return payload.data;
+};
+
+export const uploadMaintenanceRunItemEvidence = async (itemId, file) => {
+    const formData = new FormData();
+    formData.append('evidence', file);
+    const response = await apiFetch(`${MAINTENANCE_BASE}/runs/items/${itemId}/evidence`, {
+        method: 'POST',
+        body: formData
     });
     const payload = await parseJson(response);
     return payload.data;

@@ -1,10 +1,27 @@
 import { z } from 'zod';
 
+const booleanQuerySchema = z.union([z.literal('true'), z.literal('false'), z.boolean()])
+    .optional()
+    .transform((value) => value === true || value === 'true');
+
 const checklistItemInputSchema = z.object({
-    title: z.string().min(1).max(255),
+    taskPresetId: z.string().uuid().optional(),
+    title: z.string().trim().min(1).max(255),
     description: z.string().max(2000).optional(),
     required: z.boolean().optional().default(true),
     evidenceRequired: z.boolean().optional().default(false)
+});
+
+export const listTaskPresetsQuerySchema = z.object({
+    includeInactive: booleanQuerySchema,
+    search: z.string().max(200).optional(),
+    category: z.string().max(100).optional()
+});
+
+export const taskPresetInputSchema = z.object({
+    title: z.string().trim().min(1).max(255),
+    description: z.string().max(2000).optional(),
+    category: z.string().max(100).optional()
 });
 
 export const createProfileSchema = z.object({
@@ -49,7 +66,7 @@ export const listRunsQuerySchema = z.object({
 });
 
 export const updateRunItemSchema = z.object({
-    status: z.enum(['pending', 'pass', 'fail', 'na']),
+    status: z.enum(['pending', 'pass', 'fail', 'repair', 'na']),
     notes: z.string().max(2000).optional(),
     evidenceUrl: z.string().url().max(2000).optional()
 });

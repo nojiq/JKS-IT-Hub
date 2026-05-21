@@ -79,7 +79,7 @@ const makeProfileWithTemplate = async ({ intervalMonths = 3, gracePeriodDays = 0
                         sortOrder: 1,
                         title: "Record condition",
                         required: false,
-                        evidenceRequired: true
+                        evidenceRequired: false
                     }
                 ]
             }
@@ -165,7 +165,7 @@ test("preventive maintenance scheduler creates first due run inside 30-day windo
     assert.equal(run.checklistVersion, 1);
     assert.equal(run.items.length, 2);
     assert.equal(run.items[0].title, "Inspect asset");
-    assert.equal(run.items[1].evidenceRequired, true);
+    assert.equal(run.items[1].evidenceRequired, false);
 });
 
 test("preventive maintenance scheduler uses completedAt drift instead of previous dueDate", async () => {

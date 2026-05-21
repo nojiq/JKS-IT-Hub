@@ -2,7 +2,7 @@ import { prisma } from "../../shared/db/prisma.js";
 
 const OPEN_RUN_STATUSES = ["scheduled", "due", "in_progress", "overdue"];
 const TERMINAL_RUN_STATUSES = ["completed", "cancelled", "skipped"];
-const ITEM_STATUSES = ["pending", "pass", "fail", "na"];
+const ITEM_STATUSES = ["pending", "pass", "fail", "repair", "na"];
 
 const notFound = (message) => {
     const error = new Error(message);

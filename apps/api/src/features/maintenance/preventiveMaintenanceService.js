@@ -1,4 +1,9 @@
 import { prisma } from '../../shared/db/prisma.js';
+import path from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { deleteFile, ensureUploadDir, saveFile } from '../../shared/uploads/storage.js';
+import { validateFileSize, validateFileType } from '../../shared/uploads/validation.js';
+import { uploadsConfig } from '../../config/uploads.js';
 import {
     completeMaintenanceRun,
     startMaintenanceRun,
@@ -12,10 +17,12 @@ import {
     updateProfileSchema,
     updateRunItemSchema
 } from './preventiveSchema.js';
+import { ensureTaskPresetForChecklistItem } from './taskPresetService.js';
 
 const OPEN_RUN_STATUSES = ['scheduled', 'due', 'in_progress', 'overdue'];
 const TERMINAL_RUN_STATUSES = ['completed', 'cancelled', 'skipped'];
 const ADMIN_ROLES = new Set(['dev', 'admin', 'head_it']);
+const IT_ROLES = new Set(['dev', 'it', 'admin', 'head_it']);
 
 const notFound = (message) => {
     const error = new Error(message);
@@ -26,6 +33,18 @@ const notFound = (message) => {
 const forbidden = (message = 'Forbidden') => {
     const error = new Error(message);
     error.statusCode = 403;
+    return error;
+};
+
+const badRequest = (message) => {
+    const error = new Error(message);
+    error.statusCode = 400;
+    return error;
+};
+
+const invalidState = (message) => {
+    const error = new Error(message);
+    error.statusCode = 409;
     return error;
 };
 
@@ -71,6 +90,7 @@ const mapProfileSummary = (profile) => {
 const mapRunItem = (item) => ({
     id: item.id,
     checklistItemId: item.checklistItemId,
+    taskPresetId: item.taskPresetId,
     sortOrder: item.sortOrder,
     title: item.title,
     description: item.description,
@@ -82,6 +102,26 @@ const mapRunItem = (item) => ({
     completedAt: item.completedAt,
     completedBy: mapUserSummary(item.completedBy)
 });
+
+const filenameFromUploadUrl = (url) => {
+    if (!url?.startsWith('/api/v1/uploads/')) return null;
+    const filename = url.slice('/api/v1/uploads/'.length);
+    if (!filename || filename.includes('/') || filename.includes('\\') || filename.includes('..')) return null;
+    return filename;
+};
+
+const validateEvidenceFile = (file) => {
+    if (!file?.buffer?.length) throw badRequest('Evidence file is empty.');
+    if (!validateFileType(file.mimetype)) {
+        throw badRequest('Invalid file type. Allowed: PDF, PNG, JPG, JPEG, WEBP');
+    }
+    if (!validateFileSize(file.size)) {
+        const maxMB = uploadsConfig.maxFileSize / (1024 * 1024);
+        const error = new Error(`File too large. Maximum size: ${maxMB}MB`);
+        error.statusCode = 413;
+        throw error;
+    }
+};
 
 export const mapMaintenanceRun = (run) => ({
     id: run.id,
@@ -151,19 +191,25 @@ export const createMaintenanceProfile = async (data, actor) => {
             }
         });
 
+        const checklistItems = await Promise.all(payload.checklistItems.map(async (item, index) => {
+            const preset = await ensureTaskPresetForChecklistItem(item, actor, tx);
+            return {
+                sortOrder: index,
+                taskPresetId: preset.id,
+                title: item.title,
+                description: item.description,
+                required: item.required ?? true,
+                evidenceRequired: false
+            };
+        }));
+
         const template = await tx.checklistTemplate.create({
             data: {
                 profileId: profile.id,
                 name: `${payload.name} checklist`,
                 version: 1,
                 items: {
-                    create: payload.checklistItems.map((item, index) => ({
-                        sortOrder: index,
-                        title: item.title,
-                        description: item.description,
-                        required: item.required ?? true,
-                        evidenceRequired: item.evidenceRequired ?? false
-                    }))
+                    create: checklistItems
                 }
             },
             include: { items: { orderBy: { sortOrder: 'asc' } } }
@@ -211,19 +257,25 @@ export const saveProfileChecklist = async (profileId, data, actor) => {
         });
         const nextVersion = (latest?.version ?? 0) + 1;
 
+        const checklistItems = await Promise.all(payload.items.map(async (item, index) => {
+            const preset = await ensureTaskPresetForChecklistItem(item, actor, tx);
+            return {
+                sortOrder: index,
+                taskPresetId: preset.id,
+                title: item.title,
+                description: item.description,
+                required: item.required ?? true,
+                evidenceRequired: false
+            };
+        }));
+
         const template = await tx.checklistTemplate.create({
             data: {
                 profileId,
                 name: `${profile.name} checklist v${nextVersion}`,
                 version: nextVersion,
                 items: {
-                    create: payload.items.map((item, index) => ({
-                        sortOrder: index,
-                        title: item.title,
-                        description: item.description,
-                        required: item.required ?? true,
-                        evidenceRequired: item.evidenceRequired ?? false
-                    }))
+                    create: checklistItems
                 }
             },
             include: { items: { orderBy: { sortOrder: 'asc' } } }
@@ -452,6 +504,46 @@ export const updateRunItem = async (runItemId, data, actor) => {
         include: { run: true }
     });
     return getMaintenanceRun(item.runId, actor);
+};
+
+export const uploadRunItemEvidence = async (runItemId, file, actor) => {
+    validateEvidenceFile(file);
+
+    const existing = await prisma.maintenanceRunItem.findUnique({
+        where: { id: runItemId },
+        include: {
+            run: true,
+            completedBy: true
+        }
+    });
+    if (!existing) throw notFound('Maintenance run item not found');
+
+    const isAssignee = existing.run.userId === actor.id;
+    const isStaff = IT_ROLES.has(actor.role);
+    if (!isAssignee && !isStaff) {
+        throw forbidden('This maintenance run is assigned to another technician.');
+    }
+    if (TERMINAL_RUN_STATUSES.includes(existing.run.status)) {
+        throw invalidState('Cannot upload evidence for a completed maintenance run.');
+    }
+
+    const ext = path.extname(file.filename || '').toLowerCase();
+    const fileName = `pm-evidence-${Date.now()}-${randomUUID()}${ext}`;
+    await ensureUploadDir();
+    await saveFile(file.buffer, fileName);
+
+    const previousFileName = filenameFromUploadUrl(existing.evidenceUrl);
+    const updated = await prisma.maintenanceRunItem.update({
+        where: { id: runItemId },
+        data: { evidenceUrl: `/api/v1/uploads/${fileName}` },
+        include: { completedBy: true }
+    });
+
+    if (previousFileName) {
+        await deleteFile(previousFileName).catch(() => {});
+    }
+
+    return mapRunItem(updated);
 };
 
 export const completeRun = async (runId, actor) => {

@@ -41,7 +41,7 @@ const ChecklistTemplateForm = ({ templateId, onClose, variant = 'default' }) => 
             items: (loadedTemplate.items || []).map((item, index) => ({
                 title: item.title || '',
                 description: item.description || '',
-                isRequired: item.isRequired !== false,
+                isRequired: true,
                 orderIndex: item.orderIndex ?? index
             }))
         });
@@ -73,7 +73,7 @@ const ChecklistTemplateForm = ({ templateId, onClose, variant = 'default' }) => 
             items: formData.items.map((item, index) => ({
                 title: item.title.trim(),
                 description: item.description?.trim() || undefined,
-                isRequired: item.isRequired !== false,
+                isRequired: true,
                 orderIndex: index
             }))
         };

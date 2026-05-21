@@ -1,8 +1,10 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import {
     useCreateMaintenanceProfile,
+    useDeleteTaskPreset,
     useMaintenanceProfiles,
     useSaveProfileChecklist,
+    useTaskPresets,
     useUpdateMaintenanceProfile
 } from '../hooks/useMaintenance.js';
 import ChecklistItemEditor from '../components/ChecklistItemEditor.jsx';
@@ -19,16 +21,18 @@ const emptyPolicyForm = () => ({
     description: '',
     intervalMonths: 3,
     gracePeriodDays: 0,
-    checklistItems: [{ title: '', description: '', isRequired: true, evidenceRequired: false }]
+    checklistItems: [{ taskPresetId: null, title: '', description: '', isRequired: true }]
 });
 
 const MaintenancePoliciesPage = () => {
     const policiesHintId = useId();
     const toast = useToast();
     const { data: profiles = [], isLoading, error, refetch } = useMaintenanceProfiles(true);
+    const { data: taskPresets = [] } = useTaskPresets();
     const createProfile = useCreateMaintenanceProfile();
     const updateProfile = useUpdateMaintenanceProfile();
     const saveChecklist = useSaveProfileChecklist();
+    const deleteTaskPreset = useDeleteTaskPreset();
 
     const [selectedPolicyId, setSelectedPolicyId] = useState(null);
     const [isCreating, setIsCreating] = useState(false);
@@ -53,10 +57,10 @@ const MaintenancePoliciesPage = () => {
             gracePeriodDays: selectedPolicy.gracePeriodDays ?? 0,
             checklistItems:
                 selectedPolicy.checklistTemplate?.items?.map((item) => ({
+                    taskPresetId: item.taskPresetId || null,
                     title: item.title,
                     description: item.description || '',
-                    isRequired: item.required ?? true,
-                    evidenceRequired: Boolean(item.evidenceRequired)
+                    isRequired: true
                 })) || emptyPolicyForm().checklistItems
         });
     }, [selectedPolicy, isCreating]);
@@ -85,8 +89,9 @@ const MaintenancePoliciesPage = () => {
                         .map((item) => ({
                             title: item.title.trim(),
                             description: item.description,
-                            required: item.isRequired !== false,
-                            evidenceRequired: Boolean(item.evidenceRequired)
+                            required: true,
+                            taskPresetId: item.taskPresetId || undefined,
+                            evidenceRequired: false
                         }))
                 });
                 toast.success('Policy created', `"${created.name}" is ready for assignments.`);
@@ -121,8 +126,9 @@ const MaintenancePoliciesPage = () => {
                     .map((item) => ({
                         title: item.title.trim(),
                         description: item.description,
-                        required: item.isRequired !== false,
-                        evidenceRequired: Boolean(item.evidenceRequired)
+                        required: true,
+                        taskPresetId: item.taskPresetId || undefined,
+                        evidenceRequired: false
                     }))
             });
             toast.success('Checklist saved', 'Checklist template version updated.');
@@ -203,7 +209,7 @@ const MaintenancePoliciesPage = () => {
                         <p className="maintenance-empty-note">Select a policy or create a new one.</p>
                     ) : (
                         <>
-                            <motionlessPolicySettings
+                            <MotionlessPolicySettings
                                 form={form}
                                 setForm={setForm}
                                 isCreating={isCreating}
@@ -211,7 +217,7 @@ const MaintenancePoliciesPage = () => {
                                 isSaving={createProfile.isPending || updateProfile.isPending}
                             />
                             <div className="maintenance-policies-detail__checklist">
-                                <motionlessChecklistHead
+                                <MotionlessChecklistHead
                                     isCreating={isCreating}
                                     isSavingChecklist={isSavingChecklist}
                                     onSaveChecklist={handleSaveChecklist}
@@ -219,6 +225,8 @@ const MaintenancePoliciesPage = () => {
                                 />
                                 <ChecklistItemEditor
                                     items={form.checklistItems}
+                                    taskPresets={taskPresets}
+                                    onDeleteTaskPreset={(presetId) => deleteTaskPreset.mutateAsync(presetId)}
                                     onChange={(items) => setForm((prev) => ({ ...prev, checklistItems: items }))}
                                 />
                             </div>
@@ -230,7 +238,7 @@ const MaintenancePoliciesPage = () => {
     );
 };
 
-function motionlessPolicySettings({ form, setForm, isCreating, onSave, isSaving }) {
+function MotionlessPolicySettings({ form, setForm, isCreating, onSave, isSaving }) {
     return (
         <div className="maintenance-policies-detail__policy">
             <h3>{isCreating ? 'New maintenance policy' : 'Policy settings'}</h3>
@@ -281,7 +289,7 @@ function motionlessPolicySettings({ form, setForm, isCreating, onSave, isSaving 
     );
 }
 
-function motionlessChecklistHead({ isCreating, isSavingChecklist, onSaveChecklist, form }) {
+function MotionlessChecklistHead({ isCreating, isSavingChecklist, onSaveChecklist, form }) {
     return (
         <div className="maintenance-policies-detail__checklist-head">
             <h3>Checklist builder</h3>

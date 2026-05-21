@@ -258,7 +258,7 @@ const MaintenanceCompletionModal = ({ window: maintenanceWindow, onClose, onSucc
                     <h3>Checklist</h3>
                     {missingRequiredItems.length > 0 && (
                         <div className="error-message" style={{ marginBottom: '0.75rem' }}>
-                            Please complete required items before sign-off:
+                            Please complete required items before finishing:
                             <ul style={{ marginTop: '0.5rem', marginBottom: 0 }}>
                                 {missingRequiredItems.map((item) => (
                                     <li key={item.checklistItemId}>{item.itemTitle}</li>

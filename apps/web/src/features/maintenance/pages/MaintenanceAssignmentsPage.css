@@ -28,6 +28,54 @@
   margin: 0.75rem 0 0;
 }
 
+.maintenance-assignments-toolbar {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1fr) auto auto;
+  gap: 1rem;
+  align-items: end;
+  padding: 1rem;
+  border-bottom: 1px solid var(--ui-border-subtle);
+}
+
+.maintenance-assignments-search,
+.maintenance-assignments-filters label {
+  display: grid;
+  gap: 0.4rem;
+  color: var(--ui-text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.maintenance-assignments-search input,
+.maintenance-assignments-filters select {
+  min-height: 2.5rem;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text-primary);
+  font: inherit;
+  font-weight: 500;
+  padding: 0 0.75rem;
+  text-transform: none;
+}
+
+.maintenance-assignments-search input {
+  width: 100%;
+}
+
+.maintenance-assignments-filters {
+  display: flex;
+  gap: 0.75rem;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.maintenance-assignments-filters select {
+  min-width: 9.5rem;
+}
+
 .maintenance-assignments-actions-col {
   width: 5.5rem;
   text-align: right;
@@ -36,4 +84,26 @@
 
 .workspace-inline-button.is-primary.is-muted {
   opacity: 0.72;
+}
+
+@media (max-width: 900px) {
+  .maintenance-assignments-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .maintenance-assignments-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .maintenance-assignments-filters select {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .maintenance-assignments-filters {
+    grid-template-columns: 1fr;
+  }
 }

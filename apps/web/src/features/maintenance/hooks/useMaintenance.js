@@ -335,6 +335,7 @@ export const useMyMaintenanceWindows = (filters = {}) => {
 export const preventiveKeys = {
     all: [...maintenanceKeys.all, 'preventive'],
     profiles: (includeInactive) => [...preventiveKeys.all, 'profiles', { includeInactive }],
+    taskPresets: (filters = {}) => [...preventiveKeys.all, 'task-presets', filters],
     matrix: () => [...preventiveKeys.all, 'matrix'],
     myRuns: (filters) => [...preventiveKeys.all, 'my-runs', filters],
     run: (id) => [...preventiveKeys.all, 'run', id],
@@ -372,6 +373,23 @@ export const useSaveProfileChecklist = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ profileId, items }) => preventiveApi.saveProfileChecklist(profileId, items),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: preventiveKeys.all });
+        }
+    });
+};
+
+export const useTaskPresets = (filters = {}) => {
+    return useQuery({
+        queryKey: preventiveKeys.taskPresets(filters),
+        queryFn: () => preventiveApi.fetchTaskPresets(filters)
+    });
+};
+
+export const useDeleteTaskPreset = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: preventiveApi.deleteTaskPreset,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: preventiveKeys.all });
         }
@@ -433,6 +451,16 @@ export const useUpdateMaintenanceRunItem = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ itemId, data }) => preventiveApi.updateMaintenanceRunItem(itemId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: preventiveKeys.all });
+        }
+    });
+};
+
+export const useUploadMaintenanceRunItemEvidence = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ itemId, file }) => preventiveApi.uploadMaintenanceRunItemEvidence(itemId, file),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: preventiveKeys.all });
         }
