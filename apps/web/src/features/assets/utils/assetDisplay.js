@@ -74,8 +74,72 @@ export const getSnipeAssigneeSummary = (asset) => {
   return parts.join(" · ");
 };
 
+const SEPARATED_MAC_PATTERN =
+  /(^|[^0-9a-f])([0-9a-f]{2})([:-])([0-9a-f]{2})\3([0-9a-f]{2})\3([0-9a-f]{2})\3([0-9a-f]{2})\3([0-9a-f]{2})(?=$|[^0-9a-f])/i;
+const COMPACT_MAC_PATTERN = /(^|[^0-9a-f])([0-9a-f]{12})(?=$|[^0-9a-f])/i;
+
+export const formatMacAddress = (value) => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const text = String(value).trim();
+  if (!text) {
+    return null;
+  }
+
+  const separatedMatch = text.match(SEPARATED_MAC_PATTERN);
+  if (separatedMatch) {
+    return [
+      separatedMatch[2],
+      separatedMatch[4],
+      separatedMatch[5],
+      separatedMatch[6],
+      separatedMatch[7],
+      separatedMatch[8]
+    ].map((part) => part.toUpperCase()).join(":");
+  }
+
+  const compactMatch = text.match(COMPACT_MAC_PATTERN);
+  if (!compactMatch) {
+    return null;
+  }
+
+  return compactMatch[2]
+    .match(/.{2}/g)
+    .map((part) => part.toUpperCase())
+    .join(":");
+};
+
+export const getAssetMacAddressRows = (asset) => [
+  ["LAN", formatMacAddress(asset?.macAddressLan)],
+  ["Wi-Fi 5GHz", formatMacAddress(asset?.macAddressWifi5Ghz)],
+  ["Wi-Fi 2.4GHz", formatMacAddress(asset?.macAddressWifi24Ghz)]
+].filter(([, value]) => Boolean(value));
+
 export const buildStatusFilterOptions = (statuses = []) =>
   statuses.map((status) => ({ value: status, label: status }));
 
 export const buildCategoryFilterOptions = (categories = []) =>
   categories.map((category) => ({ value: category, label: category }));
+
+const STATUS_TONE_RULES = [
+  { tone: "ready", patterns: [/ready/i, /available/i, /stock/i] },
+  { tone: "deployed", patterns: [/deploy/i, /assigned/i, /in use/i, /active/i] },
+  { tone: "repair", patterns: [/repair/i, /maintenance/i, /warranty/i] },
+  { tone: "retired", patterns: [/retired/i, /disposed/i, /archived/i, /lost/i, /stolen/i] },
+  { tone: "pending", patterns: [/pending/i, /await/i, /request/i] }
+];
+
+export const getAssetStatusTone = (statusLabel) => {
+  const label = String(statusLabel ?? "").trim();
+  if (!label) {
+    return "neutral";
+  }
+
+  const matched = STATUS_TONE_RULES.find((rule) =>
+    rule.patterns.some((pattern) => pattern.test(label))
+  );
+
+  return matched?.tone ?? "neutral";
+};

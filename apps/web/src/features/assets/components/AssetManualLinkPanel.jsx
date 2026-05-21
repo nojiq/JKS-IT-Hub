@@ -8,7 +8,7 @@ import { getLinkedUserLabel, getSnipeAssigneeSummary } from "../utils/assetDispl
 const canManualLink = (source) =>
   ["unmatched", "manual", "auto_username", "auto_email"].includes(source);
 
-export function AssetManualLinkPanel({ asset, canManage = false }) {
+export function AssetManualLinkPanel({ asset, canManage = false, showSnipeSummary = true }) {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [selectedUserId, setSelectedUserId] = useState("");
@@ -66,13 +66,18 @@ export function AssetManualLinkPanel({ asset, canManage = false }) {
 
   return (
     <section className="assets-manual-link-panel" aria-label="Manual asset linking">
-      <p className="assets-manual-link-intro">
-        Link unmatched or incorrect assignments to an IT Hub user. Reset returns assignment to Snipe-derived matching.
-      </p>
-      <p className="assets-snipe-assignee">
-        <span className="assets-detail-label">Snipe assignee</span>
-        <span>{getSnipeAssigneeSummary(asset)}</span>
-      </p>
+      <header className="assets-manual-link-panel__header">
+        <h3 className="assets-manual-link-panel__title">Manual link</h3>
+        <p className="assets-manual-link-intro">
+          Link unmatched or incorrect assignments to an IT Hub user. Reset returns assignment to Snipe-derived matching.
+        </p>
+      </header>
+      {showSnipeSummary ? (
+        <p className="assets-snipe-assignee">
+          <span className="assets-detail-label">Snipe assignee</span>
+          <span>{getSnipeAssigneeSummary(asset)}</span>
+        </p>
+      ) : null}
       {asset?.assignedToUser ? (
         <p className="assets-current-link">
           Current link: <strong>{getLinkedUserLabel(asset)}</strong>{" "}

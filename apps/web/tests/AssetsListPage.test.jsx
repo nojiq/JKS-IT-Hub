@@ -71,6 +71,9 @@ describe("AssetsListPage", () => {
                 serial: "SN1",
                 categoryName: "Laptops",
                 statusLabel: "Deployed",
+                ipAddress: "192.168.78.29",
+                macAddressLan: "LAN: b0-83-fe-6f-7d-0b / synced value",
+                macAddressWifi5Ghz: "not provided",
                 assignmentSource: "auto_username",
                 lastSyncedAt: "2026-05-16T10:00:00.000Z",
                 assignedToUser: { id: "user-1", username: "jane.doe" }
@@ -101,7 +104,63 @@ describe("AssetsListPage", () => {
 
     expect(screen.getByRole("heading", { name: "Assets" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "JKS-100" })).toHaveAttribute("href", "/assets/asset-1");
+    expect(screen.getByText("192.168.78.29")).toBeInTheDocument();
+    expect(screen.getByText("B0:83:FE:6F:7D:0B")).toBeInTheDocument();
+    expect(screen.queryByText(/synced value/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/not provided/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("LAN")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Sync now" })).not.toBeInTheDocument();
+  });
+
+  it("keeps asset inventory columns structured for network values", () => {
+    useQuery.mockImplementation(({ queryKey }) => {
+      if (queryKey[0] === "assets" && queryKey[1] === "list") {
+        return createQueryResult({
+          data: {
+            data: [
+              {
+                id: "asset-1",
+                assetTag: "JKS-100",
+                modelName: "MacBook Pro",
+                serial: "SN1",
+                categoryName: "Laptops",
+                statusLabel: "Deployed",
+                ipAddress: "192.168.78.29",
+                macAddressLan: "B083FE6F7D0B",
+                assignmentSource: "auto_username",
+                lastSyncedAt: "2026-05-16T10:00:00.000Z",
+                assignedToUser: { id: "user-1", username: "jane.doe" }
+              }
+            ],
+            meta: { total: 1, page: 1, perPage: 20 }
+          }
+        });
+      }
+      if (queryKey[0] === "assets" && queryKey[1] === "summary") {
+        return createQueryResult({
+          data: {
+            total: 1,
+            assigned: 1,
+            unmatched: 0,
+            lastSyncedAt: "2026-05-16T10:00:00.000Z",
+            syncEnabled: true
+          }
+        });
+      }
+      if (queryKey[0] === "assets" && queryKey[1] === "meta") {
+        return createQueryResult({ data: { statuses: ["Deployed"], categories: ["Laptops"] } });
+      }
+      return createQueryResult();
+    });
+
+    renderPage();
+
+    const table = screen.getByRole("table", { name: "Asset inventory" });
+    expect(table.querySelectorAll("col")).toHaveLength(10);
+    expect(table.querySelector(".assets-table__col--mac")).toBeInTheDocument();
+
+    expect(screen.getByText("192.168.78.29").closest("td")).toHaveClass("assets-ip-cell");
+    expect(screen.getByText("B0:83:FE:6F:7D:0B").closest("td")).toHaveClass("assets-mac-cell");
   });
 
   it("shows sync control for IT users", () => {

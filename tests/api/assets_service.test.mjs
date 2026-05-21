@@ -88,6 +88,36 @@ test("normalizeSnipeAsset maps assigned user snapshot fields", () => {
   assert.equal(asset.lastSyncedAt, syncedAt);
 });
 
+test("normalizeSnipeAsset maps Snipe network custom fields", () => {
+  const asset = normalizeSnipeAsset({
+    id: 124,
+    asset_tag: "SRV124",
+    custom_fields: {
+      "MAC Address LAN": {
+        field: "_snipeit_mac_address_lan_1",
+        value: "B0:83:FE:6F:7D:0B"
+      },
+      "MAC Address WIFI 5Ghz": {
+        field: "_snipeit_mac_address_wifi_5ghz_4",
+        value: "AA:BB:CC:DD:EE:FF"
+      },
+      "MAC Address WIFI 2.4Ghz": {
+        field: "_snipeit_mac_address_wifi_24ghz_5",
+        value: "11:22:33:44:55:66"
+      },
+      "IP Address": {
+        field: "_snipeit_ip_address_3",
+        value: "192.168.78.29"
+      }
+    }
+  });
+
+  assert.equal(asset.ipAddress, "192.168.78.29");
+  assert.equal(asset.macAddressLan, "B0:83:FE:6F:7D:0B");
+  assert.equal(asset.macAddressWifi5Ghz, "AA:BB:CC:DD:EE:FF");
+  assert.equal(asset.macAddressWifi24Ghz, "11:22:33:44:55:66");
+});
+
 test("asset sync matches username before email and records summary", async () => {
   const repo = makeRepo({
     users: [

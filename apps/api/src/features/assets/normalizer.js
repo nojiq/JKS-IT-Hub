@@ -21,6 +21,27 @@ const assignedType = (assignedTo) => {
   return null;
 };
 
+const normalizedLabel = (value) => String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+const customFieldValue = (customFields, matcher) => {
+  if (!customFields || typeof customFields !== "object") return null;
+
+  for (const [key, field] of Object.entries(customFields)) {
+    const labels = [
+      key,
+      field && typeof field === "object" ? field.field : null,
+      field && typeof field === "object" ? field.name : null
+    ].map(normalizedLabel);
+
+    if (!matcher(labels)) continue;
+    return scalar(field && typeof field === "object" && "value" in field ? field.value : field);
+  }
+
+  return null;
+};
+
+const includesLabel = (target) => (labels) => labels.some((label) => label.includes(target));
+
 export const buildAssignmentFingerprint = ({
   snipeAssignedId,
   snipeAssignedType,
@@ -48,6 +69,10 @@ export const normalizeSnipeAsset = (row, syncedAt = new Date()) => {
     modelName: objectName(row?.model),
     categoryName: objectName(row?.category),
     statusLabel: objectName(row?.status_label),
+    ipAddress: customFieldValue(row?.custom_fields, includesLabel("ipaddress")),
+    macAddressLan: customFieldValue(row?.custom_fields, includesLabel("macaddresslan")),
+    macAddressWifi5Ghz: customFieldValue(row?.custom_fields, includesLabel("macaddresswifi5ghz")),
+    macAddressWifi24Ghz: customFieldValue(row?.custom_fields, includesLabel("macaddresswifi24ghz")),
     snipeAssignedId: intValue(assignedTo?.id),
     snipeAssignedType: assignedType(assignedTo),
     snipeAssignedName: scalar(assignedTo?.name),

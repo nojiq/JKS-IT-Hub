@@ -8,7 +8,7 @@ export function AssignmentSourceBadge({ source, className = "" }) {
   const tone = ASSIGNMENT_SOURCE_BADGE_CLASS[source] ?? "is-muted";
 
   return (
-    <span className={`asset-source-badge ${tone}${className ? ` ${className}` : ""}`}>
+    <span className={`assets-source-badge ${tone}${className ? ` ${className}` : ""}`}>
       {label}
     </span>
   );

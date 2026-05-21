@@ -200,7 +200,6 @@ export default function AssetsListPage() {
       <WorkspacePanel
         variant="content"
         title="Inventory"
-        meta="Filter by tag, serial, model, assignee, status, category, or assignment source."
         className="assets-inventory-panel"
       >
         <div className="assets-toolbar">
