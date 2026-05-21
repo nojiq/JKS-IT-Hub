@@ -76,6 +76,7 @@ enum MaintenanceRunItemStatus {
   pending
   pass
   fail
+  repair
   na
 }
 
@@ -114,6 +115,7 @@ model User {
   preventiveMaintenanceRuns              MaintenanceRun[]                 @relation("MaintenanceRunUser")
   completedPreventiveMaintenanceRuns     MaintenanceRun[]                 @relation("MaintenanceRunCompletedBy")
   completedPreventiveMaintenanceRunItems MaintenanceRunItem[]             @relation("MaintenanceRunItemCompletedBy")
+  createdMaintenanceTaskPresets          MaintenanceTaskPreset[]          @relation("MaintenanceTaskPresetCreatedBy")
 
   @@index([status])
   @@index([role])
@@ -181,6 +183,10 @@ model Asset {
   modelName             String?  @map("model_name") @db.VarChar(255)
   categoryName          String?  @map("category_name") @db.VarChar(191)
   statusLabel           String?  @map("status_label") @db.VarChar(191)
+  ipAddress             String?  @map("ip_address") @db.VarChar(45)
+  macAddressLan         String?  @map("mac_address_lan") @db.VarChar(50)
+  macAddressWifi5Ghz    String?  @map("mac_address_wifi_5ghz") @db.VarChar(50)
+  macAddressWifi24Ghz   String?  @map("mac_address_wifi_24ghz") @db.VarChar(50)
   snipeAssignedId       Int?     @map("snipe_assigned_id")
   snipeAssignedType     String?  @map("snipe_assigned_type") @db.VarChar(50)
   snipeAssignedName     String?  @map("snipe_assigned_name") @db.VarChar(255)
@@ -201,6 +207,7 @@ model Asset {
   @@index([assignmentSource], map: "idx_assets_assignment_source")
   @@index([statusLabel], map: "idx_assets_status_label")
   @@index([categoryName], map: "idx_assets_category_name")
+  @@index([ipAddress], map: "idx_assets_ip_address")
   @@index([lastSyncedAt], map: "idx_assets_last_synced_at")
   @@map("assets")
 }
@@ -570,9 +577,30 @@ model ChecklistTemplate {
   @@map("checklist_templates")
 }
 
+model MaintenanceTaskPreset {
+  id          String   @id @default(uuid()) @db.Char(36)
+  title       String   @db.VarChar(255)
+  description String?  @db.Text
+  category    String?  @db.VarChar(100)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdById String?  @map("created_by_id") @db.Char(36)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  createdBy      User?                @relation("MaintenanceTaskPresetCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  checklistItems ChecklistItem[]
+  runItems       MaintenanceRunItem[]
+
+  @@unique([title])
+  @@index([isActive, category])
+  @@index([createdById])
+  @@map("maintenance_task_presets")
+}
+
 model ChecklistItem {
   id               String   @id @default(uuid()) @db.Char(36)
   templateId       String   @map("template_id") @db.Char(36)
+  taskPresetId     String?  @map("task_preset_id") @db.Char(36)
   sortOrder        Int      @map("sort_order")
   title            String   @db.VarChar(255)
   description      String?  @db.Text
@@ -582,10 +610,12 @@ model ChecklistItem {
   updatedAt        DateTime @updatedAt @map("updated_at")
 
   template ChecklistTemplate    @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  taskPreset MaintenanceTaskPreset? @relation(fields: [taskPresetId], references: [id], onDelete: SetNull)
   runItems MaintenanceRunItem[]
 
   @@unique([templateId, sortOrder])
   @@index([templateId])
+  @@index([taskPresetId])
   @@map("checklist_items")
 }
 
@@ -656,6 +686,7 @@ model MaintenanceRunItem {
   id               String                   @id @default(uuid()) @db.Char(36)
   runId            String                   @map("run_id") @db.Char(36)
   checklistItemId  String?                  @map("checklist_item_id") @db.Char(36)
+  taskPresetId     String?                  @map("task_preset_id") @db.Char(36)
   sortOrder        Int                      @map("sort_order")
   title            String                   @db.VarChar(255)
   description      String?                  @db.Text
@@ -671,10 +702,12 @@ model MaintenanceRunItem {
 
   run           MaintenanceRun @relation(fields: [runId], references: [id], onDelete: Cascade)
   checklistItem ChecklistItem? @relation(fields: [checklistItemId], references: [id], onDelete: SetNull)
+  taskPreset    MaintenanceTaskPreset? @relation(fields: [taskPresetId], references: [id], onDelete: SetNull)
   completedBy   User?          @relation("MaintenanceRunItemCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
 
   @@unique([runId, sortOrder])
   @@index([runId])
+  @@index([taskPresetId])
   @@map("maintenance_run_items")
 }
 
