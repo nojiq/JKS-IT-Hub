@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchUsers } from "../../users/users-api.js";
-import PreviousImapPasswordsModal from "../imap/PreviousImapPasswordsModal.jsx";
+import PreviousImapPasswordsModal from "./PreviousImapPasswordsModal.jsx";
 import { useImapSave, useImapWorkbench, usePreviousImapPasswords } from "../hooks/useImapGenerator.js";
 
 const ProviderImapPanel = ({ initialUserId = "" }) => {

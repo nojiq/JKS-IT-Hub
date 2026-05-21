@@ -295,7 +295,7 @@ const deriveDeterministicFromPool = (seed, length, pool) => {
  * Map common DOB text shapes to one string so the Yahoo actual seed matches across UIs
  * (native `<input type="date">` uses ISO; credential generator uses `dd/mm/yyyy`).
  * Always normalizes to zero-padded `dd/mm/yyyy` (day-first for slash forms), matching
- * `IsoDatePopoverField` calendar output and preserving legacy seeds for existing previews.
+ * ISO date picker output and preserving legacy seeds for existing previews.
  */
 const normalizeYahooIdentityField = (field, value) => {
   if (value === null || value === undefined) {

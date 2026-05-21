@@ -812,8 +812,8 @@ export default function UserDetailPage() {
                   View History
                 </Link>
               ) : null}
-                <Link className="workspace-inline-link" to={`/users/credential-generator?mode=imap&userId=${id}`}>
-                Open Credential Generator
+              <Link className="workspace-inline-link" to={`/users/imap-generator?userId=${id}`}>
+                Record IMAP Password
               </Link>
               <button
                 className="workspace-inline-button"
