@@ -3,6 +3,7 @@ import { useSubmitRequest } from '../hooks/useRequests.js';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../../shared/hooks/useToast.js';
 import InvoiceUploader from './InvoiceUploader.jsx';
+import './RequestForm.css';
 
 const RequestForm = () => {
     const navigate = useNavigate();
@@ -155,75 +156,15 @@ const RequestForm = () => {
             {errors.submit && <div className="error-banner">{errors.submit}</div>}
 
             <div className="form-actions">
-                <button type="submit" disabled={submitMutation.isPending}>
+                <button type="submit" className="workspace-inline-button is-primary" disabled={submitMutation.isPending}>
                     {submitMutation.isPending
                         ? `Submitting...${submitProgress > 0 ? ` ${submitProgress}%` : ''}`
                         : 'Submit Request'}
                 </button>
-                <button type="button" onClick={() => navigate(-1)} className="btn-cancel">
+                <button type="button" onClick={() => navigate(-1)} className="workspace-inline-button">
                     Cancel
                 </button>
             </div>
-
-            <style>{`
-                .request-form {
-                    max-width: 600px;
-                    margin: 0 auto;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 1rem;
-                }
-                .form-group {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 0.5rem;
-                }
-                .form-group label {
-                    font-weight: 500;
-                }
-                .form-group input, .form-group textarea, .form-group select {
-                    padding: 0.5rem;
-                    border: 1px solid #ccc;
-                    border-radius: 4px;
-                }
-                .form-group .error {
-                    border-color: red;
-                }
-                .error-msg {
-                    color: red;
-                    font-size: 0.875rem;
-                }
-                .error-banner {
-                    padding: 0.75rem;
-                    background-color: #fee2e2;
-                    color: #b91c1c;
-                    border-radius: 4px;
-                }
-                .form-actions {
-                    display: flex;
-                    gap: 1rem;
-                    margin-top: 1rem;
-                }
-                button {
-                    padding: 0.5rem 1rem;
-                    border-radius: 4px;
-                    font-weight: 500;
-                    cursor: pointer;
-                }
-                button[type="submit"] {
-                    background-color: #4f46e5;
-                    color: white;
-                    border: none;
-                }
-                button[type="submit"]:disabled {
-                    background-color: #a5b4fc;
-                    cursor: not-allowed;
-                }
-                .btn-cancel {
-                    background-color: white;
-                    border: 1px solid #ccc;
-                }
-            `}</style>
         </form>
     );
 };

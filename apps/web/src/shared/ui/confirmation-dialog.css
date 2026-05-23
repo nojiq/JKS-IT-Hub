@@ -14,12 +14,13 @@
 }
 
 .dialog-content {
-    background: white;
-    border-radius: 12px;
+    background: var(--ui-surface-elevated);
+    border: 1px solid var(--ui-border-subtle);
+    border-radius: var(--radius-panel);
     padding: 1.5rem;
     width: 100%;
     max-width: 400px;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    box-shadow: var(--shadow-lg);
     transform: scale(0.95);
     animation: scaleIn 0.2s ease-out forwards;
 }
@@ -51,12 +52,12 @@
     margin-bottom: 0.5rem;
     font-size: 1.25rem;
     font-weight: 600;
-    color: #1a1a1a;
+    color: var(--ui-text-primary);
 }
 
 .dialog-message {
     margin-bottom: 1.5rem;
-    color: #4a4a4a;
+    color: var(--ui-text-secondary);
     line-height: 1.5;
 }
 
@@ -66,12 +67,18 @@
     gap: 0.75rem;
 }
 
-/* Ensure button styles match project if not globally available, otherwise rely on global classes */
 .btn-danger {
-    background-color: #dc2626 !important;
-    color: white;
+    background-color: var(--ui-feedback-error);
+    color: var(--ui-text-inverse);
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-control);
+    font-weight: 500;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: background-color 120ms ease;
 }
 
 .btn-danger:hover {
-    background-color: #b91c1c !important;
+    background-color: var(--color-error-hover);
 }

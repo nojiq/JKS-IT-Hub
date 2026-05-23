@@ -142,9 +142,9 @@
 
 .signature-pad {
     width: 100%;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--ui-border-subtle);
     border-radius: 8px;
-    background: #ffffff;
+    background: var(--ui-surface-elevated);
     touch-action: none;
     cursor: crosshair;
 }

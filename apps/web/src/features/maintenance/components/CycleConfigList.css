@@ -41,7 +41,7 @@
 
 .btn-secondary {
     padding: 0.4rem 0.8rem;
-    background-color: #fff;
+    background-color: var(--ui-surface-elevated);
     border: 1px solid #dadce0;
     border-radius: 4px;
     cursor: pointer;

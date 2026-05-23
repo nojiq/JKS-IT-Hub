@@ -1025,12 +1025,12 @@ select.user-detail-input {
 
 .role-select {
   padding: 0.6rem 0.8rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ui-border-subtle);
   border-radius: 12px;
   min-width: 220px;
   font-size: 0.95rem;
-  background-color: white;
-  color: #0f172a;
+  background-color: var(--ui-surface-elevated);
+  color: var(--ui-text-primary);
   transition: border-color 120ms ease;
   font-family: inherit;
 }
@@ -1077,18 +1077,40 @@ select.user-detail-input {
 .btn-secondary {
   padding: 0.6rem 1.2rem;
   background: transparent;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ui-border-subtle);
   border-radius: 999px;
   cursor: pointer;
-  color: var(--text-secondary);
+  color: var(--ui-text-secondary);
   font-weight: 600;
   font-size: 0.95rem;
-  transition: background 120ms ease;
+  transition: background 120ms ease, color 120ms ease;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--ui-surface-hover);
+  color: var(--ui-text-primary);
+}
+
+.btn-danger {
+  padding: 0.6rem 1.2rem;
+  background: var(--ui-feedback-error);
+  color: var(--ui-text-inverse);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: background 120ms ease, box-shadow 120ms ease;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--color-error-hover);
+  box-shadow: var(--shadow-button);
+}
+
+.btn-danger:disabled {
+  opacity: 0.7;
+  cursor: default;
 }
 
 /* Audit Log Page */
@@ -1176,7 +1198,7 @@ select.user-detail-input {
 
 .audit-actor-name {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--ui-text-primary);
 }
 
 .audit-actor-meta {
@@ -1227,7 +1249,7 @@ select.user-detail-input {
 .audit-pagination-page {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--ui-text-primary);
   min-width: 100px;
   text-align: center;
 }
@@ -1320,7 +1342,7 @@ select.user-detail-input {
 
 .credential-system {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--ui-text-primary);
   text-transform: capitalize;
 }
 
@@ -1361,13 +1383,14 @@ select.user-detail-input {
 }
 
 .modal-content {
-  background: white;
+  background: var(--ui-surface-elevated);
   border-radius: 20px;
   max-width: 900px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 25px 50px rgba(15, 23, 42, 0.25);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--ui-border-subtle);
 }
 
 .modal-header {
@@ -1375,14 +1398,14 @@ select.user-detail-input {
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--ui-border-subtle);
 }
 
 .modal-header h2 {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--ui-text-primary);
 }
 
 .modal-body {
@@ -1394,19 +1417,19 @@ select.user-detail-input {
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--ui-text-muted);
   padding: 0;
   width: 32px;
   height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: var(--radius-control);
 }
 
 .btn-close:hover {
-  background-color: #f3f4f6;
-  color: #111827;
+  background-color: var(--ui-surface-hover);
+  color: var(--ui-text-primary);
 }
 
 .form-group {
@@ -1416,38 +1439,59 @@ select.user-detail-input {
 .form-group label {
   display: block;
   font-weight: 500;
-  color: #374151;
+  color: var(--ui-text-primary);
   margin-bottom: 6px;
 }
 
 .form-input,
-.form-textarea {
+.form-textarea,
+.form-select {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--radius-control);
   font-size: 0.875rem;
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text-primary);
   transition: border-color 0.2s;
   box-sizing: border-box;
   font-family: inherit;
 }
 
 .form-input:focus,
-.form-textarea:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+.form-textarea:focus,
+.form-select:focus {
+  outline: 2px solid var(--ui-accent-muted);
+  outline-offset: 2px;
+  border-color: var(--ui-accent-primary);
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: var(--ui-text-muted);
+}
+
+.form-input.error,
+.form-textarea.error,
+.form-select.error {
+  border-color: var(--ui-feedback-error);
+}
+
+.form-error-msg {
+  color: var(--ui-feedback-error);
+  font-size: 0.8rem;
+  margin-top: 2px;
 }
 
 .error-message {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #fee2e2;
-  border: 1px solid #fecaca;
+  background: var(--ui-feedback-error-muted);
+  border: 1px solid var(--ui-feedback-error);
   padding: 10px 12px;
   border-radius: 8px;
-  color: var(--error-text);
+  color: var(--ui-feedback-error);
   font-size: 0.85rem;
 }
 
@@ -1456,7 +1500,7 @@ select.user-detail-input {
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 24px 20px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--ui-border-subtle);
 }
 
 .notification {
@@ -1471,15 +1515,15 @@ select.user-detail-input {
 }
 
 .notification-success {
-  background: #ecfdf3;
-  border-color: #bbf7d0;
-  color: #166534;
+  background: var(--ui-feedback-success-muted);
+  border-color: var(--ui-feedback-success);
+  color: var(--ui-feedback-success);
 }
 
 .notification-error {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: var(--error-text);
+  background: var(--ui-feedback-error-muted);
+  border-color: var(--ui-feedback-error);
+  color: var(--ui-feedback-error);
 }
 
 .notification-close {
