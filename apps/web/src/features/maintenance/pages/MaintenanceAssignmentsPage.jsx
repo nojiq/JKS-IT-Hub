@@ -1,9 +1,11 @@
-import { useId, useMemo, useState } from 'react';
-import { useAssignmentMatrix } from '../hooks/useMaintenance.js';
+import { useEffect, useId, useMemo, useState } from 'react';
+import { useAssignmentMatrix, useMaintenanceProfiles } from '../hooks/useMaintenance.js';
 import AssignPolicyModal from '../components/AssignPolicyModal.jsx';
 import { DataStateBlock } from '../../../shared/workspace/DataStateBlock.jsx';
 import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel.jsx';
 import { useToast } from '../../../shared/hooks/useToast.js';
+import { createMaintenanceAssignment } from '../api/preventiveMaintenanceApi.js';
+import { fetchUsers } from '../../users/users-api.js';
 import { formatTechnician } from '../utils/maintenanceDisplay.js';
 import { formatTaskDueLabel } from '../utils/taskUrgency.js';
 import '../../../shared/workspace/workspace.css';
@@ -11,6 +13,7 @@ import './MaintenanceAssignmentsPage.css';
 import './MaintenanceHomePage.css';
 
 const ALL_FILTER_VALUE = 'all';
+const ASSIGNMENTS_PER_PAGE = 25;
 
 const normalize = (value) => String(value || '').trim().toLowerCase();
 
@@ -22,14 +25,16 @@ const uniqueOptions = (rows, getValue) => {
 
 const MaintenanceAssignmentsPage = () => {
     const toast = useToast();
-    const assignmentsHintId = useId();
     const searchInputId = useId();
     const statusFilterId = useId();
     const deviceTypeFilterId = useId();
     const departmentFilterId = useId();
     const technicianFilterId = useId();
     const policyFilterId = useId();
+    const bulkPolicySelectId = useId();
+    const bulkTechnicianSelectId = useId();
     const { data: rows = [], isLoading, error, refetch } = useAssignmentMatrix();
+    const { data: profiles = [] } = useMaintenanceProfiles(false);
     const [search, setSearch] = useState('');
     const [filters, setFilters] = useState({
         status: ALL_FILTER_VALUE,
@@ -38,9 +43,16 @@ const MaintenanceAssignmentsPage = () => {
         technician: ALL_FILTER_VALUE,
         policy: ALL_FILTER_VALUE
     });
+    const [page, setPage] = useState(1);
     const [selected, setSelected] = useState(() => new Set());
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [assignModalRows, setAssignModalRows] = useState([]);
+    const [bulkProfileId, setBulkProfileId] = useState('');
+    const [bulkTechnicianId, setBulkTechnicianId] = useState('');
+    const [technicians, setTechnicians] = useState([]);
+    const [isLoadingTechnicians, setIsLoadingTechnicians] = useState(false);
+    const [isBulkSaving, setIsBulkSaving] = useState(false);
+    const [bulkError, setBulkError] = useState(null);
 
     const rowsWithDisplay = useMemo(
         () =>
@@ -92,15 +104,50 @@ const MaintenanceAssignmentsPage = () => {
         });
     }, [rowsWithDisplay, search, filters]);
 
+    const pageCount = Math.max(1, Math.ceil(filteredRows.length / ASSIGNMENTS_PER_PAGE));
+    const safePage = Math.min(page, pageCount);
+    const paginatedRows = filteredRows.slice(
+        (safePage - 1) * ASSIGNMENTS_PER_PAGE,
+        safePage * ASSIGNMENTS_PER_PAGE
+    );
+
     const selectedRows = useMemo(
         () => rows.filter((row) => selected.has(row.assetId)),
         [rows, selected]
     );
+
+    useEffect(() => {
+        if (selected.size === 0 || technicians.length > 0) return undefined;
+
+        let active = true;
+        const loadTechnicians = async () => {
+            try {
+                setIsLoadingTechnicians(true);
+                const result = await fetchUsers({ role: 'it', status: 'active' });
+                if (active) setTechnicians(result.users || result || []);
+            } catch {
+                if (active) setBulkError('Failed to load IT assignees');
+            } finally {
+                if (active) setIsLoadingTechnicians(false);
+            }
+        };
+
+        loadTechnicians();
+
+        return () => {
+            active = false;
+        };
+    }, [selected.size, technicians.length]);
+
     const visibleSelectedRows = useMemo(
-        () => filteredRows.filter((row) => selected.has(row.assetId)),
-        [filteredRows, selected]
+        () => paginatedRows.filter((row) => selected.has(row.assetId)),
+        [paginatedRows, selected]
     );
-    const allSelected = filteredRows.length > 0 && visibleSelectedRows.length === filteredRows.length;
+    const selectedTechnician = useMemo(
+        () => technicians.find((technician) => technician.id === bulkTechnicianId) || null,
+        [technicians, bulkTechnicianId]
+    );
+    const allSelected = paginatedRows.length > 0 && visibleSelectedRows.length === paginatedRows.length;
     const hasActiveFilters = Boolean(
         search.trim() ||
         filters.status !== ALL_FILTER_VALUE ||
@@ -109,15 +156,23 @@ const MaintenanceAssignmentsPage = () => {
         filters.technician !== ALL_FILTER_VALUE ||
         filters.policy !== ALL_FILTER_VALUE
     );
+    const canBulkAssign = Boolean(
+        selectedRows.length > 0 &&
+        bulkProfileId &&
+        bulkTechnicianId &&
+        !isBulkSaving
+    );
 
     const updateSearch = (value) => {
         setSearch(value);
         setSelected(new Set());
+        setPage(1);
     };
 
     const updateFilter = (name, value) => {
         setFilters((prev) => ({ ...prev, [name]: value || ALL_FILTER_VALUE }));
         setSelected(new Set());
+        setPage(1);
     };
 
     const clearFilters = () => {
@@ -130,6 +185,7 @@ const MaintenanceAssignmentsPage = () => {
             policy: ALL_FILTER_VALUE
         });
         setSelected(new Set());
+        setPage(1);
     };
 
     const toggleRow = (assetId) => {
@@ -143,7 +199,7 @@ const MaintenanceAssignmentsPage = () => {
 
     const toggleAll = () => {
         setSelected((prev) => {
-            const visibleAssetIds = filteredRows.map((row) => row.assetId);
+            const visibleAssetIds = paginatedRows.map((row) => row.assetId);
             if (allSelected) {
                 const next = new Set(prev);
                 visibleAssetIds.forEach((assetId) => next.delete(assetId));
@@ -164,6 +220,43 @@ const MaintenanceAssignmentsPage = () => {
         }
         setAssignModalRows(rowsToAssign);
         setShowAssignModal(true);
+    };
+
+    const handleBulkAssign = async (event) => {
+        event.preventDefault();
+        if (!canBulkAssign) return;
+
+        setIsBulkSaving(true);
+        setBulkError(null);
+        try {
+            await Promise.all(
+                selectedRows.map((row) =>
+                    createMaintenanceAssignment({
+                        assetId: row.assetId,
+                        profileId: bulkProfileId,
+                        userId: bulkTechnicianId
+                    })
+                )
+            );
+            const technicianLabel =
+                selectedTechnician?.displayName ||
+                selectedTechnician?.username ||
+                'selected assignee';
+            toast.success(
+                'Assignments confirmed',
+                `${selectedRows.length} asset${selectedRows.length === 1 ? '' : 's'} linked to ${technicianLabel}.`
+            );
+            setSelected(new Set());
+            setBulkProfileId('');
+            setBulkTechnicianId('');
+            await refetch();
+        } catch (err) {
+            const message = err.message || 'Failed to save assignments';
+            setBulkError(message);
+            toast.error('Failed to assign assets', message);
+        } finally {
+            setIsBulkSaving(false);
+        }
     };
 
     if (isLoading) {
@@ -187,40 +280,20 @@ const MaintenanceAssignmentsPage = () => {
     }
 
     return (
-        <div className="maintenance-module-page maintenance-assignments-page">
-            <header className="maintenance-page-header">
-                <div>
-                    <h2>
-                        <span className="workspace-panel-title-hint" tabIndex={0} aria-describedby={assignmentsHintId}>
-                            Assignments
-                            <span
-                                className="workspace-panel-title-hint-popup"
-                                id={assignmentsHintId}
-                                role="tooltip"
-                                aria-hidden="true"
-                            >
-                                Link each asset to a maintenance policy and technician. Scheduling runs automatically from policy intervals.
-                            </span>
-                        </span>
-                    </h2>
-                </div>
-            </header>
-
+        <div className={`maintenance-module-page maintenance-assignments-page${selectedRows.length > 0 ? ' has-float-bar' : ''}`}>
             <WorkspacePanel
                 variant="table"
                 title="Asset assignments"
+                titleHint="Link each asset to a maintenance policy and technician. Scheduling runs automatically from policy intervals."
                 meta={
-                    selectedRows.length > 0
-                        ? `${selectedRows.length} asset${selectedRows.length === 1 ? '' : 's'} selected`
-                        : hasActiveFilters
-                          ? `${filteredRows.length} of ${rows.length} asset${rows.length === 1 ? '' : 's'} shown`
-                          : 'Select assets with the checkboxes, then assign a policy and technician.'
+                    hasActiveFilters
+                        ? `${filteredRows.length} of ${rows.length} shown`
+                        : null
                 }
                 actions={
                     <button
                         type="button"
-                        className={`workspace-inline-button is-primary${selectedRows.length === 0 ? ' is-muted' : ''}`}
-                        aria-disabled={selectedRows.length === 0}
+                        className="workspace-inline-button is-primary"
                         onClick={() => openAssignModal()}
                     >
                         Assign policy
@@ -228,104 +301,83 @@ const MaintenanceAssignmentsPage = () => {
                 }
             >
                 <div className="maintenance-assignments-toolbar" aria-label="Assignment search and filters">
-                    <div className="maintenance-assignments-search">
-                        <label htmlFor={searchInputId}>Search assignments</label>
-                        <input
-                            id={searchInputId}
-                            type="search"
-                            value={search}
-                            onChange={(event) => updateSearch(event.target.value)}
-                            placeholder="Asset tag, user, department, policy..."
-                        />
-                    </div>
+                    <input
+                        id={searchInputId}
+                        type="search"
+                        className="maintenance-assignments-search-input"
+                        value={search}
+                        onChange={(event) => updateSearch(event.target.value)}
+                        placeholder="Search asset tag, user, department, policy…"
+                        aria-label="Search assignments"
+                    />
 
                     <div className="maintenance-assignments-filters">
-                        <label htmlFor={statusFilterId}>
-                            Status
-                            <select
-                                id={statusFilterId}
-                                value={filters.status}
-                                onChange={(event) => updateFilter('status', event.target.value)}
-                            >
-                                <option value={ALL_FILTER_VALUE}>All statuses</option>
-                                {filterOptions.statuses.map((status) => (
-                                    <option key={status} value={status}>
-                                        {status}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
+                        <select
+                            id={statusFilterId}
+                            aria-label="Filter by status"
+                            value={filters.status}
+                            onChange={(event) => updateFilter('status', event.target.value)}
+                        >
+                            <option value={ALL_FILTER_VALUE}>All statuses</option>
+                            {filterOptions.statuses.map((status) => (
+                                <option key={status} value={status}>{status}</option>
+                            ))}
+                        </select>
 
-                        <label htmlFor={deviceTypeFilterId}>
-                            Device type
-                            <select
-                                id={deviceTypeFilterId}
-                                value={filters.deviceType}
-                                onChange={(event) => updateFilter('deviceType', event.target.value)}
-                            >
-                                <option value={ALL_FILTER_VALUE}>All device types</option>
-                                {filterOptions.deviceTypes.map((deviceType) => (
-                                    <option key={deviceType} value={deviceType}>
-                                        {deviceType}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
+                        <select
+                            id={deviceTypeFilterId}
+                            aria-label="Filter by device type"
+                            value={filters.deviceType}
+                            onChange={(event) => updateFilter('deviceType', event.target.value)}
+                        >
+                            <option value={ALL_FILTER_VALUE}>All device types</option>
+                            {filterOptions.deviceTypes.map((deviceType) => (
+                                <option key={deviceType} value={deviceType}>{deviceType}</option>
+                            ))}
+                        </select>
 
-                        <label htmlFor={departmentFilterId}>
-                            Department
-                            <select
-                                id={departmentFilterId}
-                                value={filters.department}
-                                onChange={(event) => updateFilter('department', event.target.value)}
-                            >
-                                <option value={ALL_FILTER_VALUE}>All departments</option>
-                                {filterOptions.departments.map((department) => (
-                                    <option key={department} value={department}>
-                                        {department}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
+                        <select
+                            id={departmentFilterId}
+                            aria-label="Filter by department"
+                            value={filters.department}
+                            onChange={(event) => updateFilter('department', event.target.value)}
+                        >
+                            <option value={ALL_FILTER_VALUE}>All departments</option>
+                            {filterOptions.departments.map((department) => (
+                                <option key={department} value={department}>{department}</option>
+                            ))}
+                        </select>
 
-                        <label htmlFor={technicianFilterId}>
-                            Technician
-                            <select
-                                id={technicianFilterId}
-                                value={filters.technician}
-                                onChange={(event) => updateFilter('technician', event.target.value)}
-                            >
-                                <option value={ALL_FILTER_VALUE}>All technicians</option>
-                                {filterOptions.technicians.map((technician) => (
-                                    <option key={technician} value={technician}>
-                                        {technician}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
+                        <select
+                            id={technicianFilterId}
+                            aria-label="Filter by technician"
+                            value={filters.technician}
+                            onChange={(event) => updateFilter('technician', event.target.value)}
+                        >
+                            <option value={ALL_FILTER_VALUE}>All technicians</option>
+                            {filterOptions.technicians.map((technician) => (
+                                <option key={technician} value={technician}>{technician}</option>
+                            ))}
+                        </select>
 
-                        <label htmlFor={policyFilterId}>
-                            Policy
-                            <select
-                                id={policyFilterId}
-                                value={filters.policy}
-                                onChange={(event) => updateFilter('policy', event.target.value)}
-                            >
-                                <option value={ALL_FILTER_VALUE}>All policies</option>
-                                {filterOptions.policies.map((policy) => (
-                                    <option key={policy} value={policy}>
-                                        {policy}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
+                        <select
+                            id={policyFilterId}
+                            aria-label="Filter by policy"
+                            value={filters.policy}
+                            onChange={(event) => updateFilter('policy', event.target.value)}
+                        >
+                            <option value={ALL_FILTER_VALUE}>All policies</option>
+                            {filterOptions.policies.map((policy) => (
+                                <option key={policy} value={policy}>{policy}</option>
+                            ))}
+                        </select>
+
+                        {hasActiveFilters ? (
+                            <button type="button" className="workspace-inline-button maintenance-assignments-clear-btn" onClick={clearFilters}>
+                                Clear
+                            </button>
+                        ) : null}
                     </div>
-
-                    {hasActiveFilters ? (
-                        <button type="button" className="workspace-inline-button" onClick={clearFilters}>
-                            Clear filters
-                        </button>
-                    ) : null}
                 </div>
 
                 <div className="maintenance-table-container">
@@ -367,7 +419,7 @@ const MaintenanceAssignmentsPage = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredRows.map((row) => {
+                                paginatedRows.map((row) => {
                                     const technician = row.technicianDisplay;
                                     const dueLabel = row.nextDueDate
                                         ? formatTaskDueLabel({
@@ -413,7 +465,105 @@ const MaintenanceAssignmentsPage = () => {
                         </tbody>
                     </table>
                 </div>
+
+                {pageCount > 1 ? (
+                    <div className="maintenance-assignments-pagination" role="navigation" aria-label="Table pagination">
+                        <p className="maintenance-assignments-pagination__summary">
+                            Page {safePage} of {pageCount} &middot; {filteredRows.length} asset{filteredRows.length === 1 ? '' : 's'}
+                        </p>
+                        <div className="maintenance-assignments-pagination__controls">
+                            <button
+                                type="button"
+                                className="workspace-inline-button"
+                                onClick={() => setPage(1)}
+                                disabled={safePage === 1}
+                                aria-label="First page"
+                            >
+                                &laquo;
+                            </button>
+                            <button
+                                type="button"
+                                className="workspace-inline-button"
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                disabled={safePage === 1}
+                                aria-label="Previous page"
+                            >
+                                Prev
+                            </button>
+                            <button
+                                type="button"
+                                className="workspace-inline-button"
+                                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                                disabled={safePage === pageCount}
+                                aria-label="Next page"
+                            >
+                                Next
+                            </button>
+                            <button
+                                type="button"
+                                className="workspace-inline-button"
+                                onClick={() => setPage(pageCount)}
+                                disabled={safePage === pageCount}
+                                aria-label="Last page"
+                            >
+                                &raquo;
+                            </button>
+                        </div>
+                    </div>
+                ) : null}
             </WorkspacePanel>
+
+            {selectedRows.length > 0 ? (
+                <div className="maintenance-assignments-float-bar" role="region" aria-label="Bulk assignment actions">
+                    <div className="maintenance-assignments-float-bar__inner">
+                        <p className="maintenance-assignments-float-bar__count">
+                            <strong>{selectedRows.length}</strong> asset{selectedRows.length === 1 ? '' : 's'} selected
+                        </p>
+                        {bulkError ? <p className="maintenance-assignments-float-bar__error" role="alert">{bulkError}</p> : null}
+                        <form className="maintenance-assignments-bulk-actions" onSubmit={handleBulkAssign}>
+                            <select
+                                id={bulkPolicySelectId}
+                                aria-label="Bulk policy"
+                                value={bulkProfileId}
+                                onChange={(event) => setBulkProfileId(event.target.value)}
+                                disabled={isBulkSaving}
+                            >
+                                <option value="">Policy…</option>
+                                {profiles.map((profile) => (
+                                    <option key={profile.id} value={profile.id}>{profile.name}</option>
+                                ))}
+                            </select>
+                            <select
+                                id={bulkTechnicianSelectId}
+                                aria-label="Assign to technician"
+                                value={bulkTechnicianId}
+                                onChange={(event) => setBulkTechnicianId(event.target.value)}
+                                disabled={isLoadingTechnicians || isBulkSaving || technicians.length === 0}
+                            >
+                                <option value="">
+                                    {isLoadingTechnicians ? 'Loading…' : 'Assignee…'}
+                                </option>
+                                {technicians.map((technician) => (
+                                    <option key={technician.id} value={technician.id}>
+                                        {technician.displayName || technician.username}
+                                    </option>
+                                ))}
+                            </select>
+                            <button type="submit" className="workspace-inline-button is-primary" disabled={!canBulkAssign}>
+                                {isBulkSaving ? 'Applying…' : 'Apply'}
+                            </button>
+                            <button
+                                type="button"
+                                className="workspace-inline-button"
+                                onClick={() => { setSelected(new Set()); setBulkProfileId(''); setBulkTechnicianId(''); }}
+                                disabled={isBulkSaving}
+                            >
+                                Deselect
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            ) : null}
 
             {showAssignModal ? (
                 <AssignPolicyModal

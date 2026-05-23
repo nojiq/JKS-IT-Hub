@@ -44,11 +44,20 @@ vi.mock('../../apps/web/src/features/maintenance/hooks/useMaintenance.js', () =>
         isLoading: false,
         error: null,
         refetch: vi.fn()
+    }),
+    useMaintenanceProfiles: () => ({
+        data: [{ id: 'profile-1', name: 'Quarterly Desktop' }],
+        isLoading: false,
+        error: null
     })
 }));
 
 vi.mock('../../apps/web/src/shared/hooks/useToast.js', () => ({
     useToast: () => ({ info: vi.fn(), success: vi.fn(), error: vi.fn() })
+}));
+
+vi.mock('../../apps/web/src/features/users/users-api.js', () => ({
+    fetchUsers: vi.fn(() => new Promise(() => {}))
 }));
 
 describe('MaintenanceAssignmentsPage', () => {
