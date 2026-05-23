@@ -429,6 +429,56 @@ describe("IpListPage", () => {
     });
   });
 
+  it("normalizes manual IP form values before create", async () => {
+    createManualIpRecord.mockResolvedValue({
+      id: "manual-normalized",
+      ipAddress: "192.168.78.15",
+      hostname: "printer finance",
+      source: "manual"
+    });
+
+    renderPage();
+    await screen.findByText(/192\.168\.78\.15/);
+
+    fireEvent.click(screen.getByRole("button", { name: "Add manual IP" }));
+
+    await screen.findByRole("heading", { name: "Add manual IP" });
+    fireEvent.change(screen.getByPlaceholderText("192.168.78.15"), {
+      target: { value: " 192 168 078 015 " }
+    });
+    expect(screen.getByPlaceholderText("192.168.78.15")).toHaveValue("192.168.78.15");
+
+    fireEvent.change(screen.getByPlaceholderText("192.168.78.15"), {
+      target: { value: "1921687815" }
+    });
+    fireEvent.blur(screen.getByPlaceholderText("192.168.78.15"));
+    fireEvent.change(screen.getByPlaceholderText("printer-finance"), {
+      target: { value: " printer   finance " }
+    });
+    fireEvent.change(screen.getByPlaceholderText("HQ · Level 3"), {
+      target: { value: " HQ    Level   3 " }
+    });
+    fireEvent.change(screen.getByPlaceholderText("AA:BB:CC:DD:EE:FF"), {
+      target: { value: "990009909090" }
+    });
+
+    expect(screen.getByPlaceholderText("192.168.78.15")).toHaveValue("192.168.78.15");
+    expect(screen.getByPlaceholderText("AA:BB:CC:DD:EE:FF")).toHaveValue("99:00:09:90:90:90");
+
+    fireEvent.click(screen.getByRole("button", { name: "Create record" }));
+
+    await waitFor(() => {
+      expect(createManualIpRecord).toHaveBeenCalledWith({
+        ipAddress: "192.168.78.15",
+        hostname: "printer finance",
+        location: "HQ Level 3",
+        department: null,
+        macAddress: "99:00:09:90:90:90",
+        notes: null
+      });
+    });
+  });
+
   it("shows duplicate banner and opens drawer for existing IP on 409 response", async () => {
     const error = Object.assign(new Error("IP address already exists"), {
       status: 409,

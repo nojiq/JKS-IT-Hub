@@ -26,6 +26,72 @@ export const formatDateTime = (value) =>
 
 export const getSourceLabel = (source) => SOURCE_LABELS[source] ?? formatValue(source, "Unknown");
 
+export const normalizeManualTextInput = (value) =>
+  String(value ?? "").trim().replace(/\s+/g, " ");
+
+const normalizeIpPart = (part) => {
+  if (part === "") return "";
+  const trimmed = part.slice(0, 3);
+  const normalized = trimmed.replace(/^0+(?=\d)/, "");
+  return normalized || "0";
+};
+
+const compactIpv4Parts = (digits, start = 0, slots = 4) => {
+  const remaining = digits.length - start;
+  if (slots === 0) return remaining === 0 ? [] : null;
+  if (remaining < slots || remaining > slots * 3) return null;
+
+  for (const length of [3, 2, 1]) {
+    const nextRemaining = remaining - length;
+    if (nextRemaining < slots - 1 || nextRemaining > (slots - 1) * 3) continue;
+
+    const part = digits.slice(start, start + length);
+    if (Number(part) > 255) continue;
+
+    const rest = compactIpv4Parts(digits, start + length, slots - 1);
+    if (rest) return [normalizeIpPart(part), ...rest];
+  }
+
+  return null;
+};
+
+export const normalizeIpAddressInput = (value, { compact = true } = {}) => {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+
+  if (!compact && /^\d+$/.test(text)) {
+    return text.slice(0, 12);
+  }
+
+  if (compact && /^\d{4,12}$/.test(text)) {
+    const compactParts = compactIpv4Parts(text);
+    if (compactParts) return compactParts.join(".");
+  }
+
+  const separated = text
+    .replace(/[^\d.]+/g, ".")
+    .replace(/\.{2,}/g, ".");
+
+  const hasTrailingDot = separated.endsWith(".");
+  const rawParts = separated.split(".");
+  const parts = separated
+    .split(".")
+    .filter((part, index) => part !== "" || (hasTrailingDot && index === rawParts.length - 1))
+    .slice(0, 4)
+    .map(normalizeIpPart);
+
+  return parts.join(".");
+};
+
+export const normalizeMacAddressInput = (value) => {
+  const compact = String(value ?? "")
+    .toUpperCase()
+    .replace(/[^0-9A-F]/g, "")
+    .slice(0, 12);
+
+  return compact.match(/.{1,2}/g)?.join(":") ?? "";
+};
+
 export const UNMAPPED_SUBNET_ID = "__unmapped__";
 
 export const ipv4ToSlash24Prefix = (ipAddress) => {

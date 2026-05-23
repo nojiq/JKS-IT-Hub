@@ -3,7 +3,10 @@ import { useIpAvailability } from "../hooks/useIpAvailability.js";
 import {
   getExistingIpLabel,
   ipAddressPattern,
-  isValidIpv4
+  isValidIpv4,
+  normalizeIpAddressInput,
+  normalizeMacAddressInput,
+  normalizeManualTextInput
 } from "../utils/ipListDisplay.js";
 
 const EMPTY = {
@@ -21,6 +24,19 @@ const buildInitial = (initial) => ({
     Object.entries(initial ?? {}).filter(([, value]) => value !== undefined && value !== null)
   )
 });
+
+const normalizeChangeValue = (key, value) => {
+  if (key === "ipAddress") return normalizeIpAddressInput(value, { compact: false });
+  if (key === "macAddress") return normalizeMacAddressInput(value);
+  return value;
+};
+
+const normalizeSubmitValue = (key, value) => {
+  if (key === "ipAddress") return normalizeIpAddressInput(value);
+  if (key === "macAddress") return normalizeMacAddressInput(value);
+  if (["hostname", "location", "department"].includes(key)) return normalizeManualTextInput(value);
+  return String(value ?? "").trim();
+};
 
 export function ManualIpForm({
   mode = "create",
@@ -44,16 +60,23 @@ export function ManualIpForm({
   const ipAvailable = availability.status === "available";
 
   const update = (key) => (event) => {
-    setValues((prev) => ({ ...prev, [key]: event.target.value }));
+    setValues((prev) => ({ ...prev, [key]: normalizeChangeValue(key, event.target.value) }));
+  };
+
+  const normalizeField = (key) => () => {
+    setValues((prev) => ({ ...prev, [key]: normalizeSubmitValue(key, prev[key]) }));
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
     if (submitting || ipTaken) return;
     const payload = Object.fromEntries(
-      Object.entries(values).map(([key, value]) => [key, value.trim() === "" ? null : value.trim()])
+      Object.entries(values).map(([key, value]) => {
+        const normalized = normalizeSubmitValue(key, value);
+        return [key, normalized === "" ? null : normalized];
+      })
     );
-    if (mode === "create") payload.ipAddress = (values.ipAddress || "").trim();
+    if (mode === "create") payload.ipAddress = normalizeIpAddressInput(values.ipAddress);
     onSubmit?.(payload);
   };
 
@@ -112,6 +135,7 @@ export function ManualIpForm({
             className="ip-list-form__input"
             value={values.ipAddress}
             onChange={update("ipAddress")}
+            onBlur={normalizeField("ipAddress")}
             placeholder="192.168.78.15"
             pattern={ipAddressPattern}
             required
@@ -143,6 +167,7 @@ export function ManualIpForm({
             className="ip-list-form__input"
             value={values.hostname}
             onChange={update("hostname")}
+            onBlur={normalizeField("hostname")}
             placeholder="printer-finance"
             maxLength={255}
           />
@@ -153,6 +178,7 @@ export function ManualIpForm({
             className="ip-list-form__input"
             value={values.location}
             onChange={update("location")}
+            onBlur={normalizeField("location")}
             placeholder="HQ · Level 3"
             maxLength={191}
           />
@@ -163,6 +189,7 @@ export function ManualIpForm({
             className="ip-list-form__input"
             value={values.department}
             onChange={update("department")}
+            onBlur={normalizeField("department")}
             placeholder="Finance"
             maxLength={191}
           />
@@ -173,6 +200,7 @@ export function ManualIpForm({
             className="ip-list-form__input"
             value={values.macAddress}
             onChange={update("macAddress")}
+            onBlur={normalizeField("macAddress")}
             placeholder="AA:BB:CC:DD:EE:FF"
             maxLength={50}
           />

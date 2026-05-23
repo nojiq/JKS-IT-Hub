@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildSubnetComboboxOptions,
   filterComboboxOptions,
+  normalizeIpAddressInput,
+  normalizeMacAddressInput,
+  normalizeManualTextInput,
   resolveSubnetFilterForRow,
   rowMatchesIpPrefix,
   ruleCoversSlash24Prefix,
@@ -72,5 +75,28 @@ describe("ipListDisplay subnet combobox", () => {
   it("ruleCoversSlash24Prefix detects overlapping CIDR", () => {
     expect(ruleCoversSlash24Prefix(rules[0], "192.168.78")).toBe(true);
     expect(ruleCoversSlash24Prefix(rules[0], "10.0.0")).toBe(false);
+  });
+});
+
+describe("ipListDisplay manual form normalization", () => {
+  it("normalizes IPv4 pasted with spaces or padded octets", () => {
+    expect(normalizeIpAddressInput(" 192 168 078 015 ")).toBe("192.168.78.15");
+    expect(normalizeIpAddressInput("192.168.078.015")).toBe("192.168.78.15");
+    expect(normalizeIpAddressInput("1921687815")).toBe("192.168.78.15");
+  });
+
+  it("keeps partial IPv4 entry editable while removing invalid characters", () => {
+    expect(normalizeIpAddressInput("192.168.")).toBe("192.168.");
+    expect(normalizeIpAddressInput("192..168")).toBe("192.168");
+  });
+
+  it("formats compact and separated MAC input with uppercase colon pairs", () => {
+    expect(normalizeMacAddressInput("990009909090")).toBe("99:00:09:90:90:90");
+    expect(normalizeMacAddressInput("aa-bb-cc-dd-ee-ff")).toBe("AA:BB:CC:DD:EE:FF");
+    expect(normalizeMacAddressInput("99000990909")).toBe("99:00:09:90:90:9");
+  });
+
+  it("collapses whitespace in regular manual text fields", () => {
+    expect(normalizeManualTextInput("  HQ    Level   3  ")).toBe("HQ Level 3");
   });
 });
