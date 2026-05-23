@@ -2,28 +2,18 @@
     margin-bottom: 0.75rem;
 }
 
-.admin-approval-page .text-secondary {
-    color: var(--color-text-secondary);
-    font-size: 0.83rem;
-    margin-top: 0.2rem;
-}
-
-.admin-approval-page .font-medium {
-    font-weight: 560;
-}
-
 .admin-approval-page .pagination {
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 0.7rem;
-    margin-top: 0.9rem;
+    padding: 0.6rem 0;
     flex-wrap: wrap;
 }
 
 .admin-approval-page .pagination span {
-    color: var(--color-text-secondary);
-    font-size: 0.88rem;
+    color: var(--ui-text-muted);
+    font-size: 0.86rem;
 }
 
 @media (max-width: 767px) {
@@ -44,7 +34,7 @@
     }
 
     .admin-approval-page .workspace-table tr {
-        border-bottom: 1px solid var(--color-border);
+        border-bottom: 1px solid var(--ui-border-subtle);
         padding: 0.6rem 0;
     }
 
@@ -56,7 +46,7 @@
     .admin-approval-page .workspace-table td::before {
         content: attr(data-label);
         display: block;
-        color: var(--color-text-secondary);
+        color: var(--ui-text-muted);
         font-size: 0.72rem;
         text-transform: uppercase;
         letter-spacing: 0.05em;
