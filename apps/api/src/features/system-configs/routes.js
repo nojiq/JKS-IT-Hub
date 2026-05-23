@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { requireAuthenticated } from "../../shared/auth/requireAuthenticated.js";
-import { hasDevRole } from "../../shared/auth/rbac.js";
+import { hasItRole } from "../../shared/auth/rbac.js";
 import { createProblemDetails, sendProblem } from "../../shared/errors/problemDetails.js";
 import { createSystemConfigSchema, updateSystemConfigSchema, systemIdParamSchema } from "./schema.js";
 import { 
@@ -17,11 +17,11 @@ export default async function systemConfigRoutes(app, { config, userRepo, system
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!hasDevRole(actor)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
-                detail: "Only the developer role can view system configurations"
+                detail: "Only IT staff roles can view system configurations"
             }));
             return;
         }
@@ -49,11 +49,11 @@ export default async function systemConfigRoutes(app, { config, userRepo, system
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!hasDevRole(actor)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
-                detail: "Only the developer role can view system configurations"
+                detail: "Only IT staff roles can view system configurations"
             }));
             return;
         }
@@ -89,11 +89,11 @@ export default async function systemConfigRoutes(app, { config, userRepo, system
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!hasDevRole(actor)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
-                detail: "Only the developer role can create system configurations"
+                detail: "Only IT staff roles can create system configurations"
             }));
             return;
         }
@@ -166,11 +166,11 @@ export default async function systemConfigRoutes(app, { config, userRepo, system
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!hasDevRole(actor)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
-                detail: "Only the developer role can update system configurations"
+                detail: "Only IT staff roles can update system configurations"
             }));
             return;
         }
@@ -232,11 +232,11 @@ export default async function systemConfigRoutes(app, { config, userRepo, system
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!hasDevRole(actor)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
-                detail: "Only the developer role can delete system configurations"
+                detail: "Only IT staff roles can delete system configurations"
             }));
             return;
         }
@@ -289,11 +289,11 @@ export default async function systemConfigRoutes(app, { config, userRepo, system
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!hasDevRole(actor)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
-                detail: "Only the developer role can view LDAP field options"
+                detail: "Only IT staff roles can view LDAP field options"
             }));
             return;
         }

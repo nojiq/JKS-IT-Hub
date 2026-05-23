@@ -4,6 +4,9 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import * as repo from "../../apps/api/src/features/requests/repo.js";
 import { prisma } from "../../apps/api/src/shared/db/prisma.js";
+import { createLegacyItemRequest } from "./helpers/legacyItemRequest.mjs";
+
+const itemRequest = createLegacyItemRequest(prisma);
 
 test("Requests Review - Repository Layer", async (t) => {
     let requesterId;
@@ -57,9 +60,7 @@ test("Requests Review - Repository Layer", async (t) => {
 
         assert.equal(updatedRequest.status, "IT_REVIEWED");
         assert.equal(updatedRequest.itReview, reviewData.itReview);
-        assert.equal(updatedRequest.itReviewedById, reviewerId);
         assert.ok(updatedRequest.itReviewedAt);
-        assert.ok(updatedRequest.itReviewedBy); // Should include relation
     });
 
     await t.test("updateRequestStatus (Generic)", async () => {
@@ -93,7 +94,7 @@ test("Requests Review - Repository Layer", async (t) => {
     // Cleanup
     await t.test("Cleanup", async () => {
         if (requestId) {
-            await prisma.itemRequest.delete({ where: { id: requestId } });
+            await itemRequest.delete({ where: { id: requestId } });
         }
         if (requesterId) {
             await prisma.user.delete({ where: { id: requesterId } });

@@ -72,7 +72,7 @@ test('inAppRepo - createBulkNotifications creates multiple notifications', async
     ];
 
     const result = await inAppRepo.createBulkNotifications(notifications);
-    assert.strictEqual(result.count, 2, 'Should create 2 notifications');
+    assert.strictEqual(result.length, 2, 'Should create 2 notifications');
 });
 
 test('inAppRepo - getNotificationsByUserId returns user notifications', async () => {

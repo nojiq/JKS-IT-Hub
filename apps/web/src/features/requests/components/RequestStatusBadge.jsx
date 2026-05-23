@@ -1,29 +1,61 @@
-
-const STATUS_CONFIG = {
-    SUBMITTED: { label: 'Submitted', className: 'badge-submitted', color: '#eff6ff', textColor: '#1e40af', borderColor: '#bfdbfe' }, // blue-50, blue-800, blue-200
-    IT_REVIEWED: { label: 'IT Reviewed', className: 'badge-reviewed', color: '#fffbeb', textColor: '#92400e', borderColor: '#fde68a' }, // amber-50, amber-800, amber-200
-    APPROVED: { label: 'Approved', className: 'badge-approved', color: '#ecfdf5', textColor: '#065f46', borderColor: '#a7f3d0' }, // emerald-50, emerald-800, emerald-200
-    REJECTED: { label: 'Rejected', className: 'badge-rejected', color: '#fef2f2', textColor: '#991b1b', borderColor: '#fecaca' }, // red-50, red-800, red-200
-    ALREADY_PURCHASED: { label: 'Already Purchased', className: 'badge-purchased', color: '#f3f4f6', textColor: '#1f2937', borderColor: '#e5e7eb' } // gray-50, gray-800, gray-200
+const LEGACY_STATUS_CONFIG = {
+    SUBMITTED: { label: "Submitted", color: "#eff6ff", textColor: "#1e40af", borderColor: "#bfdbfe" },
+    IT_REVIEWED: { label: "IT Reviewed", color: "#fffbeb", textColor: "#92400e", borderColor: "#fde68a" },
+    APPROVED: { label: "Approved", color: "#ecfdf5", textColor: "#065f46", borderColor: "#a7f3d0" },
+    REJECTED: { label: "Rejected", color: "#fef2f2", textColor: "#991b1b", borderColor: "#fecaca" },
+    ALREADY_PURCHASED: { label: "Already Purchased", color: "#f3f4f6", textColor: "#1f2937", borderColor: "#e5e7eb" }
 };
 
-const RequestStatusBadge = ({ status }) => {
-    const config = STATUS_CONFIG[status] || { label: status, className: 'badge-default', color: '#f3f4f6', textColor: '#374151', borderColor: '#d1d5db' };
+const RECORD_STATUS_CONFIG = {
+    RECORDED: { label: "Recorded", color: "#eff6ff", textColor: "#1e40af", borderColor: "#bfdbfe" },
+    REJECTED: { label: "Rejected", color: "#fef2f2", textColor: "#991b1b", borderColor: "#fecaca" },
+    ARCHIVED: { label: "Archived", color: "#f3f4f6", textColor: "#374151", borderColor: "#e5e7eb" }
+};
+
+const APPROVAL_STATUS_CONFIG = {
+    NOT_REQUIRED: { label: "No approval", color: "#f8fafc", textColor: "#475569", borderColor: "#e2e8f0" },
+    PENDING: { label: "Pending approval", color: "#fffbeb", textColor: "#92400e", borderColor: "#fde68a" },
+    APPROVED: { label: "Approved", color: "#ecfdf5", textColor: "#065f46", borderColor: "#a7f3d0" },
+    SKIPPED: { label: "Skipped", color: "#f3f4f6", textColor: "#1f2937", borderColor: "#e5e7eb" },
+    REJECTED: { label: "Rejected", color: "#fef2f2", textColor: "#991b1b", borderColor: "#fecaca" }
+};
+
+const resolveConfig = ({ status, recordStatus, approvalStatus }) => {
+    if (recordStatus || approvalStatus) {
+        if (recordStatus === "REJECTED" || approvalStatus === "REJECTED") {
+            return RECORD_STATUS_CONFIG.REJECTED;
+        }
+        if (approvalStatus && approvalStatus !== "NOT_REQUIRED") {
+            return APPROVAL_STATUS_CONFIG[approvalStatus] ?? APPROVAL_STATUS_CONFIG.NOT_REQUIRED;
+        }
+        return RECORD_STATUS_CONFIG[recordStatus] ?? RECORD_STATUS_CONFIG.RECORDED;
+    }
+
+    return LEGACY_STATUS_CONFIG[status] ?? {
+        label: status,
+        color: "#f3f4f6",
+        textColor: "#374151",
+        borderColor: "#d1d5db"
+    };
+};
+
+const RequestStatusBadge = ({ status, recordStatus, approvalStatus, className = "" }) => {
+    const config = resolveConfig({ status, recordStatus, approvalStatus });
 
     return (
         <span
-            className={`status-badge ${config.className}`}
+            className={`status-badge ${className}`.trim()}
             style={{
                 backgroundColor: config.color,
                 color: config.textColor,
                 border: `1px solid ${config.borderColor}`,
-                padding: '0.25rem 0.75rem',
-                borderRadius: '9999px',
-                fontSize: '0.75rem',
-                fontWeight: '600',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                display: 'inline-block'
+                padding: "0.25rem 0.75rem",
+                borderRadius: "9999px",
+                fontSize: "0.75rem",
+                fontWeight: "600",
+                letterSpacing: "0.04em",
+                display: "inline-block",
+                whiteSpace: "nowrap"
             }}
         >
             {config.label}

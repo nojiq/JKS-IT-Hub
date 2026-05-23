@@ -1,0 +1,1121 @@
+.workspace-page.ip-list-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.ip-list-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.ip-list-summary-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem 2rem;
+  padding: 0.75rem 0 1rem;
+  border-bottom: 1px solid var(--ui-border-subtle);
+  margin: 0;
+}
+
+.ip-list-summary-item {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.ip-list-summary-item dt {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-text-muted);
+}
+
+.ip-list-summary-item dd {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--ui-text-primary);
+  line-height: 1.1;
+}
+
+.ip-list-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(11rem, 18rem) auto;
+  gap: 0.75rem;
+  align-items: end;
+  margin-bottom: 1rem;
+}
+
+.ip-list-filter-row {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.ip-list-inventory-main {
+  min-width: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.ip-list-subnet-combobox {
+  position: relative;
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.ip-list-subnet-combobox__label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ui-text-muted, #475569);
+}
+
+.ip-list-subnet-combobox__control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ip-list-subnet-combobox__input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem 2rem 0.5rem 0.65rem;
+  border: 1px solid var(--ui-border-subtle, #e2e8f0);
+  border-radius: var(--ui-radius-md, 0.5rem);
+  background: var(--ui-surface-elevated, #fff);
+  color: var(--ui-text-primary, #0f172a);
+  font: inherit;
+  font-size: 0.875rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ip-list-subnet-combobox__input::placeholder {
+  color: var(--ui-text-muted, #475569);
+}
+
+.ip-list-subnet-combobox__input:focus-visible {
+  outline: 2px solid var(--ui-accent-primary);
+  outline-offset: 1px;
+  border-color: var(--ui-accent-primary);
+}
+
+.ip-list-subnet-combobox__clear {
+  position: absolute;
+  right: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ui-text-muted, #475569);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.ip-list-subnet-combobox__clear:hover {
+  background: var(--ui-surface-hover, #f8fafc);
+  color: var(--ui-text-primary, #0f172a);
+}
+
+.ip-list-subnet-combobox__listbox {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  max-height: 18rem;
+  overflow: auto;
+  border: 1px solid var(--ui-border-subtle, #e2e8f0);
+  border-radius: var(--ui-radius-md, 0.5rem);
+  background: var(--ui-surface-elevated, #fff);
+  box-shadow: 0 10px 24px rgb(15 23 42 / 12%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ip-list-subnet-combobox__listbox {
+    animation: ip-list-subnet-combobox-in 0.15s ease;
+  }
+}
+
+@keyframes ip-list-subnet-combobox-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ip-list-subnet-combobox__listbox {
+    animation: none;
+  }
+}
+
+.ip-list-subnet-combobox__group {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ip-list-subnet-combobox__group + .ip-list-subnet-combobox__group {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--ui-border-subtle, #e2e8f0);
+}
+
+.ip-list-subnet-combobox__group-label {
+  display: block;
+  padding: 0.25rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ui-text-muted, #475569);
+}
+
+.ip-list-subnet-combobox__group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ip-list-subnet-combobox__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: var(--ui-radius-sm, 0.35rem);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.ip-list-subnet-combobox__option:hover,
+.ip-list-subnet-combobox__option.is-active {
+  background: var(--ui-surface-hover, #f8fafc);
+}
+
+.ip-list-subnet-combobox__option:focus-visible {
+  outline: 2px solid var(--ui-accent-primary);
+  outline-offset: 1px;
+}
+
+.ip-list-subnet-combobox__option-copy {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.ip-list-subnet-combobox__option-label {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ui-text-primary, #0f172a);
+  line-height: 1.2;
+}
+
+.ip-list-subnet-combobox__option-sublabel {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--ui-text-muted, #475569);
+  font-family: var(--ui-font-mono, ui-monospace, monospace);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ip-list-subnet-combobox__option-count {
+  flex-shrink: 0;
+  min-width: 1.35rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-align: center;
+  background: var(--ui-surface-muted, #f1f5f9);
+  color: var(--ui-text-secondary, #475569);
+}
+
+.ip-list-subnet-combobox__empty {
+  padding: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--ui-text-muted, #475569);
+}
+
+.ip-list-subnet-combobox__footer {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--ui-border-subtle, #e2e8f0);
+}
+
+.ip-list-subnet-combobox__manage {
+  display: inline-block;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ui-accent-primary);
+  text-decoration: none;
+}
+
+.ip-list-subnet-combobox__manage:hover {
+  text-decoration: underline;
+}
+
+.ip-list-subnet-context {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--ui-text-secondary);
+}
+
+.ip-list-subnet-context code {
+  font-size: 0.75rem;
+}
+
+.ip-list-subnet-context__clear {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ui-accent-primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.ip-list-subnet-context__clear:hover {
+  color: var(--ui-text-primary);
+}
+
+.ip-list-subnet-context__link {
+  font-weight: 600;
+  color: var(--ui-accent-primary);
+  text-decoration: underline;
+}
+
+.ip-list-subnet-context__link:hover {
+  color: var(--ui-text-primary);
+}
+
+.ip-list-groups {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.ip-list-group {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.ip-list-group__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--ui-border-subtle);
+}
+
+.ip-list-group__title-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ui-text-primary);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.ip-list-group__title-button:hover {
+  color: var(--ui-accent-primary);
+}
+
+.ip-list-group__title-button:focus-visible {
+  outline: 2px solid var(--ui-accent-primary);
+  outline-offset: 2px;
+}
+
+.ip-list-group__title {
+  margin: 0;
+}
+
+.ip-list-group__chevron {
+  opacity: 0.45;
+  flex-shrink: 0;
+}
+
+.ip-list-group__title-button:hover .ip-list-group__chevron {
+  opacity: 0.85;
+}
+
+.ip-list-group__count {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ui-text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ip-list-table-wrap {
+  min-width: 0;
+  overflow-x: auto;
+  width: 100%;
+  max-width: 100%;
+}
+
+.ip-list-table {
+  width: 100%;
+  min-width: 64rem;
+  table-layout: fixed;
+}
+
+.ip-list-table__row {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.ip-list-table__row:hover {
+  background: var(--ui-surface-hover);
+}
+
+.ip-list-table__col--ip {
+  width: 11rem;
+}
+
+.ip-list-table__col--purpose {
+  width: 11rem;
+}
+
+.ip-list-table__col--host-num {
+  width: 5rem;
+}
+
+.ip-list-table__col--hostname {
+  width: 13rem;
+}
+
+.ip-list-table__col--source {
+  width: 6.5rem;
+}
+
+.ip-list-table__col--where {
+  width: 12rem;
+}
+
+.ip-list-table__col--mac {
+  width: 11rem;
+}
+
+.ip-list-table__col--action {
+  width: 5rem;
+}
+
+.ip-list-table th,
+.ip-list-table td {
+  min-width: 0;
+  padding: 0.6rem 0.7rem;
+  line-height: 1.35;
+  vertical-align: top;
+}
+
+.ip-list-table th {
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.ip-list-network-cell {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.8125rem;
+  color: var(--ui-text-primary);
+}
+
+.ip-list-ip-cell,
+.ip-list-mac-cell {
+  white-space: nowrap;
+}
+
+.ip-list-entity-link,
+.ip-list-row-ip-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.45rem;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: 0.5rem;
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text-primary);
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.ip-list-host-num {
+  color: var(--ui-text-muted);
+  font-size: 0.78rem;
+}
+
+.ip-list-entity-link:hover {
+  background: var(--ui-surface-hover);
+  border-color: color-mix(in srgb, var(--ui-accent-primary) 35%, var(--ui-border-subtle));
+  color: var(--ui-accent-primary);
+}
+
+.ip-list-entity-link:focus-visible {
+  outline: 2px solid var(--ui-accent-primary);
+  outline-offset: 2px;
+}
+
+.ip-list-detail-link {
+  color: var(--ui-accent-primary);
+  font-size: 0.85rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.ip-list-detail-link:hover {
+  text-decoration: underline;
+}
+
+.ip-list-purpose-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid var(--ui-border-subtle);
+  background: color-mix(in srgb, var(--ui-accent-primary) 6%, var(--ui-surface-elevated));
+  color: var(--ui-text-primary);
+}
+
+.ip-list-purpose-chip.is-clickable {
+  margin: 0;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.ip-list-purpose-chip.is-clickable:hover {
+  border-color: color-mix(in srgb, var(--ui-accent-primary) 40%, var(--ui-border-subtle));
+  background: color-mix(in srgb, var(--ui-accent-primary) 12%, var(--ui-surface-elevated));
+}
+
+.ip-list-purpose-chip.is-clickable:focus-visible {
+  outline: 2px solid var(--ui-accent-primary);
+  outline-offset: 2px;
+}
+
+.ip-list-purpose-chip.is-unmapped {
+  background: var(--ui-surface-muted);
+  color: var(--ui-text-muted);
+  border-style: dashed;
+}
+
+.ip-list-source-badge,
+.ip-source-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.ip-source-badge.is-asset {
+  background: #ecfdf5;
+  color: #065f46;
+  border-color: #a7f3d0;
+}
+
+.ip-source-badge.is-manual {
+  background: #eff6ff;
+  color: #1e40af;
+  border-color: #bfdbfe;
+}
+
+.ip-source-badge.is-muted {
+  background: var(--ui-surface-muted);
+  color: var(--ui-text-muted);
+  border-color: var(--ui-border-subtle);
+}
+
+.ip-list-feedback {
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.ip-list-feedback.is-error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.ip-list-feedback button {
+  justify-self: start;
+}
+
+.ip-list-muted {
+  margin: 0;
+  color: var(--ui-text-muted);
+  font-size: 0.875rem;
+}
+
+.ip-list-form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.ip-list-form__header {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.ip-list-form__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ui-text-primary);
+}
+
+.ip-list-form__description {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ui-text-muted);
+}
+
+.ip-list-form__grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.ip-list-form__field {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.ip-list-form__field.is-full {
+  grid-column: 1 / -1;
+}
+
+.ip-list-form__label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ui-text-secondary);
+}
+
+.ip-list-form__required {
+  margin-left: 0.15rem;
+  color: #b91c1c;
+}
+
+.ip-list-form__input {
+  width: 100%;
+  min-height: 2.25rem;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.65rem;
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text-primary);
+  font: inherit;
+}
+
+.ip-list-form__input:focus-visible {
+  outline: 2px solid var(--ui-accent-primary);
+  outline-offset: 2px;
+}
+
+.ip-list-form__textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+}
+
+.ip-list-form__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.workspace-inline-button.is-danger {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+
+.workspace-inline-button.is-danger:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.ip-list-subnet-manager {
+  display: grid;
+  gap: 1rem;
+}
+
+.ip-list-subnet-manager__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.ip-list-subnet-manager__title {
+  margin: 0 0 0.15rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.ip-list-subnet-manager__description {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ui-text-muted);
+}
+
+.ip-list-subnet-form {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  align-items: end;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--ui-border-subtle);
+}
+
+.ip-list-subnet-form .ip-list-feedback {
+  grid-column: 1 / -1;
+}
+
+.ip-list-subnet-form .ip-list-form__actions {
+  grid-column: 1 / -1;
+}
+
+.ip-list-subnet-rule-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.ip-list-subnet-rule {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: 0.6rem;
+  background: var(--ui-surface-elevated);
+}
+
+.ip-list-subnet-rule__copy {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.ip-list-subnet-rule__purpose {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.ip-list-subnet-rule__cidr {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ui-text-muted);
+}
+
+.ip-list-subnet-rule__description {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ui-text-secondary);
+}
+
+.ip-list-subnet-rule__actions {
+  display: inline-flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.ip-list-hero {
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: 1rem;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--ui-accent-primary) 7%, var(--ui-surface-elevated)),
+    var(--ui-surface-elevated) 55%
+  );
+}
+
+.ip-list-hero__lead {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+}
+
+.ip-list-hero__icon {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--ui-accent-primary) 22%, var(--ui-border-subtle));
+  background: color-mix(in srgb, var(--ui-accent-primary) 10%, var(--ui-surface-elevated));
+  color: var(--ui-accent-primary);
+}
+
+.ip-list-hero__icon-svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.ip-list-hero__copy {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.ip-list-hero__ip {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.ip-list-hero__name {
+  margin: 0;
+  color: var(--ui-text-secondary);
+}
+
+.ip-list-hero__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.ip-list-detail-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid var(--ui-border-subtle);
+  background: var(--ui-surface-muted);
+  color: var(--ui-text-secondary);
+}
+
+.ip-list-spec-table {
+  margin: 0;
+  display: grid;
+  gap: 0;
+}
+
+.ip-list-spec-table__row {
+  display: grid;
+  gap: 0.15rem 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--ui-border-subtle);
+}
+
+.ip-list-spec-table__row:last-child {
+  border-bottom: none;
+}
+
+@media (min-width: 560px) {
+  .ip-list-spec-table__row {
+    grid-template-columns: minmax(8rem, 30%) 1fr;
+    align-items: baseline;
+  }
+}
+
+.ip-list-spec-table__row dt {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--ui-text-muted);
+}
+
+.ip-list-spec-table__row dd {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ui-text-primary);
+  word-break: break-word;
+}
+
+.ip-list-action-row {
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
+.ip-list-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+
+.ip-list-source-pills {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-self: end;
+}
+
+.ip-list-source-pill {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: 999px;
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.ip-list-source-pill.is-active {
+  background: color-mix(in srgb, var(--ui-accent-primary) 10%, var(--ui-surface-elevated));
+  border-color: color-mix(in srgb, var(--ui-accent-primary) 35%, var(--ui-border-subtle));
+  color: var(--ui-accent-primary);
+}
+
+.ip-list-source-pill:focus-visible {
+  outline: 2px solid var(--ui-accent-primary);
+  outline-offset: 2px;
+}
+
+.ip-list-active-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--ui-border-subtle);
+  background: var(--ui-surface-muted);
+  font-size: 0.8125rem;
+  color: var(--ui-text-secondary);
+}
+
+.ip-list-active-filter__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ui-text-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ip-list-active-filter__clear:hover {
+  background: var(--ui-surface-hover);
+  color: var(--ui-text-primary);
+}
+
+.ip-list-ip-hint {
+  margin-top: 0.35rem;
+  font-size: 0.8125rem;
+}
+
+.ip-list-ip-hint__checking {
+  color: var(--ui-text-muted);
+}
+
+.ip-list-ip-hint__available {
+  display: inline-flex;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #065f46;
+  font-weight: 600;
+}
+
+.ip-list-ip-hint__taken {
+  color: #991b1b;
+}
+
+.ip-list-ip-hint__link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.ip-list-drawer-root {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ip-list-drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: color-mix(in srgb, var(--ui-shadow) 35%, transparent);
+  cursor: pointer;
+}
+
+.ip-list-drawer {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  width: clamp(22rem, 38vw, 32rem);
+  max-width: 100%;
+  height: 100%;
+  border-left: 1px solid var(--ui-border-subtle);
+  background: var(--ui-surface-elevated);
+  box-shadow: -4px 0 24px color-mix(in srgb, var(--ui-shadow) 18%, transparent);
+  outline: none;
+}
+
+.ip-list-drawer__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--ui-border-subtle);
+  background: var(--ui-surface-muted);
+}
+
+.ip-list-drawer__eyebrow {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-text-muted);
+}
+
+.ip-list-drawer__actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
+.ip-list-drawer__body {
+  overflow-y: auto;
+  padding: 1rem;
+  display: grid;
+  gap: 0.85rem;
+  align-content: start;
+}
+
+.ip-list-hero--compact {
+  padding: 0.75rem 0.85rem;
+}
+
+.ip-list-hero--compact .ip-list-hero__icon {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.ip-list-hero--compact .ip-list-hero__ip {
+  font-size: 1rem;
+}
+
+@media (max-width: 767px) {
+  .ip-list-table {
+    min-width: 56rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .ip-list-toolbar {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .ip-list-header-actions {
+    width: 100%;
+  }
+
+  .ip-list-header-actions .workspace-inline-button {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .ip-list-form__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ip-list-filter-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ip-list-source-pills {
+    align-self: stretch;
+    width: 100%;
+  }
+
+  .ip-list-source-pill {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  .ip-list-drawer {
+    width: 100vw;
+    max-width: none;
+  }
+}

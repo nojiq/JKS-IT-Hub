@@ -45,23 +45,23 @@ export const notifyNewRequest = async (request, requester, deps = defaultDeps) =
 
         const { subject, html, text } = templates.newRequestSubmitted(templateData);
 
-        // Record notification attempt
-        const notification = await notificationRepo.createNotificationRecord({
-            recipientEmail: recipients.join(', '),
+        // Record one notification per recipient; recipient_email is sized for one address.
+        const notifications = await Promise.all(recipients.map((recipientEmail) => notificationRepo.createNotificationRecord({
+            recipientEmail,
             subject,
             templateType: 'new_request_submitted',
             referenceType: 'item_request',
             referenceId: request.id
-        });
+        })));
 
         const result = await sendEmail({ to: recipients, subject, html, text });
 
         // Update notification status
-        await notificationRepo.updateNotificationStatus(
+        await Promise.all(notifications.map((notification) => notificationRepo.updateNotificationStatus(
             notification.id,
             result.success ? 'sent' : 'failed',
             result.error
-        );
+        )));
 
         // Audit log
         await auditRepo.createAuditLog({
@@ -142,16 +142,18 @@ export const notifyITReviewComplete = async (request, reviewer, outcome, deps = 
 
                 const { subject, html, text } = templates.pendingApproval(templateData);
 
-                const notification = await notificationRepo.createNotificationRecord({
-                    recipientEmail: approverEmails.join(', '),
+                const notifications = await Promise.all(approverEmails.map((recipientEmail) => notificationRepo.createNotificationRecord({
+                    recipientEmail,
                     subject,
                     templateType: 'pending_approval',
                     referenceType: 'item_request',
                     referenceId: request.id
-                });
+                })));
 
                 const result = await sendEmail({ to: approverEmails, subject, html, text });
-                await notificationRepo.updateNotificationStatus(notification.id, result.success ? 'sent' : 'failed', result.error);
+                await Promise.all(notifications.map((notification) =>
+                    notificationRepo.updateNotificationStatus(notification.id, result.success ? 'sent' : 'failed', result.error)
+                ));
             }
         }
     } catch (error) {

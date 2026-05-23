@@ -8,6 +8,10 @@ import credentialRoutes from "../../apps/api/src/features/credentials/routes.js"
 import * as usersRepo from "../../apps/api/src/features/users/repo.js";
 import { signSessionToken } from "../../apps/api/src/shared/auth/jwt.js";
 
+test.after(async () => {
+    await usersRepo.prisma.$disconnect();
+});
+
 const require = createRequire(new URL("../../apps/api/package.json", import.meta.url));
 const Fastify = require("fastify");
 const cookie = require("@fastify/cookie");

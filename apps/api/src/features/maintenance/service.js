@@ -9,7 +9,7 @@ import { prisma } from '../../shared/db/prisma.js';
 import { randomUUID } from 'node:crypto';
 import { deleteFile, ensureUploadDir, saveFile } from '../../shared/uploads/storage.js';
 
-const ALLOWED_ROLES = ['dev'];
+const ALLOWED_ROLES = ['dev', 'it', 'admin', 'head_it'];
 const SIGNATURE_DATA_URL_PREFIX = 'data:image/png;base64,';
 const MAX_SIGNATURE_SIZE_BYTES = 300 * 1024;
 export const MAINTENANCE_CONFIG_REQUIRED_FIELDS = Object.freeze([
@@ -917,7 +917,7 @@ export const validateSignOffEligibility = async (windowId, userId, userRole) => 
 
     // Check assignment
     const isAssigned = window.assignedToId === userId;
-    const hasPrivilegedRole = ['dev'].includes(userRole);
+    const hasPrivilegedRole = ALLOWED_ROLES.includes(userRole);
 
     if (!isAssigned && !hasPrivilegedRole) {
         return {

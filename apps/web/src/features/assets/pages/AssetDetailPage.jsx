@@ -132,7 +132,20 @@ export default function AssetDetailPage() {
           <AssetSpecCard title="Network" description="IP and MAC addresses synced from Snipe-IT custom fields.">
             <SpecTable
               rows={[
-                ["IP address", formatAssetValue(asset.ipAddress)],
+                [
+                  "IP address",
+                  asset.ipAddress ? (
+                    <Link
+                      className="assets-entity-link"
+                      to={`/ip-list/${encodeURIComponent(asset.ipAddress)}`}
+                      title={`Open IP list record for ${asset.ipAddress}`}
+                    >
+                      {formatAssetValue(asset.ipAddress)}
+                    </Link>
+                  ) : (
+                    formatAssetValue(asset.ipAddress)
+                  )
+                ],
                 ...macAddressRows.map(([label, value]) => [`MAC address ${label}`, formatAssetValue(value)])
               ]}
             />

@@ -159,7 +159,7 @@ describe('RequestsHomePage', () => {
         renderProductionRequestsRoute();
 
         expect(await screen.findByRole('heading', { name: 'Requests' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'New Request' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'New Request' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Needs Review' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Waiting for Approval' })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: 'Blocked' })).toBeInTheDocument();
@@ -190,18 +190,16 @@ describe('RequestsHomePage', () => {
         expect(await screen.findByRole('heading', { name: 'Approval Queue' })).toBeInTheDocument();
     });
 
-    it('redirects admin users away from approvals', async () => {
-        const { router } = renderProductionRequestsRoute({ initialEntry: '/requests/approvals', user: adminUser });
+    it('lets admin users open approvals', async () => {
+        renderProductionRequestsRoute({ initialEntry: '/requests/approvals', user: adminUser });
 
-        expect(await screen.findByText('Dashboard Content')).toBeInTheDocument();
-        expect(router.state.location.pathname).toBe('/');
+        expect(await screen.findByRole('heading', { name: 'Approval Queue' })).toBeInTheDocument();
     });
 
-    it('redirects head_it users away from approvals', async () => {
-        const { router } = renderProductionRequestsRoute({ initialEntry: '/requests/approvals', user: headItUser });
+    it('lets head_it users open approvals', async () => {
+        renderProductionRequestsRoute({ initialEntry: '/requests/approvals', user: headItUser });
 
-        expect(await screen.findByText('Dashboard Content')).toBeInTheDocument();
-        expect(router.state.location.pathname).toBe('/');
+        expect(await screen.findByRole('heading', { name: 'Approval Queue' })).toBeInTheDocument();
     });
 
     it('redirects user role away from my requests', async () => {
@@ -229,11 +227,10 @@ describe('RequestsHomePage', () => {
         expect(screen.queryByRole('heading', { name: 'Approval Queue' })).not.toBeInTheDocument();
     });
 
-    it('redirects admin away from legacy approvals deep link after forwarding', async () => {
-        const { router } = renderProductionRequestsRoute({ initialEntry: '/admin/approvals', user: adminUser });
+    it('follows legacy admin approvals redirect for admin users', async () => {
+        renderProductionRequestsRoute({ initialEntry: '/admin/approvals', user: adminUser });
 
-        expect(await screen.findByText('Dashboard Content')).toBeInTheDocument();
-        expect(router.state.location.pathname).toBe('/');
+        expect(await screen.findByRole('heading', { name: 'Approval Queue' })).toBeInTheDocument();
     });
 
     it('follows legacy admin approvals redirect for developer users', async () => {

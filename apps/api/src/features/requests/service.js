@@ -1,6 +1,6 @@
 import * as repo from './repo.js';
 import { createAuditLog } from '../audit/repo.js'; // Fallback as shared/audit/logger.js missing
-import { hasDevRole } from '../../shared/auth/rbac.js';
+import { hasItRole } from '../../shared/auth/rbac.js';
 import {
     notifyNewRequest,
     notifyITReviewComplete,
@@ -14,6 +14,22 @@ import {
     emitRequestStatusChanged,
     emitRequestUpdated
 } from './events.js';
+
+const pendingNotificationTasks = new Set();
+
+function queueNotification(task, errorMessage) {
+    const pendingTask = Promise.resolve()
+        .then(task)
+        .catch(err => console.error(errorMessage, err))
+        .finally(() => pendingNotificationTasks.delete(pendingTask));
+
+    pendingNotificationTasks.add(pendingTask);
+    return pendingTask;
+}
+
+export async function __waitForPendingRequestNotifications() {
+    await Promise.allSettled([...pendingNotificationTasks]);
+}
 
 async function ensureNotSelfReview(existingRequest, actorUser, requestId, attemptedAction) {
     if (existingRequest.requesterId !== actorUser.id) {
@@ -66,11 +82,13 @@ export async function submitRequest(data, actorUser) {
         console.error("Failed to default audit log", err);
     }
 
-    notifyNewRequest(request, actorUser).catch(err =>
-        console.error('Failed to send notification', err)
+    queueNotification(
+        () => notifyNewRequest(request, actorUser),
+        'Failed to send notification'
     );
-    notifyNewRequestInApp(request, actorUser).catch(err =>
-        console.error('Failed to send in-app notification', err)
+    queueNotification(
+        () => notifyNewRequestInApp(request, actorUser),
+        'Failed to send in-app notification'
     );
     emitRequestCreated(request, actorUser);
 
@@ -82,7 +100,7 @@ export async function getMyRequests(actorUser, filters = {}, pagination = {}) {
 }
 
 export async function getAllRequests(filters = {}, pagination = {}, actorUser) {
-    if (!hasDevRole(actorUser)) {
+    if (!hasItRole(actorUser)) {
         const error = new Error("Unauthorized access");
         error.name = 'Forbidden';
         throw error;
@@ -99,7 +117,7 @@ export async function getRequestDetails(requestId, actorUser) {
 
     // RBAC: If not requester, must be IT/Admin/Head
     if (request.requesterId !== actorUser.id) {
-        if (!hasDevRole(actorUser)) {
+        if (!hasItRole(actorUser)) {
             const error = new Error("You do not have permission to view this request");
             error.name = 'Forbidden';
             throw error;
@@ -211,9 +229,9 @@ export async function itReviewRequest(requestId, reviewData, actorUser) {
     // SELF-REVIEW CHECK: Check this BEFORE RBAC for better error message
     await ensureNotSelfReview(existingRequest, actorUser, requestId, 'it_review');
 
-    // RBAC: Only developer role can review (after self-review check)
-    if (!hasDevRole(actorUser)) {
-        const error = new Error("Only the developer role can review requests");
+    // RBAC: Only IT staff roles can review (after self-review check)
+    if (!hasItRole(actorUser)) {
+        const error = new Error("Only IT staff roles can review requests");
         error.name = 'Forbidden';
         throw error;
     }
@@ -247,11 +265,13 @@ export async function itReviewRequest(requestId, reviewData, actorUser) {
         }
     });
 
-    notifyITReviewComplete(updatedRequest, actorUser, 'reviewed').catch(err =>
-        console.error('Failed to send notification', err)
+    queueNotification(
+        () => notifyITReviewComplete(updatedRequest, actorUser, 'reviewed'),
+        'Failed to send notification'
     );
-    notifyITReviewCompleteInApp(updatedRequest, actorUser, 'reviewed').catch(err =>
-        console.error('Failed to send in-app notification', err)
+    queueNotification(
+        () => notifyITReviewCompleteInApp(updatedRequest, actorUser, 'reviewed'),
+        'Failed to send in-app notification'
     );
     emitRequestStatusChanged(updatedRequest, 'SUBMITTED', actorUser);
 
@@ -260,8 +280,8 @@ export async function itReviewRequest(requestId, reviewData, actorUser) {
 
 export async function markAlreadyPurchased(requestId, reason, actorUser) {
     // RBAC check
-    if (!hasDevRole(actorUser)) {
-        const error = new Error("Only the developer role can mark requests as already purchased");
+    if (!hasItRole(actorUser)) {
+        const error = new Error("Only IT staff roles can mark requests as already purchased");
         error.name = 'Forbidden';
         throw error;
     }
@@ -301,11 +321,13 @@ export async function markAlreadyPurchased(requestId, reason, actorUser) {
         }
     });
 
-    notifyITReviewComplete(updatedRequest, actorUser, 'already_purchased').catch(err =>
-        console.error('Failed to send notification', err)
+    queueNotification(
+        () => notifyITReviewComplete(updatedRequest, actorUser, 'already_purchased'),
+        'Failed to send notification'
     );
-    notifyITReviewCompleteInApp(updatedRequest, actorUser, 'already_purchased').catch(err =>
-        console.error('Failed to send in-app notification', err)
+    queueNotification(
+        () => notifyITReviewCompleteInApp(updatedRequest, actorUser, 'already_purchased'),
+        'Failed to send in-app notification'
     );
     emitRequestStatusChanged(updatedRequest, 'SUBMITTED', actorUser);
 
@@ -314,8 +336,8 @@ export async function markAlreadyPurchased(requestId, reason, actorUser) {
 
 export async function rejectRequest(requestId, rejectionReason, actorUser) {
     // RBAC check
-    if (!hasDevRole(actorUser)) {
-        const error = new Error("Only the developer role can reject requests");
+    if (!hasItRole(actorUser)) {
+        const error = new Error("Only IT staff roles can reject requests");
         error.name = 'Forbidden';
         throw error;
     }
@@ -357,11 +379,13 @@ export async function rejectRequest(requestId, rejectionReason, actorUser) {
         }
     });
 
-    notifyITReviewComplete(updatedRequest, actorUser, 'rejected').catch(err =>
-        console.error('Failed to send notification', err)
+    queueNotification(
+        () => notifyITReviewComplete(updatedRequest, actorUser, 'rejected'),
+        'Failed to send notification'
     );
-    notifyITReviewCompleteInApp(updatedRequest, actorUser, 'rejected').catch(err =>
-        console.error('Failed to send in-app notification', err)
+    queueNotification(
+        () => notifyITReviewCompleteInApp(updatedRequest, actorUser, 'rejected'),
+        'Failed to send in-app notification'
     );
 
     emitRequestStatusChanged(updatedRequest, existingRequest.status, actorUser);
@@ -397,9 +421,9 @@ export async function approveRequest(requestId, actorUser) {
         throw error;
     }
 
-    // RBAC: Must be developer role (after self-approval check)
-    if (!hasDevRole(actorUser)) {
-        const error = new Error("Only the developer role can approve requests");
+    // RBAC: Must be IT staff role (after self-approval check)
+    if (!hasItRole(actorUser)) {
+        const error = new Error("Only IT staff roles can approve requests");
         error.name = 'Forbidden';
         throw error;
     }
@@ -436,11 +460,13 @@ export async function approveRequest(requestId, actorUser) {
         }
     });
 
-    notifyApprovalComplete(updatedRequest, actorUser, 'approved').catch(err =>
-        console.error('Failed to send notification', err)
+    queueNotification(
+        () => notifyApprovalComplete(updatedRequest, actorUser, 'approved'),
+        'Failed to send notification'
     );
-    notifyApprovalCompleteInApp(updatedRequest, actorUser, 'approved').catch(err =>
-        console.error('Failed to send in-app notification', err)
+    queueNotification(
+        () => notifyApprovalCompleteInApp(updatedRequest, actorUser, 'approved'),
+        'Failed to send in-app notification'
     );
     emitRequestStatusChanged(updatedRequest, 'IT_REVIEWED', actorUser);
 

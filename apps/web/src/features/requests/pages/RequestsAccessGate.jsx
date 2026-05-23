@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation, useOutletContext } from "react-router-dom";
+import { APP_ACCESS_ROLES } from "../../../shared/auth/workspaceRoles.js";
 
 const RESERVED_SEGMENTS = new Set(["new", "my-requests", "review", "approvals"]);
 
@@ -22,7 +23,7 @@ export function RequestsAccessGate() {
     return <Navigate to="/login" replace />;
   }
 
-  if (user.role === "dev") {
+  if (APP_ACCESS_ROLES.includes(user.role)) {
     return <Outlet context={{ user }} />;
   }
 

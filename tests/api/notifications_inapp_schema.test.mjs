@@ -3,6 +3,10 @@ import { test } from 'node:test';
 import assert from 'node:assert';
 import { prisma } from '../../apps/api/src/shared/db/prisma.js';
 
+test.after(async () => {
+    await prisma.$disconnect();
+});
+
 test('InAppNotification model exists in Prisma client', async () => {
     // This test is expected to fail before the migration is run
     try {

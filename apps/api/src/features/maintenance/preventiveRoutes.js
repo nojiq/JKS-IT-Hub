@@ -1,4 +1,4 @@
-import { requireAuthenticated } from '../../shared/auth/requireAuthenticated.js';
+import { requireActiveUser } from '../../shared/auth/requireActiveUser.js';
 import { requireItUser } from '../../shared/auth/requireItUser.js';
 import * as preventiveService from './preventiveMaintenanceService.js';
 import * as taskPresetService from './taskPresetService.js';
@@ -171,7 +171,7 @@ export default async function preventiveMaintenanceRoutes(app, { config, userRep
     });
 
     app.post('/runs/items/:itemId/evidence', async (request, reply) => {
-        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        const actor = await requireActiveUser(request, reply, { config, userRepo });
         if (!actor) return;
         try {
             const data = await request.file();

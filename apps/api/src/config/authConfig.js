@@ -62,7 +62,10 @@ const envSchema = z.object({
   SNIPE_IT_API_TOKEN: z.string().optional(),
   SNIPE_IT_SYNC_ENABLED: z.string().optional(),
   SNIPE_IT_SYNC_CRON: z.string().optional(),
-  SNIPE_IT_SYNC_TIMEOUT_MS: z.string().optional()
+  SNIPE_IT_SYNC_TIMEOUT_MS: z.string().optional(),
+  SCRAPER_ENABLED: z.string().optional(),
+  SCRAPER_BASE_URL: z.string().optional(),
+  SCRAPER_TIMEOUT_MS: z.string().optional()
 });
 
 export const getAuthConfig = () => {
@@ -124,6 +127,11 @@ export const getAuthConfig = () => {
       enabled: toBoolean(env.SNIPE_IT_SYNC_ENABLED, Boolean(env.SNIPE_IT_BASE_URL && env.SNIPE_IT_API_TOKEN)),
       schedule: env.SNIPE_IT_SYNC_CRON ?? "0 */6 * * *",
       timeoutMs: toNumber(env.SNIPE_IT_SYNC_TIMEOUT_MS) ?? 15000
+    },
+    scraper: {
+      enabled: toBoolean(env.SCRAPER_ENABLED, Boolean(env.SCRAPER_BASE_URL)),
+      baseUrl: env.SCRAPER_BASE_URL ?? "http://localhost:3016",
+      timeoutMs: toNumber(env.SCRAPER_TIMEOUT_MS) ?? 15000
     }
   };
 };

@@ -1,0 +1,246 @@
+.my-purchase-records-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.my-purchase-records-page.is-loading,
+.my-purchase-records-page.is-error {
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--ui-text-secondary);
+}
+
+.my-purchase-records-page.is-error {
+  color: var(--ui-feedback-error);
+}
+
+.my-purchase-records-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.9rem 1rem;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--ui-border-subtle) 78%, transparent);
+  border-radius: var(--radius-panel);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ui-surface-elevated) 92%, transparent), color-mix(in srgb, var(--ui-accent-muted) 24%, var(--ui-surface-elevated))),
+    var(--ui-surface-elevated);
+  box-shadow: var(--shadow-sm);
+}
+
+.my-purchase-records-hero__copy {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.my-purchase-records-hero__eyebrow {
+  margin: 0;
+  color: var(--ui-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.my-purchase-records-hero__copy h2 {
+  margin: 0;
+  color: var(--ui-text-primary);
+  font-family: var(--font-heading);
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  line-height: 1.15;
+}
+
+.my-purchase-records-hero__copy p:last-child {
+  margin: 0;
+  color: var(--ui-text-secondary);
+  font-size: 0.92rem;
+}
+
+.my-purchase-records-hero__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(5.5rem, auto));
+  gap: 0.55rem;
+}
+
+.my-purchase-records-hero__stats div {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--ui-border-subtle) 70%, transparent);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--ui-surface-elevated) 88%, transparent);
+}
+
+.my-purchase-records-hero__stats span {
+  color: var(--ui-text-muted);
+  font-size: 0.74rem;
+}
+
+.my-purchase-records-hero__stats strong {
+  color: var(--ui-text-primary);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.my-purchase-records-toolbar {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.my-purchase-records-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.purchase-record-card {
+  width: 100%;
+  text-align: left;
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--radius-panel);
+  background: var(--ui-surface-elevated);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.purchase-record-card:hover {
+  border-color: color-mix(in srgb, var(--ui-accent-primary) 35%, var(--ui-border-subtle));
+  background: color-mix(in srgb, var(--ui-accent-muted) 18%, var(--ui-surface-elevated));
+  box-shadow: var(--shadow-md, 0 8px 20px rgba(15, 23, 42, 0.08));
+}
+
+.purchase-record-card:focus-visible {
+  outline: 2px solid var(--ui-accent-primary);
+  outline-offset: 2px;
+}
+
+.purchase-record-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.purchase-record-card__thumb {
+  width: 3.5rem;
+  height: 3.5rem;
+  flex: 0 0 auto;
+  object-fit: cover;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--ui-border-subtle);
+  background: var(--ui-surface-muted);
+}
+
+.purchase-record-card__title-wrap {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  margin-right: auto;
+}
+
+.purchase-record-card__title-wrap h3 {
+  margin: 0;
+  color: var(--ui-text-primary);
+  font-size: 1.02rem;
+  line-height: 1.25;
+}
+
+.purchase-record-card__meta-chip {
+  width: fit-content;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-accent-muted) 55%, transparent);
+  color: var(--ui-text-secondary);
+  font-size: 0.74rem;
+  font-weight: 650;
+}
+
+.purchase-record-card__reason {
+  margin: 0;
+  color: var(--ui-text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.purchase-record-card__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.8rem;
+  color: var(--ui-text-muted);
+  font-size: 0.8rem;
+}
+
+.purchase-record-card__cta {
+  margin-left: auto;
+  color: var(--ui-accent-primary);
+  font-weight: 650;
+}
+
+.my-purchase-records-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  border: 1px dashed var(--ui-border-subtle);
+  border-radius: var(--radius-panel);
+  color: var(--ui-text-secondary);
+}
+
+.my-purchase-records-empty__cta {
+  margin-top: 0.75rem;
+  border: 0;
+  background: transparent;
+  color: var(--ui-accent-primary);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.my-purchase-records-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.my-purchase-records-pagination button {
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--ui-surface-elevated);
+  cursor: pointer;
+}
+
+.my-purchase-records-pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.my-purchase-records-modal-loading {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.45);
+  color: #fff;
+  z-index: 1000;
+}
+
+@media (max-width: 900px) {
+  .my-purchase-records-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .my-purchase-records-hero__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .purchase-record-card,
+  .my-purchase-records-hero__cta {
+    transition: none;
+  }
+}

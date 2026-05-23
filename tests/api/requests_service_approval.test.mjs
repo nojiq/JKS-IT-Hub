@@ -5,6 +5,9 @@ import { randomUUID } from "node:crypto";
 import * as service from "../../apps/api/src/features/requests/service.js";
 import * as repo from "../../apps/api/src/features/requests/repo.js";
 import { prisma } from "../../apps/api/src/shared/db/prisma.js";
+import { createLegacyItemRequest } from "./helpers/legacyItemRequest.mjs";
+
+const itemRequest = createLegacyItemRequest(prisma);
 
 test("Requests Approval - Service Layer", async (t) => {
     let requesterUser;
@@ -47,13 +50,9 @@ test("Requests Approval - Service Layer", async (t) => {
     });
 
     await t.test("approveRequest - Validation", async () => {
-        // 1. Fail if user is not developer (IT and admin cannot approve)
+        // 1. Fail if user is not an IT-related role.
         await assert.rejects(
-            async () => service.approveRequest(requestId, itUser),
-            { name: "Forbidden" }
-        );
-        await assert.rejects(
-            async () => service.approveRequest(requestId, adminUser),
+            async () => service.approveRequest(requestId, otherUser),
             { name: "Forbidden" }
         );
 
@@ -64,14 +63,14 @@ test("Requests Approval - Service Layer", async (t) => {
         );
 
         // 3. Fail if status invalid (Reset to SUBMITTED) — developer still blocked by status gate after RBAC
-        await prisma.itemRequest.update({ where: { id: requestId }, data: { status: "SUBMITTED" } });
+        await itemRequest.update({ where: { id: requestId }, data: { status: "SUBMITTED" } });
         await assert.rejects(
             async () => service.approveRequest(requestId, devUser),
             { name: "ValidationError" }
         );
 
         // Reset to IT_REVIEWED
-        await prisma.itemRequest.update({ where: { id: requestId }, data: { status: "IT_REVIEWED" } });
+        await itemRequest.update({ where: { id: requestId }, data: { status: "IT_REVIEWED" } });
     });
 
     await t.test("approveRequest - Success", async () => {
@@ -90,12 +89,19 @@ test("Requests Approval - Service Layer", async (t) => {
 
     // Cleanup
     await t.test("Cleanup", async () => {
-        if (requestId) await prisma.itemRequest.delete({ where: { id: requestId } });
-        if (requesterUser) await prisma.user.delete({ where: { id: requesterUser.id } });
-        if (adminUser) await prisma.user.delete({ where: { id: adminUser.id } });
-        if (itUser) await prisma.user.delete({ where: { id: itUser.id } });
-        if (devUser) await prisma.user.delete({ where: { id: devUser.id } });
-        if (otherUser) await prisma.user.delete({ where: { id: otherUser.id } });
+        const userIds = [requesterUser, adminUser, itUser, devUser, otherUser].map((user) => user?.id).filter(Boolean);
+        if (requestId) {
+            await prisma.inAppNotification.deleteMany({ where: { referenceId: requestId } });
+            await prisma.emailNotification.deleteMany({ where: { referenceId: requestId } });
+            await prisma.auditLog.deleteMany({ where: { entityId: requestId } });
+            await itemRequest.delete({ where: { id: requestId } });
+        }
+        if (userIds.length) {
+            await prisma.inAppNotification.deleteMany({ where: { userId: { in: userIds } } });
+            await prisma.emailNotification.deleteMany({ where: { recipientUserId: { in: userIds } } });
+            await prisma.auditLog.deleteMany({ where: { actorUserId: { in: userIds } } });
+            await prisma.user.deleteMany({ where: { id: { in: userIds } } });
+        }
         await prisma.$disconnect();
     });
 });

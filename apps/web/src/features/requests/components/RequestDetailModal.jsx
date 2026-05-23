@@ -1,13 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import RequestStatusBadge from './RequestStatusBadge';
-import RequestStatusTimeline from './RequestStatusTimeline';
-import InvoiceDisplay from './InvoiceDisplay';
-import InvoiceUploader from './InvoiceUploader';
-import { MobileModal } from '../../../shared/ui/MobileModal/MobileModal';
-import { useUploadInvoice } from '../hooks/useInvoiceUpload.js';
-import { useToast } from '../../../shared/hooks/useToast.js';
-import { formatDisplayDateTime } from '../../../shared/utils/date-format.js';
-import './RequestDetailModal.css';
+import React, { useEffect, useState } from "react";
+import RequestStatusBadge from "./RequestStatusBadge";
+import RequestStatusTimeline from "./RequestStatusTimeline";
+import InvoiceDisplay from "./InvoiceDisplay";
+import InvoiceUploader from "./InvoiceUploader";
+import { MobileModal } from "../../../shared/ui/MobileModal/MobileModal";
+import { useUploadInvoice } from "../hooks/useInvoiceUpload.js";
+import { useToast } from "../../../shared/hooks/useToast.js";
+import { formatDisplayDateTime } from "../../../shared/utils/date-format.js";
+import {
+    deriveLegacyStatus,
+    getPurchaseItemImageUrl,
+    getPrimaryItemName,
+    getRecordDisplayStatus,
+    getRecordReason
+} from "../utils/purchaseRecordUtils.js";
+import "./RequestDetailModal.css";
 
 const RequestDetailModal = ({ request, isOpen = true, onClose }) => {
     const toast = useToast();
@@ -18,11 +25,12 @@ const RequestDetailModal = ({ request, isOpen = true, onClose }) => {
 
     if (!request) return null;
 
-    const formatDate = (dateString) => {
-        return formatDisplayDateTime(dateString);
-    };
+    const { recordStatus, approvalStatus } = getRecordDisplayStatus(request);
+    const legacyStatus = deriveLegacyStatus(request);
+    const reason = getRecordReason(request);
+    const items = request.items ?? [];
 
-    const canUploadInvoice = !request.invoiceFileUrl && request.status === 'SUBMITTED';
+    const canUploadInvoice = !request.invoiceFileUrl && legacyStatus === "SUBMITTED";
 
     useEffect(() => {
         setInvoiceFile(null);
@@ -41,7 +49,7 @@ const RequestDetailModal = ({ request, isOpen = true, onClose }) => {
             });
             setInvoiceFile(null);
             setShowUploader(false);
-            toast.success('Invoice Uploaded', 'Invoice has been attached to this request.');
+            toast.success("Invoice Uploaded", "Invoice has been attached to this record.");
         } catch (error) {
             setUploadError(error.message);
         }
@@ -51,41 +59,79 @@ const RequestDetailModal = ({ request, isOpen = true, onClose }) => {
         <MobileModal
             isOpen={isOpen}
             onClose={onClose}
-            title={request.itemName}
+            title={getPrimaryItemName(request)}
         >
             <div className="request-detail-modal">
                 <div className="detail-header-status">
-                    <RequestStatusBadge status={request.status} />
+                    <RequestStatusBadge recordStatus={recordStatus} approvalStatus={approvalStatus} />
                 </div>
 
                 <div className="modal-body-content">
                     <section className="detail-section">
-                        <h3>Request Info</h3>
+                        <h3>Record Info</h3>
                         <div className="detail-grid">
                             <div className="detail-item">
-                                <label>Description</label>
-                                <p>{request.description || 'N/A'}</p>
+                                <label>Reason</label>
+                                <p>{reason || "N/A"}</p>
                             </div>
                             <div className="detail-item">
-                                <label>Justification</label>
-                                <p>{request.justification}</p>
+                                <label>Vendor</label>
+                                <p>{request.vendorName || "N/A"}</p>
                             </div>
                             <div className="detail-item">
-                                <label>Priority</label>
-                                <p className={`priority-tag ${request.priority?.toLowerCase()}`}>{request.priority}</p>
+                                <label>Record status</label>
+                                <p>{recordStatus}</p>
                             </div>
                             <div className="detail-item">
-                                <label>Category</label>
-                                <p>{request.category || 'N/A'}</p>
+                                <label>Approval status</label>
+                                <p>{approvalStatus}</p>
                             </div>
                             <div className="detail-item">
                                 <label>Submitted</label>
-                                <p>{formatDate(request.createdAt)}</p>
+                                <p>{formatDisplayDateTime(request.createdAt)}</p>
                             </div>
                             <div className="detail-item">
-                                <label>Last Updated</label>
-                                <p>{formatDate(request.updatedAt)}</p>
+                                <label>Last updated</label>
+                                <p>{formatDisplayDateTime(request.updatedAt)}</p>
                             </div>
+                        </div>
+                    </section>
+
+                    <section className="detail-section">
+                        <h3>Items ({items.length})</h3>
+                        <div className="purchase-record-items">
+                            {items.length > 0 ? items.map((item) => (
+                                <article key={item.id ?? `${item.itemName}-${item.quantity}`} className="purchase-record-item-row">
+                                    <div className="purchase-record-item-row__body">
+                                        {getPurchaseItemImageUrl(item) && (
+                                            <img className="purchase-record-item-row__image" src={getPurchaseItemImageUrl(item)} alt="" />
+                                        )}
+                                        <div>
+                                            <div className="purchase-record-item-row__head">
+                                                <strong>{item.itemName}</strong>
+                                                <span>Qty {item.quantity ?? 1}</span>
+                                            </div>
+                                            {item.description && <p>{item.description}</p>}
+                                            <div className="purchase-record-item-row__meta">
+                                                {item.category && <span>{item.category}</span>}
+                                                {item.unitCost && <span>{request.currency ?? "MYR"} {item.unitCost}</span>}
+                                                {item.sourceMarketplace && item.sourceUrl && (
+                                                    <a href={item.sourceUrl} target="_blank" rel="noreferrer">
+                                                        {item.sourceMarketplace}
+                                                    </a>
+                                                )}
+                                                {item.snipeVerificationStatus && (
+                                                    <span className={`snipe-status is-${item.snipeVerificationStatus.toLowerCase()}`}>
+                                                        Snipe: {item.snipeVerificationStatus}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </article>
+                            )) : (
+                                <p className="purchase-record-items__empty">No line items returned.</p>
+                            )}
                         </div>
                     </section>
 
@@ -128,7 +174,7 @@ const RequestDetailModal = ({ request, isOpen = true, onClose }) => {
                                             onClick={handleUploadInvoice}
                                             disabled={!invoiceFile || uploadInvoiceMutation.isPending}
                                         >
-                                            {uploadInvoiceMutation.isPending ? 'Uploading...' : 'Save Invoice'}
+                                            {uploadInvoiceMutation.isPending ? "Uploading..." : "Save Invoice"}
                                         </button>
                                         <button
                                             type="button"
@@ -153,20 +199,19 @@ const RequestDetailModal = ({ request, isOpen = true, onClose }) => {
                         <RequestStatusTimeline request={request} />
                     </section>
 
-                    {/* Outcome Details if applicable */}
-                    {['APPROVED', 'REJECTED', 'ALREADY_PURCHASED'].includes(request.status) && (
+                    {["APPROVED", "REJECTED", "ALREADY_PURCHASED"].includes(legacyStatus) && (
                         <section className="outcome-section">
                             <h3>Outcome</h3>
-                            <div className={`outcome-box ${request.status.toLowerCase()}`}>
-                                <h4>{request.status.replace('_', ' ')}</h4>
-                                {request.status === 'APPROVED' && (
-                                    <p>Approved by {request.approvedBy?.username} on {formatDate(request.approvedAt)}</p>
+                            <div className={`outcome-box ${legacyStatus.toLowerCase()}`}>
+                                <h4>{legacyStatus.replace("_", " ")}</h4>
+                                {legacyStatus === "APPROVED" && request.approvedAt && (
+                                    <p>Approved on {formatDisplayDateTime(request.approvedAt)}</p>
                                 )}
-                                {request.status === 'REJECTED' && (
-                                    <p>Rejected by {request.itReviewedBy?.username}: "{request.rejectionReason}"</p>
+                                {legacyStatus === "REJECTED" && request.approvalNote && (
+                                    <p>{request.approvalNote}</p>
                                 )}
-                                {request.status === 'ALREADY_PURCHASED' && (
-                                    <p>Marked as Purchased by {request.itReviewedBy?.username}: "{request.itReview}"</p>
+                                {legacyStatus === "ALREADY_PURCHASED" && (
+                                    <p>{request.approvalSkipReason || request.approvalNote || "Marked as already purchased"}</p>
                                 )}
                             </div>
                         </section>

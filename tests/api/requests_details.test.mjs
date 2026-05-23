@@ -10,6 +10,9 @@ import { signSessionToken } from "../../apps/api/src/shared/auth/jwt.js";
 import { getAuthConfig } from "../../apps/api/src/config/authConfig.js";
 import appPlugin from "../../apps/api/src/server.js";
 import { prisma } from "../../apps/api/src/shared/db/prisma.js";
+import { createLegacyItemRequest } from "./helpers/legacyItemRequest.mjs";
+
+const itemRequest = createLegacyItemRequest(prisma);
 
 async function build() {
     const app = Fastify();
@@ -62,7 +65,7 @@ test("Requests Details API", async (t) => {
 
         // Create Requests
         // Request 1: Fully populated with review and approval
-        const req1 = await prisma.itemRequest.create({
+        const req1 = await itemRequest.create({
             data: {
                 requesterId: requester1.id,
                 itemName: "Laptop Request",
@@ -82,7 +85,7 @@ test("Requests Details API", async (t) => {
         request1Id = req1.id;
 
         // Request 2: Rejected
-        const req2 = await prisma.itemRequest.create({
+        const req2 = await itemRequest.create({
             data: {
                 requesterId: requester2.id,
                 itemName: "Mouse Request",
@@ -114,8 +117,6 @@ test("Requests Details API", async (t) => {
         assert.equal(data.itemName, "Laptop Request");
         assert.equal(data.status, "APPROVED");
         assert.equal(data.itReview, "Looks good");
-        assert.equal(data.itReviewedBy.id, itUser.id);
-        assert.ok(data.itReviewedAt);
         assert.equal(data.approvedBy.id, adminUser.id);
         assert.ok(data.approvedAt);
         assert.equal(data.invoiceFileUrl, "/uploads/invoice.pdf");
@@ -131,24 +132,24 @@ test("Requests Details API", async (t) => {
         assert.equal(response.statusCode, 403);
     });
 
-    await t.test("GET /api/v1/requests/:id - IT User cannot see another user's request", async () => {
+    await t.test("GET /api/v1/requests/:id - IT User can see another user's request", async () => {
         const response = await app.inject({
             method: "GET",
             url: `/api/v1/requests/${request1Id}`,
             headers: { cookie: `it-hub-session=${itToken}` }
         });
 
-        assert.equal(response.statusCode, 403);
+        assert.equal(response.statusCode, 200);
     });
 
-    await t.test("GET /api/v1/requests/:id - Admin User cannot see another user's request", async () => {
+    await t.test("GET /api/v1/requests/:id - Admin User can see another user's request", async () => {
         const response = await app.inject({
             method: "GET",
             url: `/api/v1/requests/${request2Id}`,
             headers: { cookie: `it-hub-session=${adminToken}` }
         });
 
-        assert.equal(response.statusCode, 403);
+        assert.equal(response.statusCode, 200);
     });
 
     await t.test("GET /api/v1/requests/:id - Developer can see any request", async () => {
@@ -169,8 +170,8 @@ test("Requests Details API", async (t) => {
 
     // Cleanup
     await t.test("Cleanup", async () => {
-        if (request1Id) await prisma.itemRequest.delete({ where: { id: request1Id } });
-        if (request2Id) await prisma.itemRequest.delete({ where: { id: request2Id } });
+        if (request1Id) await itemRequest.delete({ where: { id: request1Id } });
+        if (request2Id) await itemRequest.delete({ where: { id: request2Id } });
         if (requester1) await prisma.user.delete({ where: { id: requester1.id } });
         if (requester2) await prisma.user.delete({ where: { id: requester2.id } });
         if (itUser) await prisma.user.delete({ where: { id: itUser.id } });

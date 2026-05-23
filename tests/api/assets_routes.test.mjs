@@ -61,7 +61,7 @@ const buildApp = async ({ assetService }) => {
   return app;
 };
 
-test("requester can list assets", async () => {
+test("IT user can list assets", async () => {
   const assetService = {
     listAssets: async (filters, pagination) => ({
       data: [{ id: "asset-1", assetTag: "LAP001", assignmentSource: "auto_username" }],
@@ -78,7 +78,7 @@ test("requester can list assets", async () => {
   const response = await app.inject({
     method: "GET",
     url: "/?search=LAP&page=1&perPage=20",
-    headers: { cookie: await createSessionCookie(users[0]) }
+    headers: { cookie: await createSessionCookie(users[1]) }
   });
 
   assert.equal(response.statusCode, 200);

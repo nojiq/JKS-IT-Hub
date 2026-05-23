@@ -11,6 +11,7 @@ import { signSessionToken } from "../../apps/api/src/shared/auth/jwt.js";
 import { getAuthConfig } from "../../apps/api/src/config/authConfig.js";
 import appPlugin from "../../apps/api/src/server.js";
 import { prisma } from "../../apps/api/src/shared/db/prisma.js";
+import { __setTransporter } from "../../apps/api/src/features/notifications/email/emailService.js";
 
 async function build() {
     const app = Fastify();
@@ -24,8 +25,31 @@ let itToken, adminToken, headItToken, devToken, requesterToken;
 let config;
 let requestId;
 
+const legacyStatusData = (status) => {
+    if (status === "SUBMITTED") {
+        return { recordStatus: "RECORDED", approvalStatus: "NOT_REQUIRED", approvalNote: null };
+    }
+    if (status === "IT_REVIEWED") {
+        return { recordStatus: "RECORDED", approvalStatus: "PENDING" };
+    }
+    if (status === "REJECTED") {
+        return { recordStatus: "REJECTED", approvalStatus: "REJECTED" };
+    }
+    return {};
+};
+
+const setRequestStatus = (status) =>
+    prisma.purchaseRecord.update({
+        where: { id: requestId },
+        data: legacyStatusData(status)
+    });
+
 before(async () => {
     config = getAuthConfig();
+    process.env.SMTP_HOST = "mock.smtp.test";
+    __setTransporter({
+        sendMail: async () => ({ messageId: "request-review-api-test" })
+    });
     app = await build();
 
     // Create IT User
@@ -93,15 +117,21 @@ before(async () => {
     }, config.jwt);
 
     // Create Request
-    const request = await prisma.itemRequest.create({
+    const request = await prisma.purchaseRecord.create({
         data: {
             requesterId: requesterUser.id,
-            itemName: "Review API Test",
-            description: "Desc",
-            justification: "Just",
-            priority: "MEDIUM",
-            category: "Software",
-            status: "SUBMITTED"
+            reason: "Just",
+            recordedById: requesterUser.id,
+            recordStatus: "RECORDED",
+            approvalStatus: "NOT_REQUIRED",
+            items: {
+                create: {
+                    itemName: "Review API Test",
+                    description: "Desc",
+                    category: "Software",
+                    quantity: 1
+                }
+            }
         }
     });
     requestId = request.id;
@@ -113,7 +143,7 @@ after(async () => {
         await prisma.inAppNotification.deleteMany({ where: { referenceId: requestId } });
         await prisma.emailNotification.deleteMany({ where: { referenceId: requestId } });
         await prisma.auditLog.deleteMany({ where: { entityId: requestId } });
-        await prisma.itemRequest.deleteMany({ where: { id: requestId } });
+        await prisma.purchaseRecord.deleteMany({ where: { id: requestId } });
     }
     if (userIds.length > 0) {
         await prisma.inAppNotification.deleteMany({ where: { userId: { in: userIds } } });
@@ -144,7 +174,7 @@ test("IT Review API Endpoints", async (t) => {
 
     await t.test("POST /api/v1/requests/:id/already-purchased", async () => {
         // Reset status
-        await prisma.itemRequest.update({ where: { id: requestId }, data: { status: "SUBMITTED" } });
+        await setRequestStatus("SUBMITTED");
 
         const response = await app.inject({
             method: "POST",
@@ -161,7 +191,7 @@ test("IT Review API Endpoints", async (t) => {
     });
 
     await t.test("Validation: Missing reason for already-purchased", async () => {
-        await prisma.itemRequest.update({ where: { id: requestId }, data: { status: "SUBMITTED" } });
+        await setRequestStatus("SUBMITTED");
 
         const response = await app.inject({
             method: "POST",
@@ -175,7 +205,7 @@ test("IT Review API Endpoints", async (t) => {
 
     await t.test("POST /api/v1/requests/:id/reject", async () => {
         // Reset status
-        await prisma.itemRequest.update({ where: { id: requestId }, data: { status: "SUBMITTED" } });
+        await setRequestStatus("SUBMITTED");
 
         const response = await app.inject({
             method: "POST",
@@ -192,7 +222,7 @@ test("IT Review API Endpoints", async (t) => {
     });
 
     await t.test("Access Control: Requester cannot review", async () => {
-        await prisma.itemRequest.update({ where: { id: requestId }, data: { status: "SUBMITTED" } });
+        await setRequestStatus("SUBMITTED");
 
         const response = await app.inject({
             method: "POST",
@@ -205,7 +235,7 @@ test("IT Review API Endpoints", async (t) => {
     });
 
     await t.test("Access Control: Unauthenticated users are rejected", async () => {
-        await prisma.itemRequest.update({ where: { id: requestId }, data: { status: "SUBMITTED" } });
+        await setRequestStatus("SUBMITTED");
 
         const response = await app.inject({
             method: "POST",
@@ -216,8 +246,8 @@ test("IT Review API Endpoints", async (t) => {
         assert.equal(response.statusCode, 401);
     });
 
-    await t.test("Access Control: IT user cannot it-review", async () => {
-        await prisma.itemRequest.update({ where: { id: requestId }, data: { status: "SUBMITTED" } });
+    await t.test("Access Control: IT user can it-review", async () => {
+        await setRequestStatus("SUBMITTED");
 
         const response = await app.inject({
             method: "POST",
@@ -226,11 +256,11 @@ test("IT Review API Endpoints", async (t) => {
             payload: { itReview: "Should fail" }
         });
 
-        assert.equal(response.statusCode, 403);
+        assert.equal(response.statusCode, 200);
     });
 
-    await t.test("Access Control: Admin cannot it-review requests", async () => {
-        await prisma.itemRequest.update({ where: { id: requestId }, data: { status: "SUBMITTED" } });
+    await t.test("Access Control: Admin can it-review requests", async () => {
+        await setRequestStatus("SUBMITTED");
 
         const response = await app.inject({
             method: "POST",
@@ -239,11 +269,11 @@ test("IT Review API Endpoints", async (t) => {
             payload: { itReview: "Admin review" }
         });
 
-        assert.equal(response.statusCode, 403);
+        assert.equal(response.statusCode, 200);
     });
 
-    await t.test("Access Control: Head IT cannot mark already purchased", async () => {
-        await prisma.itemRequest.update({ where: { id: requestId }, data: { status: "SUBMITTED" } });
+    await t.test("Access Control: Head IT can mark already purchased", async () => {
+        await setRequestStatus("SUBMITTED");
 
         const response = await app.inject({
             method: "POST",
@@ -252,7 +282,7 @@ test("IT Review API Endpoints", async (t) => {
             payload: { reason: "Stocked by IT" }
         });
 
-        assert.equal(response.statusCode, 403);
+        assert.equal(response.statusCode, 200);
     });
 
     await t.test("Validation: Missing reason for rejection", async () => {
@@ -267,7 +297,7 @@ test("IT Review API Endpoints", async (t) => {
     });
 
     await t.test("Status Transition: Reject is only allowed from SUBMITTED", async () => {
-        await prisma.itemRequest.update({ where: { id: requestId }, data: { status: "IT_REVIEWED" } });
+        await setRequestStatus("IT_REVIEWED");
 
         const response = await app.inject({
             method: "POST",

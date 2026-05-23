@@ -143,17 +143,17 @@ test("Maintenance Notifications Integration", async (t) => {
         });
         assert.ok(updatedWindow.overdueNotificationSentAt, "Should set overdue notification timestamp");
 
-        const escalationEmail = await prisma.emailNotification.findFirst({
+        const escalationEmails = await prisma.emailNotification.findMany({
             where: {
                 referenceId: window.id,
                 referenceType: "maintenance_window",
                 templateType: "maintenance_overdue_escalation"
             }
         });
-        assert.ok(escalationEmail, "Should create overdue escalation email record");
+        assert.ok(escalationEmails.length > 0, "Should create overdue escalation email records");
 
-        const recipients = escalationEmail.recipientEmail
-            .split(",")
+        const recipients = escalationEmails
+            .map((email) => email.recipientEmail)
             .map((value) => value.trim())
             .filter(Boolean);
         assert.equal(new Set(recipients).size, recipients.length, "Escalation recipients should be deduplicated");

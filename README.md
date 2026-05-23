@@ -15,6 +15,8 @@ Monorepo for the IT-Hub web SPA (Vite + React) and API (Fastify).
 3. Install dependencies: `pnpm install`
 4. Run web dev server: `pnpm --filter web dev` at `http://localhost:5176`
 5. Run API dev server: `pnpm --filter api dev` at `http://localhost:3006`
+6. Run marketplace scraper when using product-link preview:
+   `cd apps/scraper && test -d .venv || python3 -m venv .venv; .venv/bin/pip install -r requirements.txt; .venv/bin/python -m playwright install chromium; .venv/bin/uvicorn main:app --host 0.0.0.0 --port 3016`
 
 ## PM2 Dev Autostart
 

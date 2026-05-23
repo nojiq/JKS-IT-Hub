@@ -9,12 +9,12 @@ const __dirname = path.dirname(__filename);
 const readCss = (relativePath) => readFileSync(path.resolve(__dirname, relativePath), 'utf8');
 
 describe('Overview metric strip styles', () => {
-    it('renders request overview metrics as a compact strip', () => {
+    it('renders request overview metrics as responsive cards', () => {
         const css = readCss('../src/features/requests/pages/RequestsHomePage.css');
 
-        expect(css).toMatch(/\.requests-overview-grid\s*\{[^}]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/s);
-        expect(css).toMatch(/\.requests-overview-grid\s*\{[^}]*border-top:\s*1px solid var\(--ui-border-subtle\)/s);
-        expect(css).toMatch(/\.requests-overview-card\s*\{[^}]*min-height:\s*0/s);
+        expect(css).toMatch(/\.requests-overview-grid\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(100%,\s*18rem\),\s*1fr\)\)/s);
+        expect(css).toMatch(/\.requests-overview-card\s*\{[^}]*min-height:\s*15rem/s);
+        expect(css).toMatch(/\.requests-overview-card\s*\{[^}]*border:\s*1px solid var\(--ui-border-subtle\)/s);
     });
 
     it('renders maintenance overview metrics as a compact strip', () => {

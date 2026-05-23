@@ -5,6 +5,12 @@ import { log } from '../../../shared/logging/logger.js';
 // Create transporter lazily (on first use)
 let transporter = null;
 
+const isNodeTestWorker = () => process.argv.some((arg) => (
+    arg.endsWith('.test.mjs') ||
+    arg.endsWith('.test.js') ||
+    arg.includes('/tests/')
+));
+
 const getTransporter = () => {
     if (!transporter) {
         const config = {
@@ -40,7 +46,7 @@ export const sendEmail = async ({ to, subject, html, text }) => {
     const fromAddress = process.env.SMTP_FROM || 'IT-Hub <noreply@example.com>';
 
     // Skip if SMTP not configured
-    if (!process.env.SMTP_HOST) {
+    if (!process.env.SMTP_HOST || (isNodeTestWorker() && !transporter)) {
         log.warn('SMTP not configured, skipping email send', { to, subject });
         return { success: false, error: 'SMTP not configured' };
     }

@@ -104,7 +104,10 @@ describe("AssetsListPage", () => {
 
     expect(screen.getByRole("heading", { name: "Assets" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "JKS-100" })).toHaveAttribute("href", "/assets/asset-1");
-    expect(screen.getByText("192.168.78.29")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "192.168.78.29" })).toHaveAttribute(
+      "href",
+      "/ip-list/192.168.78.29"
+    );
     expect(screen.getByText("B0:83:FE:6F:7D:0B")).toBeInTheDocument();
     expect(screen.queryByText(/synced value/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/not provided/i)).not.toBeInTheDocument();

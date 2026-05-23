@@ -1,4 +1,5 @@
 import { requireAuthenticated } from "../../shared/auth/requireAuthenticated.js";
+import { requireActiveUser } from "../../shared/auth/requireActiveUser.js";
 import { createProblemDetails, sendProblem } from "../../shared/errors/problemDetails.js";
 
 import preventiveMaintenanceRoutes from './preventiveRoutes.js';
@@ -430,7 +431,7 @@ export default async function maintenanceRoutes(app, { config, userRepo, mainten
 
     // My Assigned Windows
     app.get('/my-tasks', async (request, reply) => {
-        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        const actor = await requireActiveUser(request, reply, { config, userRepo });
         if (!actor) return;
 
 
@@ -445,7 +446,7 @@ export default async function maintenanceRoutes(app, { config, userRepo, mainten
     // Maintenance Completion Routes
 
     app.post('/windows/:id/sign-off', async (request, reply) => {
-        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        const actor = await requireActiveUser(request, reply, { config, userRepo });
         if (!actor) return;
 
         try {
@@ -462,7 +463,7 @@ export default async function maintenanceRoutes(app, { config, userRepo, mainten
     });
 
     app.get('/windows/:id/completion', async (request, reply) => {
-        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        const actor = await requireActiveUser(request, reply, { config, userRepo });
         if (!actor) return;
 
         try {
@@ -474,7 +475,7 @@ export default async function maintenanceRoutes(app, { config, userRepo, mainten
     });
 
     app.get('/windows/:id/sign-off-eligibility', async (request, reply) => {
-        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        const actor = await requireActiveUser(request, reply, { config, userRepo });
         if (!actor) return;
 
         try {
@@ -486,7 +487,7 @@ export default async function maintenanceRoutes(app, { config, userRepo, mainten
     });
 
     app.get('/completions/my-history', async (request, reply) => {
-        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        const actor = await requireActiveUser(request, reply, { config, userRepo });
         if (!actor) return;
 
         try {
@@ -499,7 +500,7 @@ export default async function maintenanceRoutes(app, { config, userRepo, mainten
 
     // Legacy alias kept for compatibility with existing clients.
     app.get('/history', async (request, reply) => {
-        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        const actor = await requireActiveUser(request, reply, { config, userRepo });
         if (!actor) return;
 
         try {

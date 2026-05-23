@@ -2,6 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { listUsersFiltered, prisma } from "../../apps/api/src/features/users/repo.js";
 
+test.after(async () => {
+    await prisma.$disconnect();
+});
+
 test("listUsersFiltered builds MySQL-compatible search filters including LDAP mail", async (t) => {
     const originalCount = prisma.user.count;
     const originalFindMany = prisma.user.findMany;

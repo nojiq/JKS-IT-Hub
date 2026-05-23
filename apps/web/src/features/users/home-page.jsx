@@ -5,7 +5,7 @@ import { fetchAllRequests } from "../requests/api/requestsApi.js";
 import { WorkspacePageHeader } from "../../shared/workspace/WorkspacePageHeader.jsx";
 import { ModuleLauncherCard } from "../../shared/workspace/ModuleLauncherCard.jsx";
 import { resolveLauncherModules } from "../../shared/workspace/workspaceModules.js";
-import { DEV_ROLE } from "../../shared/auth/workspaceRoles.js";
+import { APP_ACCESS_ROLES } from "../../shared/auth/workspaceRoles.js";
 import { fetchUsers } from "./users-api.js";
 import "../../shared/workspace/workspace.css";
 
@@ -28,7 +28,7 @@ export default function HomePage() {
     return null;
   }
 
-  const isDevUser = user.role === DEV_ROLE;
+  const hasOperationsAccess = APP_ACCESS_ROLES.includes(user.role);
   const launcherModules = resolveLauncherModules(user);
 
   const usersQuery = useQuery({
@@ -40,21 +40,21 @@ export default function HomePage() {
   const requestsReviewQuery = useQuery({
     queryKey: ["requests", "review-home", { status: "SUBMITTED", page: "1", perPage: "5" }],
     queryFn: () => fetchAllRequests({ status: "SUBMITTED", page: "1", perPage: "5" }),
-    enabled: isDevUser,
+    enabled: hasOperationsAccess,
     retry: false
   });
 
   const requestsApprovalQuery = useQuery({
     queryKey: ["requests", "approval-home", { status: "IT_REVIEWED", page: "1", perPage: "5" }],
     queryFn: () => fetchAllRequests({ status: "IT_REVIEWED", page: "1", perPage: "5" }),
-    enabled: isDevUser,
+    enabled: hasOperationsAccess,
     retry: false
   });
 
   const maintenanceQuery = useQuery({
     queryKey: ["maintenance", "windows", "module-launcher"],
     queryFn: () => fetchWindows({ page: "1", perPage: "20", status: ["SCHEDULED", "UPCOMING", "OVERDUE"] }),
-    enabled: isDevUser,
+    enabled: hasOperationsAccess,
     retry: false
   });
 
@@ -68,7 +68,7 @@ export default function HomePage() {
   const overdueMaintenance = maintenanceItems.filter((entry) => entry.status === "OVERDUE").length;
 
   const metricsByModule = {
-    requests: isDevUser ? [
+    requests: hasOperationsAccess ? [
       { value: String(requestReviewCount), label: "need IT review" },
       { value: String(requestApprovalCount), label: "waiting for approval" }
     ] : [],

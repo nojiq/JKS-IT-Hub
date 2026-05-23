@@ -52,14 +52,21 @@ const devUser = {
     status: 'active'
 };
 
+const itUser = {
+    id: 'user-it',
+    username: 'it.user',
+    role: 'it',
+    status: 'active'
+};
+
 const createQueryClient = () => new QueryClient({
     defaultOptions: {
         queries: { retry: false, gcTime: 0 }
     }
 });
 
-const renderMaintenanceApp = ({ initialEntry = '/maintenance' } = {}) => {
-    workspaceSession.setUser(devUser);
+const renderMaintenanceApp = ({ initialEntry = '/maintenance', user = devUser } = {}) => {
+    workspaceSession.setUser(user);
 
     const router = createMemoryRouter(appRouter.routes, {
         initialEntries: [initialEntry]
@@ -109,5 +116,13 @@ describe('Maintenance dashboard route', () => {
         expect(screen.getByRole('button', { name: 'Overdue: 1' })).toBeInTheDocument();
         expect(screen.getByText('6-Month Major Maintenance')).toBeInTheDocument();
         expect(screen.getByText(/Server Rack Alpha/)).toBeInTheDocument();
+    });
+
+    it('shows maintenance management tabs to IT users', async () => {
+        renderMaintenanceApp({ user: itUser });
+
+        expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Assignments' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Policies & Checklists' })).toBeInTheDocument();
     });
 });

@@ -13,4 +13,4 @@ export const MAINTENANCE_TERMS = Object.freeze({
 });
 
 export const isMaintenanceAdmin = (user) =>
-    Boolean(user?.role) && ['dev', 'admin', 'head_it'].includes(user.role);
+    Boolean(user?.role) && ['dev', 'it', 'admin', 'head_it'].includes(user.role);

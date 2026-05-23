@@ -10,6 +10,7 @@ describe('Credential Generation Normalization Integration', () => {
     let systemConfig;
     const createdUserIds = [];
     const createdSystemIds = [];
+    const createdTemplateIds = [];
 
     before(async () => {
         try {
@@ -41,7 +42,7 @@ describe('Credential Generation Normalization Integration', () => {
             createdSystemIds.push(systemId);
 
             // Create active template
-            await prisma.credentialTemplate.create({
+            const template = await prisma.credentialTemplate.create({
                 data: {
                     name: 'Test Template',
                     isActive: true,
@@ -56,6 +57,7 @@ describe('Credential Generation Normalization Integration', () => {
                     }
                 }
             });
+            createdTemplateIds.push(template.id);
         } catch (err) {
             console.error('BEFORE HOOK FAILED:', err);
             throw err;
@@ -64,6 +66,11 @@ describe('Credential Generation Normalization Integration', () => {
 
     after(async () => {
         await prisma.normalizationRule.deleteMany({});
+        if (createdTemplateIds.length > 0) {
+            await prisma.credentialTemplate.deleteMany({
+                where: { id: { in: createdTemplateIds } }
+            });
+        }
         if (createdUserIds.length > 0) {
             await prisma.user.deleteMany({
                 where: { id: { in: createdUserIds } }

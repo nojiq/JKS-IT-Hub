@@ -5,6 +5,10 @@ import { randomUUID } from "node:crypto";
 import * as repo from "../../apps/api/src/features/maintenance/repo.js";
 import { prisma } from "../../apps/api/src/shared/db/prisma.js";
 
+test.after(async () => {
+    await prisma.$disconnect();
+});
+
 test("Maintenance Device Types - Repository Layer", async (t) => {
     let windowId;
     let userId;

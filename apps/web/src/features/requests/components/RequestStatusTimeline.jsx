@@ -1,11 +1,13 @@
 
 import React from 'react';
 import { formatDisplayDateTime } from '../../../shared/utils/date-format.js';
+import { deriveLegacyStatus } from '../utils/purchaseRecordUtils.js';
 
 const RequestStatusTimeline = ({ request }) => {
     if (!request) return null;
 
     const getTimelineSteps = (request) => {
+        const status = deriveLegacyStatus(request);
         const steps = [
             {
                 label: 'Submitted',
@@ -16,25 +18,25 @@ const RequestStatusTimeline = ({ request }) => {
             },
             {
                 label: 'IT Review',
-                status: request.itReviewedAt ? 'completed' :
-                    ['SUBMITTED'].includes(request.status) ? 'pending' : 'skipped',
+                status: request.itReviewedAt || request.approvalStatus === 'PENDING' ? 'completed' :
+                    status === 'SUBMITTED' ? 'pending' : 'skipped',
                 timestamp: request.itReviewedAt,
                 actor: request.itReviewedBy?.username,
                 detail: request.itReview || request.rejectionReason
             },
             {
                 label: 'Final Decision',
-                status: ['APPROVED', 'REJECTED', 'ALREADY_PURCHASED'].includes(request.status) ? 'completed' : 'pending',
-                timestamp: request.approvedAt || (request.status === 'REJECTED' || request.status === 'ALREADY_PURCHASED' ? request.updatedAt : null),
+                status: ['APPROVED', 'REJECTED', 'ALREADY_PURCHASED'].includes(status) ? 'completed' : 'pending',
+                timestamp: request.approvedAt || (status === 'REJECTED' || status === 'ALREADY_PURCHASED' ? request.updatedAt : null),
                 actor: request.approvedBy?.username,
-                detail: request.status === 'REJECTED' ? request.rejectionReason :
-                    request.status === 'APPROVED' ? 'Request approved' : null,
-                outcome: request.status
+                detail: status === 'REJECTED' ? (request.rejectionReason || request.approvalNote) :
+                    status === 'APPROVED' ? 'Request approved' : null,
+                outcome: status
             }
         ];
 
         // If ALREADY_PURCHASED, modify timeline
-        if (request.status === 'ALREADY_PURCHASED') {
+        if (status === 'ALREADY_PURCHASED') {
             steps[1].label = 'Marked as Already Purchased';
             steps[1].status = 'completed';
             // The step logic above handles status completed, but detail might be in itReview field

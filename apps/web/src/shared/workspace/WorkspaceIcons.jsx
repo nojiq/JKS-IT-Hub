@@ -68,6 +68,17 @@ export function WorkspaceNavIcon({ icon, className }) {
           <path d="M9 6V5C9 4.2 9.7 3.5 10.5 3.5H13.5C14.3 3.5 15 4.2 15 5V6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
         </WorkspaceTileIcon>
       );
+    case "ip-list":
+      return (
+        <WorkspaceTileIcon className={className}>
+          <rect x="4" y="4.5" width="16" height="6" rx="1.6" stroke="currentColor" strokeWidth="1.7" />
+          <rect x="4" y="13.5" width="16" height="6" rx="1.6" stroke="currentColor" strokeWidth="1.7" />
+          <circle cx="7.5" cy="7.5" r="0.9" fill="currentColor" />
+          <circle cx="7.5" cy="16.5" r="0.9" fill="currentColor" />
+          <path d="M11 7.5H17" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M11 16.5H17" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </WorkspaceTileIcon>
+      );
     case "users":
       return (
         <WorkspaceTileIcon className={className}>

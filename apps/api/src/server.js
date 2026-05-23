@@ -60,15 +60,18 @@ export default async function app(fastify, options) {
   const userRepo = await import("./features/users/repo.js");
   const auditRepo = await import("./features/audit/repo.js");
   const requestRepo = await import("./features/requests/repo.js");
+  const purchaseRecordRepo = await import("./features/purchase-records/repo.js");
   const maintenanceRepo = await import("./features/maintenance/repo.js");
   const assetRepo = await import("./features/assets/repo.js");
+  const ipListRepo = await import("./features/ip-list/repo.js");
 
   // Static file serving for uploads (with authentication)
   await fastify.register(import("./plugins/staticFiles.js"), {
     config,
     userRepo,
     requestRepo,
-    maintenanceRepo
+    maintenanceRepo,
+    purchaseRecordRepo
   });
 
   // Feature routes will be registered here as they are implemented in future stories
@@ -186,9 +189,10 @@ export default async function app(fastify, options) {
   const { createSnipeClient } = await import("./features/assets/client.js");
   const { createAssetService } = await import("./features/assets/service.js");
   const { createAssetSyncJob } = await import("./features/assets/jobs.js");
+  const snipeClient = options?.snipeClient ?? createSnipeClient({ config: config.snipeIt });
   const assetService = createAssetService({
     repo: assetRepo,
-    client: createSnipeClient({ config: config.snipeIt }),
+    client: snipeClient,
     userRepo,
     logger: fastify.log,
     enabled: config.snipeIt?.enabled
@@ -202,6 +206,17 @@ export default async function app(fastify, options) {
     auditRepo
   });
 
+  const { createIpListService } = await import("./features/ip-list/service.js");
+  const ipListService = createIpListService({ repo: ipListRepo });
+
+  await fastify.register(import("./features/ip-list/routes.js"), {
+    prefix: "/api/v1/ip-list",
+    config,
+    userRepo,
+    ipListService,
+    auditRepo
+  });
+
   const assetSyncJob = createAssetSyncJob({ assetService, logger: fastify.log, config });
   if (assetSyncJob && fastify.scheduler) {
     fastify.scheduler.addCronJob(assetSyncJob);
@@ -212,12 +227,38 @@ export default async function app(fastify, options) {
     fastify.log.warn("Scheduler not available, Snipe-IT asset sync job NOT registered");
   }
 
+  // Purchase Record Routes
+  const { createPurchaseRecordsService } = await import("./features/purchase-records/service.js");
+  const { createMarketplacePreviewService } = await import("./features/purchase-records/marketplace.js");
+  const { createProductImageCache } = await import("./features/purchase-records/productImageCache.js");
+  const purchaseRecordsService = createPurchaseRecordsService({
+    repo: purchaseRecordRepo,
+    auditRepo,
+    snipeClient,
+    imageCache: options?.productImageCache ?? createProductImageCache(),
+    logger: fastify.log
+  });
+  const marketplacePreviewService = options?.marketplacePreviewService ?? createMarketplacePreviewService({
+    config,
+    logger: fastify.log
+  });
+
+  await fastify.register(import("./features/purchase-records/routes.js"), {
+    prefix: "/api/v1/purchase-records",
+    config,
+    userRepo,
+    purchaseRecordsService,
+    marketplacePreviewService,
+    auditRepo
+  });
+
   // Request Routes
   await fastify.register(import("./features/requests/routes.js"), {
     prefix: "/api/v1/requests",
     config,
     userRepo,
-    auditRepo
+    auditRepo,
+    purchaseRecordsService
   });
 
   // SSE Route

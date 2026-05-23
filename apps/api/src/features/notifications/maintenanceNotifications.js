@@ -7,8 +7,8 @@ import * as maintenanceRepo from '../maintenance/repo.js';
 import {
     getTechnicianEmailsForWindow,
     getTechnicianIdsForWindow,
-    getApproverEmails,
-    getApproverIds
+    getITStaffEmails,
+    getITStaffIds
 } from './recipientResolver.js';
 import { createAuditLog } from '../audit/repo.js';
 import { emitNotificationEvent } from './sseHandler.js';
@@ -109,19 +109,18 @@ const sendEmailNotification = async ({
         return channel;
     }
 
-    let notificationRecordId = null;
+    let notifications = [];
 
     try {
         const { subject, html, text } = buildTemplate();
 
-        const notification = await notificationRepo.createNotificationRecord({
-            recipientEmail: recipients.join(', '),
+        notifications = await Promise.all(recipients.map((recipientEmail) => notificationRepo.createNotificationRecord({
+            recipientEmail,
             subject,
             templateType,
             referenceType: 'maintenance_window',
             referenceId
-        });
-        notificationRecordId = notification.id;
+        })));
 
         const result = await sendEmail({
             to: recipients,
@@ -135,18 +134,20 @@ const sendEmailNotification = async ({
         channel.failedRecipients = result.success ? [] : recipients;
         channel.error = result.success ? null : String(result.error || 'Email delivery failed');
 
-        await notificationRepo.updateNotificationStatus(
-            notificationRecordId,
+        await Promise.all(notifications.map((notification) => notificationRepo.updateNotificationStatus(
+            notification.id,
             result.success ? 'sent' : 'failed',
             result.error
-        );
+        )));
     } catch (error) {
         channel.status = 'failed';
         channel.failedRecipients = recipients;
         channel.error = error.message;
 
-        if (notificationRecordId) {
-            await notificationRepo.updateNotificationStatus(notificationRecordId, 'failed', error.message);
+        if (notifications.length) {
+            await Promise.all(notifications.map((notification) =>
+                notificationRepo.updateNotificationStatus(notification.id, 'failed', error.message)
+            ));
         }
     }
 
@@ -278,8 +279,8 @@ export const notifyOverdueMaintenance = async (maintenanceWindow) => {
 
         const technicianEmails = toUniqueList(await getTechnicianEmailsForWindow(maintenanceWindow.id));
         const technicianIds = toUniqueList(await getTechnicianIdsForWindow(maintenanceWindow.id));
-        const adminEmails = toUniqueList(await getApproverEmails());
-        const adminIds = toUniqueList(await getApproverIds());
+        const adminEmails = toUniqueList(await getITStaffEmails());
+        const adminIds = toUniqueList(await getITStaffIds());
 
         const technicianEmailChannel = await sendEmailNotification({
             emails: technicianEmails,

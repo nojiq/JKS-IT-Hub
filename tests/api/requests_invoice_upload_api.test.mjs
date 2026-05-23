@@ -14,6 +14,9 @@ import appPlugin from "../../apps/api/src/server.js";
 import { getAuthConfig } from "../../apps/api/src/config/authConfig.js";
 import { signSessionToken } from "../../apps/api/src/shared/auth/jwt.js";
 import { prisma } from "../../apps/api/src/shared/db/prisma.js";
+import { createLegacyItemRequest } from "./helpers/legacyItemRequest.mjs";
+
+const itemRequest = createLegacyItemRequest(prisma);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -112,7 +115,7 @@ test("Requests Invoice Upload API", async (t) => {
     });
 
     await t.test("owner can upload invoice to existing request; status unchanged and audit log written", async () => {
-        const request = await prisma.itemRequest.create({
+        const request = await itemRequest.create({
             data: {
                 requesterId: ownerUser.id,
                 itemName: "USB-C Dock",
@@ -145,7 +148,7 @@ test("Requests Invoice Upload API", async (t) => {
         assert.ok(body.data?.invoiceFileUrl);
         assert.match(body.data.invoiceFileUrl, /^\/api\/v1\/uploads\/[0-9a-f-]+\.pdf$/);
 
-        const refreshed = await prisma.itemRequest.findUnique({ where: { id: request.id } });
+        const refreshed = await itemRequest.findUnique({ where: { id: request.id } });
         assert.equal(refreshed.status, "SUBMITTED");
         assert.equal(refreshed.invoiceFileUrl, body.data.invoiceFileUrl);
 
@@ -160,7 +163,7 @@ test("Requests Invoice Upload API", async (t) => {
     });
 
     await t.test("non-owner requester and IT role cannot upload invoice to someone else's request", async () => {
-        const request = await prisma.itemRequest.create({
+        const request = await itemRequest.create({
             data: {
                 requesterId: ownerUser.id,
                 itemName: "Wireless Mouse",
@@ -202,7 +205,7 @@ test("Requests Invoice Upload API", async (t) => {
     });
 
     await t.test("invalid file type is rejected with RFC9457 validation error", async () => {
-        const request = await prisma.itemRequest.create({
+        const request = await itemRequest.create({
             data: {
                 requesterId: ownerUser.id,
                 itemName: "Keyboard",
@@ -239,7 +242,7 @@ test("Requests Invoice Upload API", async (t) => {
     });
 
     await t.test("with-invoice endpoint rejects request when invoice file is missing", async () => {
-        const countBefore = await prisma.itemRequest.count({
+        const countBefore = await itemRequest.count({
             where: { requesterId: ownerUser.id }
         });
 
@@ -269,7 +272,7 @@ test("Requests Invoice Upload API", async (t) => {
         assert.ok(Array.isArray(body.errors));
         assert.ok(body.errors.some((error) => error.field === "invoice"));
 
-        const countAfter = await prisma.itemRequest.count({
+        const countAfter = await itemRequest.count({
             where: { requesterId: ownerUser.id }
         });
         assert.equal(countAfter, countBefore);
@@ -309,7 +312,7 @@ test("Requests Invoice Upload API", async (t) => {
     });
 
     await t.test("file serving requires auth and enforces request-level authorization", async () => {
-        const request = await prisma.itemRequest.create({
+        const request = await itemRequest.create({
             data: {
                 requesterId: ownerUser.id,
                 itemName: "Monitor Arm",
@@ -378,7 +381,7 @@ test("Requests Invoice Upload API", async (t) => {
             await prisma.auditLog.deleteMany({
                 where: { entityId: { in: createdRequestIds } }
             });
-            await prisma.itemRequest.deleteMany({
+            await itemRequest.deleteMany({
                 where: { id: { in: createdRequestIds } }
             });
         }

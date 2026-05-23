@@ -63,7 +63,7 @@ describe('requireItRole Middleware', () => {
         assert.strictEqual(auditRepo.createAuditLog.mock.callCount(), 1);
         const auditCall = auditRepo.createAuditLog.mock.calls[0].arguments[0];
         assert.strictEqual(auditCall.action, 'credential.imap.access.denied');
-        assert.strictEqual(auditCall.metadata.actualRole, 'requester');
+        assert.strictEqual(auditCall.metadata.actualRole, 'user');
         assert.strictEqual(auditCall.metadata.targetUserId, 'target-user');
     });
 

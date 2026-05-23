@@ -11,6 +11,9 @@ import { signSessionToken } from "../../apps/api/src/shared/auth/jwt.js";
 import { getAuthConfig } from "../../apps/api/src/config/authConfig.js";
 import appPlugin from "../../apps/api/src/server.js";
 import { prisma } from "../../apps/api/src/shared/db/prisma.js";
+import { createLegacyItemRequest } from "./helpers/legacyItemRequest.mjs";
+
+const itemRequest = createLegacyItemRequest(prisma);
 
 async function build() {
     const app = Fastify();
@@ -71,7 +74,7 @@ test("Requests Approval API Endpoints", async (t) => {
         }, config.jwt);
 
         // Create Request
-        const request = await prisma.itemRequest.create({
+        const request = await itemRequest.create({
             data: {
                 requesterId: requesterUser.id,
                 itemName: "Approval API Test",
@@ -98,8 +101,8 @@ test("Requests Approval API Endpoints", async (t) => {
         assert.equal(body.data.approvedById, devUser.id);
     });
 
-    await t.test("POST /api/v1/requests/:id/approve - Forbidden (Admin User)", async () => {
-        await prisma.itemRequest.update({ where: { id: requestId }, data: { status: "IT_REVIEWED" } });
+    await t.test("POST /api/v1/requests/:id/approve - Admin User Success", async () => {
+        await itemRequest.update({ where: { id: requestId }, data: { status: "IT_REVIEWED" } });
 
         const response = await app.inject({
             method: "POST",
@@ -107,12 +110,13 @@ test("Requests Approval API Endpoints", async (t) => {
             headers: { cookie: `it-hub-session=${adminToken}` }
         });
 
-        assert.equal(response.statusCode, 403);
+        assert.equal(response.statusCode, 200);
+        assert.equal(JSON.parse(response.body).data.approvedById, adminUser.id);
     });
 
-    await t.test("POST /api/v1/requests/:id/approve - Forbidden (IT User)", async () => {
+    await t.test("POST /api/v1/requests/:id/approve - IT User Success", async () => {
         // Reset status
-        await prisma.itemRequest.update({ where: { id: requestId }, data: { status: "IT_REVIEWED" } });
+        await itemRequest.update({ where: { id: requestId }, data: { status: "IT_REVIEWED" } });
 
         const response = await app.inject({
             method: "POST",
@@ -120,7 +124,8 @@ test("Requests Approval API Endpoints", async (t) => {
             headers: { cookie: `it-hub-session=${itToken}` }
         });
 
-        assert.equal(response.statusCode, 403);
+        assert.equal(response.statusCode, 200);
+        assert.equal(JSON.parse(response.body).data.approvedById, itUser.id);
     });
 
     await t.test("POST /api/v1/requests/:id/approve - Forbidden (Requester)", async () => {
@@ -135,7 +140,7 @@ test("Requests Approval API Endpoints", async (t) => {
 
     await t.test("POST /api/v1/requests/:id/approve - Bad Request (Wrong Status)", async () => {
         // Set to SUBMITTED
-        await prisma.itemRequest.update({ where: { id: requestId }, data: { status: "SUBMITTED" } });
+        await itemRequest.update({ where: { id: requestId }, data: { status: "SUBMITTED" } });
 
         const response = await app.inject({
             method: "POST",
@@ -158,11 +163,19 @@ test("Requests Approval API Endpoints", async (t) => {
 
     // Cleanup
     await t.test("Cleanup", async () => {
-        if (requestId) await prisma.itemRequest.delete({ where: { id: requestId } });
-        if (adminUser) await prisma.user.delete({ where: { id: adminUser.id } });
-        if (devUser) await prisma.user.delete({ where: { id: devUser.id } });
-        if (itUser) await prisma.user.delete({ where: { id: itUser.id } });
-        if (requesterUser) await prisma.user.delete({ where: { id: requesterUser.id } });
+        const userIds = [adminUser, devUser, itUser, requesterUser].map((user) => user?.id).filter(Boolean);
+        if (requestId) {
+            await prisma.inAppNotification.deleteMany({ where: { referenceId: requestId } });
+            await prisma.emailNotification.deleteMany({ where: { referenceId: requestId } });
+            await prisma.auditLog.deleteMany({ where: { entityId: requestId } });
+            await itemRequest.delete({ where: { id: requestId } });
+        }
+        if (userIds.length) {
+            await prisma.inAppNotification.deleteMany({ where: { userId: { in: userIds } } });
+            await prisma.emailNotification.deleteMany({ where: { recipientUserId: { in: userIds } } });
+            await prisma.auditLog.deleteMany({ where: { actorUserId: { in: userIds } } });
+            await prisma.user.deleteMany({ where: { id: { in: userIds } } });
+        }
         await prisma.$disconnect();
         await app.close();
     });

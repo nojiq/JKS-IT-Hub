@@ -93,7 +93,7 @@ describe('HomePage', () => {
         expect(container.querySelector('.workspace-module-launcher-grid')).toBeInTheDocument();
 
         const moduleTitles = [...container.querySelectorAll('.workspace-module-card-title')].map((node) => node.textContent);
-        expect(moduleTitles).toEqual(['Requests', 'Onboarding', 'Users & Credentials', 'Maintenance', 'Assets']);
+        expect(moduleTitles).toEqual(['Requests', 'Onboarding', 'Users & Credentials', 'Maintenance', 'Assets', 'IP List']);
 
         expect(screen.getByRole('link', { name: /open requests/i })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /open onboarding/i })).toBeInTheDocument();
@@ -106,7 +106,7 @@ describe('HomePage', () => {
         expect(screen.getByText(hasExactText('1 overdue'))).toBeInTheDocument();
     });
 
-    it('keeps launcher cards visible even when some operational counts are unavailable', () => {
+    it('keeps launcher cards visible for IT staff even when some operational counts are unavailable', () => {
         useQuery.mockImplementation(({ queryKey }) => {
             if (queryKey[0] === 'users') {
                 return createQueryResult({
@@ -140,7 +140,7 @@ describe('HomePage', () => {
         expect(screen.getByRole('link', { name: /open users & credentials/i })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /open onboarding/i })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /open assets/i })).toBeInTheDocument();
-        expect(screen.queryByRole('link', { name: /open maintenance/i })).not.toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /open maintenance/i })).toBeInTheDocument();
     });
 
     it('shows no launcher modules for user role', () => {

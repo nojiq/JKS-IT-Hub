@@ -104,9 +104,11 @@ model User {
   assignmentTechnicians                  DepartmentAssignmentTechnician[]
   assignedMaintenanceWindows             MaintenanceWindow[]              @relation("AssignedTo")
   completedMaintenance                   MaintenanceCompletion[]
-  submittedRequests                      ItemRequest[]
-  reviewedRequests                       ItemRequest[]                    @relation("ITReviewedBy")
-  approvedRequests                       ItemRequest[]                    @relation("ApprovedBy")
+  submittedPurchaseRecords               PurchaseRecord[]                 @relation("PurchaseRecordRequester")
+  requestedForPurchaseRecords            PurchaseRecord[]                 @relation("PurchaseRecordRequestedFor")
+  recordedPurchaseRecords                PurchaseRecord[]                 @relation("PurchaseRecordRecordedBy")
+  purchasedPurchaseRecords               PurchaseRecord[]                 @relation("PurchaseRecordPurchasedBy")
+  approvedPurchaseRecords                PurchaseRecord[]                 @relation("PurchaseRecordApprovedBy")
   notifications                          EmailNotification[]
   inAppNotifications                     InAppNotification[]
   profileFieldValues                     UserFieldValue[]
@@ -116,6 +118,10 @@ model User {
   completedPreventiveMaintenanceRuns     MaintenanceRun[]                 @relation("MaintenanceRunCompletedBy")
   completedPreventiveMaintenanceRunItems MaintenanceRunItem[]             @relation("MaintenanceRunItemCompletedBy")
   createdMaintenanceTaskPresets          MaintenanceTaskPreset[]          @relation("MaintenanceTaskPresetCreatedBy")
+  createdManualIpRecords                 ManualIpRecord[]                 @relation("ManualIpRecordCreatedBy")
+  updatedManualIpRecords                 ManualIpRecord[]                 @relation("ManualIpRecordUpdatedBy")
+  createdIpSubnetRules                   IpSubnetRule[]                   @relation("IpSubnetRuleCreatedBy")
+  updatedIpSubnetRules                   IpSubnetRule[]                   @relation("IpSubnetRuleUpdatedBy")
 
   @@index([status])
   @@index([role])
@@ -226,6 +232,56 @@ model AssetSyncRun {
   @@index([status], map: "idx_asset_sync_runs_status")
   @@index([startedAt], map: "idx_asset_sync_runs_started_at")
   @@map("asset_sync_runs")
+}
+
+model IpSubnetRule {
+  id              String   @id @default(uuid()) @map("id") @db.Char(36)
+  cidr            String   @unique @map("cidr") @db.VarChar(50)
+  networkAddress  String   @map("network_address") @db.VarChar(45)
+  prefixLength    Int      @map("prefix_length")
+  rangeStart      BigInt   @map("range_start")
+  rangeEnd        BigInt   @map("range_end")
+  purpose         String   @map("purpose") @db.VarChar(191)
+  description     String?  @map("description") @db.Text
+  createdByUserId String?  @map("created_by_user_id") @db.Char(36)
+  updatedByUserId String?  @map("updated_by_user_id") @db.Char(36)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  createdByUser User? @relation("IpSubnetRuleCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUser User? @relation("IpSubnetRuleUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([rangeStart, rangeEnd], map: "idx_ip_subnet_rules_range")
+  @@index([purpose], map: "idx_ip_subnet_rules_purpose")
+  @@index([createdByUserId], map: "idx_ip_subnet_rules_created_by")
+  @@index([updatedByUserId], map: "idx_ip_subnet_rules_updated_by")
+  @@map("ip_subnet_rules")
+}
+
+model ManualIpRecord {
+  id              String   @id @default(uuid()) @map("id") @db.Char(36)
+  ipAddress       String   @unique @map("ip_address") @db.VarChar(45)
+  ipAddressInt    BigInt   @map("ip_address_int")
+  hostname        String?  @map("hostname") @db.VarChar(255)
+  location        String?  @map("location") @db.VarChar(191)
+  department      String?  @map("department") @db.VarChar(191)
+  macAddress      String?  @map("mac_address") @db.VarChar(50)
+  notes           String?  @map("notes") @db.Text
+  createdByUserId String?  @map("created_by_user_id") @db.Char(36)
+  updatedByUserId String?  @map("updated_by_user_id") @db.Char(36)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  createdByUser User? @relation("ManualIpRecordCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUser User? @relation("ManualIpRecordUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([ipAddressInt], map: "idx_manual_ip_records_ip_int")
+  @@index([hostname], map: "idx_manual_ip_records_hostname")
+  @@index([location], map: "idx_manual_ip_records_location")
+  @@index([department], map: "idx_manual_ip_records_department")
+  @@index([createdByUserId], map: "idx_manual_ip_records_created_by")
+  @@index([updatedByUserId], map: "idx_manual_ip_records_updated_by")
+  @@map("manual_ip_records")
 }
 
 model AuditLog {
@@ -806,50 +862,108 @@ model MaintenanceWindowDeviceType {
   @@map("maintenance_window_device_types")
 }
 
-enum RequestStatus {
-  SUBMITTED
-  IT_REVIEWED
-  APPROVED
+enum PurchaseRecordStatus {
+  RECORDED
   REJECTED
-  ALREADY_PURCHASED
+  ARCHIVED
 }
 
-enum RequestPriority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
+enum PurchaseApprovalStatus {
+  NOT_REQUIRED
+  PENDING
+  APPROVED
+  SKIPPED
+  REJECTED
 }
 
-model ItemRequest {
-  id              String           @id @default(uuid()) @db.Char(36)
-  requesterId     String           @map("requester_id") @db.Char(36)
-  itemName        String           @map("item_name") @db.VarChar(200)
-  description     String?          @db.Text
-  justification   String           @db.Text
-  status          RequestStatus    @default(SUBMITTED)
-  priority        RequestPriority? @default(MEDIUM)
-  category        String?          @db.VarChar(100)
-  invoiceFileUrl  String?          @map("invoice_file_url") @db.VarChar(500)
-  itReview        String?          @map("it_review") @db.Text
-  itReviewedById  String?          @map("it_reviewed_by_id") @db.Char(36)
-  itReviewedAt    DateTime?        @map("it_reviewed_at")
-  approvedById    String?          @map("approved_by_id") @db.Char(36)
-  approvedAt      DateTime?        @map("approved_at")
-  rejectionReason String?          @map("rejection_reason") @db.Text
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
+enum SnipeEntityType {
+  HARDWARE
+  ACCESSORY
+  CONSUMABLE
+  LICENSE
+  COMPONENT
+}
 
-  requester    User  @relation(fields: [requesterId], references: [id])
-  itReviewedBy User? @relation("ITReviewedBy", fields: [itReviewedById], references: [id])
-  approvedBy   User? @relation("ApprovedBy", fields: [approvedById], references: [id])
+enum SnipeVerificationStatus {
+  UNVERIFIED
+  VERIFIED
+  NOT_FOUND
+  ERROR
+}
+
+model PurchaseRecord {
+  id                 String                 @id @default(uuid()) @db.Char(36)
+  requesterId        String                 @map("requester_id") @db.Char(36)
+  requestedForUserId String?                @map("requested_for_user_id") @db.Char(36)
+  reason             String                 @db.Text
+  invoiceFileUrl     String?                @map("invoice_file_url") @db.VarChar(500)
+  recordedById       String                 @map("recorded_by_id") @db.Char(36)
+  purchasedById      String?                @map("purchased_by_id") @db.Char(36)
+  purchaseDate       DateTime?              @map("purchase_date")
+  vendorName         String?                @map("vendor_name") @db.VarChar(191)
+  totalAmount        Decimal?               @map("total_amount") @db.Decimal(12, 2)
+  currency           String                 @default("MYR") @db.Char(3)
+  notes              String?                @db.Text
+  recordStatus       PurchaseRecordStatus   @default(RECORDED) @map("record_status")
+  approvalStatus     PurchaseApprovalStatus @default(NOT_REQUIRED) @map("approval_status")
+  approvedById       String?                @map("approved_by_id") @db.Char(36)
+  approvedAt         DateTime?              @map("approved_at")
+  approvalNote       String?                @map("approval_note") @db.Text
+  approvalSkipReason String?                @map("approval_skip_reason") @db.Text
+  createdAt          DateTime               @default(now()) @map("created_at")
+  updatedAt          DateTime               @updatedAt @map("updated_at")
+
+  requester        User                 @relation("PurchaseRecordRequester", fields: [requesterId], references: [id])
+  requestedForUser User?                @relation("PurchaseRecordRequestedFor", fields: [requestedForUserId], references: [id], onDelete: SetNull)
+  recordedBy       User                 @relation("PurchaseRecordRecordedBy", fields: [recordedById], references: [id])
+  purchasedBy      User?                @relation("PurchaseRecordPurchasedBy", fields: [purchasedById], references: [id], onDelete: SetNull)
+  approvedBy       User?                @relation("PurchaseRecordApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  items            PurchaseRecordItem[]
 
   @@index([requesterId])
-  @@index([status])
+  @@index([requestedForUserId])
+  @@index([recordedById])
+  @@index([purchasedById])
+  @@index([approvedById])
+  @@index([recordStatus])
+  @@index([approvalStatus])
   @@index([createdAt])
-  @@index([priority])
+  @@index([vendorName])
+  @@map("purchase_records")
+}
+
+model PurchaseRecordItem {
+  id                       String                   @id @default(uuid()) @db.Char(36)
+  purchaseRecordId         String                   @map("purchase_record_id") @db.Char(36)
+  itemName                 String                   @map("item_name") @db.VarChar(200)
+  description              String?                  @db.Text
+  category                 String?                  @db.VarChar(100)
+  quantity                 Int                      @default(1)
+  unitCost                 Decimal?                 @map("unit_cost") @db.Decimal(12, 2)
+  lineTotal                Decimal?                 @map("line_total") @db.Decimal(12, 2)
+  imageFileUrl             String?                  @map("image_file_url") @db.VarChar(500)
+  sourceUrl                String?                  @map("source_url") @db.VarChar(1000)
+  sourceMarketplace        String?                  @map("source_marketplace") @db.VarChar(30)
+  sourceImageUrl           String?                  @map("source_image_url") @db.VarChar(1000)
+  sourceSnapshot           Json?                    @map("source_snapshot")
+  snipeType                SnipeEntityType?         @map("snipe_type")
+  snipeId                  Int?                     @map("snipe_id")
+  snipeDisplayName         String?                  @map("snipe_display_name") @db.VarChar(255)
+  snipeVerifiedAt          DateTime?                @map("snipe_verified_at")
+  snipeSnapshot            Json?                    @map("snipe_snapshot")
+  snipeVerificationStatus  SnipeVerificationStatus  @default(UNVERIFIED) @map("snipe_verification_status")
+  createdAt                DateTime                 @default(now()) @map("created_at")
+  updatedAt                DateTime                 @updatedAt @map("updated_at")
+
+  purchaseRecord PurchaseRecord @relation(fields: [purchaseRecordId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseRecordId])
   @@index([itemName])
-  @@map("item_requests")
+  @@index([category])
+  @@index([sourceMarketplace])
+  @@index([snipeType, snipeId])
+  @@index([snipeVerificationStatus])
+  @@map("purchase_record_items")
 }
 
 model InAppNotification {

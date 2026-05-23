@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "cross-env-shell \"fastify start -l info -P -a 0.0.0.0 -p ${API_PORT:-3006} -w src/loader.js\"",
     "start": "cross-env-shell \"fastify start -l info -P -a 0.0.0.0 -p ${API_PORT:-3006} src/loader.js\"",
-    "test": "node --env-file=../../.env --test ../../tests/api/*.test.mjs"
+    "test": "node --env-file=../../.env --test --test-concurrency=1 ../../tests/api/*.test.mjs"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",

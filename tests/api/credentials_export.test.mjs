@@ -151,8 +151,8 @@ test.describe('Credential Export API Integration', () => {
 
         assert.strictEqual(response.statusCode, 403);
         const result = response.json();
-        assert.strictEqual(result.title, 'Unauthorized');
-        assert.ok(result.detail.includes('IT role required'));
+        assert.strictEqual(result.title, 'Forbidden');
+        assert.ok(result.detail.includes('does not have access'));
     });
 
     test('should return 404 for non-existent user', async () => {

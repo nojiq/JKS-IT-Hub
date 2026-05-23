@@ -8,6 +8,11 @@ const cookie = require("@fastify/cookie");
 
 import usersRoutes from "../../apps/api/src/features/users/routes.js";
 import { signSessionToken } from "../../apps/api/src/shared/auth/jwt.js";
+import { prisma } from "../../apps/api/src/shared/db/prisma.js";
+
+test.after(async () => {
+  await prisma.$disconnect();
+});
 
 const baseConfig = {
   jwt: {

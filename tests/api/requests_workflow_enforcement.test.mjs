@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import * as service from "../../apps/api/src/features/requests/service.js";
 import { prisma } from "../../apps/api/src/shared/db/prisma.js";
+import { createLegacyItemRequest } from "./helpers/legacyItemRequest.mjs";
+
+const itemRequest = createLegacyItemRequest(prisma);
 
 test("Requests Workflow Enforcement", async (t) => {
     let requesterAdminUser;
@@ -37,7 +40,7 @@ test("Requests Workflow Enforcement", async (t) => {
             });
 
             // Create request by Admin (to test self-approval)
-            const req1 = await prisma.itemRequest.create({
+            const req1 = await itemRequest.create({
                 data: {
                     requesterId: requesterAdminUser.id,
                     itemName: "Self Approval Test",
@@ -54,7 +57,7 @@ test("Requests Workflow Enforcement", async (t) => {
             const requesterUser = await prisma.user.create({
                 data: { username: `reg-user-${randomUUID()}`, role: "user", status: "active" }
             });
-            const req2 = await prisma.itemRequest.create({
+            const req2 = await itemRequest.create({
                 data: {
                     requesterId: requesterUser.id,
                     itemName: "Status Test Request",
@@ -106,7 +109,7 @@ test("Requests Workflow Enforcement", async (t) => {
     await t.test("itReviewRequest - Should block self-review", async () => {
         // otherItUser (IT role) tries to review a request they themselves made
         // First, create a request BY the IT user
-        const selfRequest = await prisma.itemRequest.create({
+        const selfRequest = await itemRequest.create({
             data: {
                 requesterId: otherItUser.id, // IT user is the requester
                 itemName: "IT Self Request",
@@ -145,7 +148,7 @@ test("Requests Workflow Enforcement", async (t) => {
 
         // Cleanup this request
         await prisma.auditLog.deleteMany({ where: { entityId: selfRequest.id } });
-        await prisma.itemRequest.delete({ where: { id: selfRequest.id } });
+        await itemRequest.delete({ where: { id: selfRequest.id } });
     });
 
     // Test 3: Status Transition Enforcement
@@ -193,7 +196,7 @@ test("Requests Workflow Enforcement", async (t) => {
         // 2. Delete all item requests created by these users (and their audit logs)
         if (userIds.length > 0) {
             // Find all requests by these users
-            const allRequests = await prisma.itemRequest.findMany({
+            const allRequests = await itemRequest.findMany({
                 where: { requesterId: { in: userIds } },
                 select: { id: true }
             });
@@ -201,7 +204,7 @@ test("Requests Workflow Enforcement", async (t) => {
 
             if (allRequestIds.length > 0) {
                 await prisma.auditLog.deleteMany({ where: { entityId: { in: allRequestIds } } });
-                await prisma.itemRequest.deleteMany({ where: { id: { in: allRequestIds } } });
+                await itemRequest.deleteMany({ where: { id: { in: allRequestIds } } });
             }
         }
 

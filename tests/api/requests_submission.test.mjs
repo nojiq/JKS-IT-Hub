@@ -11,6 +11,9 @@ import { signSessionToken } from "../../apps/api/src/shared/auth/jwt.js";
 import { getAuthConfig } from "../../apps/api/src/config/authConfig.js";
 import appPlugin from "../../apps/api/src/server.js";
 import { prisma } from "../../apps/api/src/shared/db/prisma.js";
+import { createLegacyItemRequest } from "./helpers/legacyItemRequest.mjs";
+
+const itemRequest = createLegacyItemRequest(prisma);
 
 const buildMultipartBody = ({ fields = {}, file }) => {
     const boundary = `----it-hub-boundary-${randomUUID()}`;
@@ -194,7 +197,7 @@ test("Requests Submission API", async (t) => {
     });
 
     await t.test("POST /api/v1/requests/with-invoice - validation errors return RFC9457 format and do not create partial rows (missing item name)", async () => {
-        const countBefore = await prisma.itemRequest.count({ where: { requesterId: requesterUser.id } });
+        const countBefore = await itemRequest.count({ where: { requesterId: requesterUser.id } });
         const multipart = buildMultipartBody({
             fields: {
                 itemName: "",
@@ -227,12 +230,12 @@ test("Requests Submission API", async (t) => {
         assert.ok(Array.isArray(body.errors));
         assert.ok(body.errors.some((error) => error.field === "itemName"));
 
-        const countAfter = await prisma.itemRequest.count({ where: { requesterId: requesterUser.id } });
+        const countAfter = await itemRequest.count({ where: { requesterId: requesterUser.id } });
         assert.equal(countAfter, countBefore);
     });
 
     await t.test("POST /api/v1/requests/with-invoice - validation errors return RFC9457 format and do not create partial rows (missing justification)", async () => {
-        const countBefore = await prisma.itemRequest.count({ where: { requesterId: requesterUser.id } });
+        const countBefore = await itemRequest.count({ where: { requesterId: requesterUser.id } });
         const multipart = buildMultipartBody({
             fields: {
                 itemName: "Keyboard",
@@ -262,7 +265,7 @@ test("Requests Submission API", async (t) => {
         assert.ok(Array.isArray(body.errors));
         assert.ok(body.errors.some((error) => error.field === "justification"));
 
-        const countAfter = await prisma.itemRequest.count({ where: { requesterId: requesterUser.id } });
+        const countAfter = await itemRequest.count({ where: { requesterId: requesterUser.id } });
         assert.equal(countAfter, countBefore);
     });
 
@@ -360,7 +363,7 @@ test("Requests Submission API", async (t) => {
         const ids = [createdRequestId].filter(Boolean);
         if (ids.length > 0) {
             await prisma.auditLog.deleteMany({ where: { entityId: { in: ids } } });
-            await prisma.itemRequest.deleteMany({ where: { id: { in: ids } } });
+            await itemRequest.deleteMany({ where: { id: { in: ids } } });
         }
 
         if (userIds.length > 0) {

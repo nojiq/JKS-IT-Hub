@@ -1,6 +1,9 @@
 # dependencies
 node_modules/
 .pnpm-store/
+apps/scraper/.venv/
+__pycache__/
+*.py[cod]
 
 # build output
 dist/
@@ -26,8 +29,11 @@ Thumbs.db
 apps/api/uploads/*
 !apps/api/uploads/.gitkeep
 apps/api/test-uploads/
+apps/api/test-uploads-api/
+uploads/
 
 # Local AI / agent workflow artifacts
+.playwright-cli/
 .superpowers/
 .worktrees/
 .agent/

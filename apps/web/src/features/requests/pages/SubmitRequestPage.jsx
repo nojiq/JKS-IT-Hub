@@ -1,13 +1,7 @@
-import React from 'react';
-import RequestForm from '../components/RequestForm.jsx';
+import { Navigate } from "react-router-dom";
 
-const SubmitRequestPage = () => {
-    return (
-        <div style={{ padding: '2rem' }}>
-            <h1 style={{ marginBottom: '2rem' }}>Submit New Request</h1>
-            <RequestForm />
-        </div>
-    );
-};
+const SubmitRequestPage = () => (
+    <Navigate to="/requests/my-requests?submit=1" replace />
+);
 
 export default SubmitRequestPage;

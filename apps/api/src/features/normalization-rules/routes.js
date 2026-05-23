@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { requireAuthenticated } from "../../shared/auth/requireAuthenticated.js";
-import { hasDevRole } from "../../shared/auth/rbac.js";
+import { hasItRole } from "../../shared/auth/rbac.js";
 import { createProblemDetails, sendProblem } from "../../shared/errors/problemDetails.js";
 import { 
     createNormalizationRuleSchema, 
@@ -25,11 +25,11 @@ export default async function normalizationRuleRoutes(app, { config, userRepo, n
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!hasDevRole(actor)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
-                detail: "Only the developer role can view normalization rules"
+                detail: "Only IT staff roles can view normalization rules"
             }));
             return;
         }
@@ -62,11 +62,11 @@ export default async function normalizationRuleRoutes(app, { config, userRepo, n
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!hasDevRole(actor)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
-                detail: "Only the developer role can view normalization rules"
+                detail: "Only IT staff roles can view normalization rules"
             }));
             return;
         }
@@ -100,11 +100,11 @@ export default async function normalizationRuleRoutes(app, { config, userRepo, n
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!hasDevRole(actor)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
-                detail: "Only the developer role can create normalization rules"
+                detail: "Only IT staff roles can create normalization rules"
             }));
             return;
         }
@@ -177,11 +177,11 @@ export default async function normalizationRuleRoutes(app, { config, userRepo, n
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!hasDevRole(actor)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
-                detail: "Only the developer role can update normalization rules"
+                detail: "Only IT staff roles can update normalization rules"
             }));
             return;
         }
@@ -255,11 +255,11 @@ export default async function normalizationRuleRoutes(app, { config, userRepo, n
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!hasDevRole(actor)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
-                detail: "Only the developer role can delete normalization rules"
+                detail: "Only IT staff roles can delete normalization rules"
             }));
             return;
         }
@@ -309,11 +309,11 @@ export default async function normalizationRuleRoutes(app, { config, userRepo, n
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!hasDevRole(actor)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
-                detail: "Only the developer role can reorder normalization rules"
+                detail: "Only IT staff roles can reorder normalization rules"
             }));
             return;
         }
@@ -361,11 +361,11 @@ export default async function normalizationRuleRoutes(app, { config, userRepo, n
         if (!actor) return;
 
         // RBAC check: IT roles only
-        if (!hasDevRole(actor)) {
+        if (!hasItRole(actor)) {
             sendProblem(reply, createProblemDetails({
                 status: 403,
                 title: "Forbidden",
-                detail: "Only the developer role can preview normalization"
+                detail: "Only IT staff roles can preview normalization"
             }));
             return;
         }

@@ -35,7 +35,10 @@ import RequestsHomePage from "../features/requests/pages/RequestsHomePage.jsx";
 import { RequestsAccessGate } from "../features/requests/pages/RequestsAccessGate.jsx";
 import AssetsListPage from "../features/assets/pages/AssetsListPage.jsx";
 import AssetDetailPage from "../features/assets/pages/AssetDetailPage.jsx";
-import { DEV_ONLY_ROLES } from "../shared/auth/workspaceRoles.js";
+import IpListPage from "../features/ip-list/pages/IpListPage.jsx";
+import IpDetailPage from "../features/ip-list/pages/IpDetailPage.jsx";
+import SubnetsPage from "../features/ip-list/pages/SubnetsPage.jsx";
+import { APP_ACCESS_ROLES } from "../shared/auth/workspaceRoles.js";
 
 const RequireRoles = ({ roles, children }) => {
   const { user } = useOutletContext() ?? {};
@@ -66,11 +69,14 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: "assets", element: <AssetsListPage /> },
       { path: "assets/:id", element: <AssetDetailPage /> },
+      { path: "ip-list", element: <IpListPage /> },
+      { path: "ip-list/subnets", element: <SubnetsPage /> },
+      { path: "ip-list/:ipAddress", element: <IpDetailPage /> },
       { path: "audit-logs", element: <AuditLogPage /> },
       {
         path: "systems",
         element: (
-          <RequireRoles roles={DEV_ONLY_ROLES}>
+          <RequireRoles roles={APP_ACCESS_ROLES}>
             <SystemManagementPage />
           </RequireRoles>
         )
@@ -106,7 +112,7 @@ export const router = createBrowserRouter([
               {
                 path: "approvals",
                 element: (
-                  <RequireRoles roles={DEV_ONLY_ROLES}>
+                  <RequireRoles roles={APP_ACCESS_ROLES}>
                     <AdminApprovalPage />
                   </RequireRoles>
                 )

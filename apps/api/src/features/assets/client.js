@@ -18,7 +18,7 @@ export const createSnipeClient = ({ config = {}, fetchImpl = globalThis.fetch } 
 
   const isConfigured = () => Boolean(baseUrl && apiToken && fetchImpl);
 
-  const request = async (path) => {
+  const request = async (path, { allowNotFound = false } = {}) => {
     if (!isConfigured()) {
       throw new Error("Snipe-IT client is not configured");
     }
@@ -32,6 +32,10 @@ export const createSnipeClient = ({ config = {}, fetchImpl = globalThis.fetch } 
           Accept: "application/json"
         }
       });
+
+      if (response.status === 404 && allowNotFound) {
+        return null;
+      }
 
       if (!response.ok) {
         const body = await response.text().catch(() => "");
@@ -67,5 +71,32 @@ export const createSnipeClient = ({ config = {}, fetchImpl = globalThis.fetch } 
     return rows;
   };
 
-  return { isConfigured, fetchHardwarePage, fetchAllHardware };
+  const fetchEntityById = (path, id) => request(`/api/v1/${path}/${id}`, { allowNotFound: true });
+  const fetchHardwareById = (id) => fetchEntityById("hardware", id);
+  const fetchAccessoryById = (id) => fetchEntityById("accessories", id);
+  const fetchConsumableById = (id) => fetchEntityById("consumables", id);
+  const fetchLicenseById = (id) => fetchEntityById("licenses", id);
+  const fetchComponentById = (id) => fetchEntityById("components", id);
+
+  const fetchSnipeEntity = (type, id) => {
+    const normalizedType = String(type ?? "").toUpperCase();
+    if (normalizedType === "HARDWARE") return fetchHardwareById(id);
+    if (normalizedType === "ACCESSORY") return fetchAccessoryById(id);
+    if (normalizedType === "CONSUMABLE") return fetchConsumableById(id);
+    if (normalizedType === "LICENSE") return fetchLicenseById(id);
+    if (normalizedType === "COMPONENT") return fetchComponentById(id);
+    throw new Error(`Unsupported Snipe entity type: ${type}`);
+  };
+
+  return {
+    isConfigured,
+    fetchHardwarePage,
+    fetchAllHardware,
+    fetchHardwareById,
+    fetchAccessoryById,
+    fetchConsumableById,
+    fetchLicenseById,
+    fetchComponentById,
+    fetchSnipeEntity
+  };
 };

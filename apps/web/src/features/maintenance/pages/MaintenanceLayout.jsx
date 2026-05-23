@@ -5,9 +5,9 @@ import { MaintenanceSubnav } from "../components/MaintenanceSubnav.jsx";
 import "./MaintenanceHomePage.css";
 import "../maintenance-workspace.css";
 
-import { DEV_ONLY_ROLES } from "../../../shared/auth/workspaceRoles.js";
+import { APP_ACCESS_ROLES } from "../../../shared/auth/workspaceRoles.js";
 
-const MAINTENANCE_ROLES = DEV_ONLY_ROLES;
+const MAINTENANCE_ROLES = APP_ACCESS_ROLES;
 const DOCUMENT_TITLE_APP = "IT Hub";
 
 export function maintenancePathDocumentTitle(pathname) {

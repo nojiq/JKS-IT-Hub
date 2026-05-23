@@ -1,4 +1,4 @@
-import { ADMIN_NAV_ROLES, DEV_ONLY_ROLES, IT_STAFF_ROLES } from "../auth/workspaceRoles.js";
+import { ADMIN_NAV_ROLES, IT_STAFF_ROLES } from "../auth/workspaceRoles.js";
 
 const IT_ROLES = IT_STAFF_ROLES;
 const ADMIN_ROLES = ADMIN_NAV_ROLES;
@@ -30,8 +30,8 @@ export const workspaceGroups = [
               return !!detailMatch && !excluded.has(detailMatch[1]);
             }
           },
-          { label: "Review Queue", to: "/requests/review", roles: DEV_ONLY_ROLES },
-          { label: "Approvals", to: "/requests/approvals", roles: DEV_ONLY_ROLES }
+          { label: "Review Queue", to: "/requests/review", roles: IT_ROLES },
+          { label: "Approvals", to: "/requests/approvals", roles: IT_ROLES }
         ]
       },
       {
@@ -61,6 +61,16 @@ export const workspaceGroups = [
         launcherActionLabel: "Open Assets"
       },
       {
+        id: "ip-list",
+        label: "IP List",
+        icon: "ip-list",
+        to: "/ip-list",
+        roles: IT_ROLES,
+        launcherPriority: 6,
+        launcherDescription: "Track known IP usage by subnet purpose, host, location, and department.",
+        launcherActionLabel: "Open IP List"
+      },
+      {
         id: "users",
         label: "Users & Credentials",
         icon: "users",
@@ -80,7 +90,7 @@ export const workspaceGroups = [
         label: "Maintenance",
         icon: "maintenance",
         to: "/maintenance",
-        roles: DEV_ONLY_ROLES,
+        roles: IT_ROLES,
         launcherPriority: 4,
         launcherDescription: "Schedule preventive work, assign tasks, and close overdue actions.",
         launcherActionLabel: "Open Maintenance",
@@ -97,8 +107,8 @@ export const workspaceGroups = [
     id: "administration",
     label: "Administration",
     items: [
-      { id: "systems", label: "Systems", icon: "systems", to: "/systems", roles: DEV_ONLY_ROLES },
-      { id: "approvals", label: "Approvals", icon: "approvals", to: "/requests/approvals", roles: DEV_ONLY_ROLES },
+      { id: "systems", label: "Systems", icon: "systems", to: "/systems", roles: IT_ROLES },
+      { id: "approvals", label: "Approvals", icon: "approvals", to: "/requests/approvals", roles: IT_ROLES },
       { id: "audit", label: "Audit", icon: "audit", to: "/audit-logs", roles: ADMIN_ROLES }
     ]
   }

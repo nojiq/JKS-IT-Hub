@@ -3,40 +3,40 @@ import { Link, useOutletContext } from "react-router-dom";
 import { fetchAllRequests } from "../api/requestsApi.js";
 import "./RequestsHomePage.css";
 
-import { DEV_ROLE } from "../../../shared/auth/workspaceRoles.js";
+import { APP_ACCESS_ROLES } from "../../../shared/auth/workspaceRoles.js";
 
 const getTotal = (payload) => Number(payload?.meta?.total ?? payload?.data?.length ?? 0);
 const formatCount = (query) => (query.isLoading && !query.data ? "..." : getTotal(query.data));
 
 export default function RequestsHomePage() {
   const { user } = useOutletContext() ?? {};
-  const isDevUser = user?.role === DEV_ROLE;
+  const hasOperationsAccess = APP_ACCESS_ROLES.includes(user?.role);
 
   const needsReviewQuery = useQuery({
     queryKey: ["requests", "overview", { status: "SUBMITTED", page: "1", perPage: "5" }],
     queryFn: () => fetchAllRequests({ status: "SUBMITTED", page: "1", perPage: "5" }),
-    enabled: isDevUser,
+    enabled: hasOperationsAccess,
     retry: false
   });
 
   const approvalsQuery = useQuery({
     queryKey: ["requests", "overview", { status: "IT_REVIEWED", page: "1", perPage: "5" }],
     queryFn: () => fetchAllRequests({ status: "IT_REVIEWED", page: "1", perPage: "5" }),
-    enabled: isDevUser,
+    enabled: hasOperationsAccess,
     retry: false
   });
 
   const blockedQuery = useQuery({
     queryKey: ["requests", "overview", { status: "REJECTED", page: "1", perPage: "5" }],
     queryFn: () => fetchAllRequests({ status: "REJECTED", page: "1", perPage: "5" }),
-    enabled: isDevUser,
+    enabled: hasOperationsAccess,
     retry: false
   });
 
   const completedQuery = useQuery({
     queryKey: ["requests", "overview", { status: "APPROVED", page: "1", perPage: "5" }],
     queryFn: () => fetchAllRequests({ status: "APPROVED", page: "1", perPage: "5" }),
-    enabled: isDevUser,
+    enabled: hasOperationsAccess,
     retry: false
   });
 
@@ -46,9 +46,9 @@ export default function RequestsHomePage() {
       value: "New",
       tone: "info",
       kicker: "Self service",
-      description: "Submit a purchase request with the required e-invoice attached.",
+      description: "Submit a purchase record with one or more line items. Invoice optional.",
       actionLabel: "Start request",
-      actionTo: "/requests/new"
+      actionTo: "/requests/my-requests?submit=1"
     },
     {
       title: "Track My Requests",
@@ -100,14 +100,14 @@ export default function RequestsHomePage() {
     }
   ];
 
-  const cards = isDevUser ? operationsCards : selfServiceCards;
+  const cards = hasOperationsAccess ? operationsCards : selfServiceCards;
   const activeTotal = getTotal(needsReviewQuery.data) + getTotal(approvalsQuery.data) + getTotal(blockedQuery.data);
   const activeTotalValue = [needsReviewQuery, approvalsQuery, blockedQuery].some(
     (query) => query.isLoading && !query.data
   )
     ? "..."
     : activeTotal;
-  const overview = isDevUser
+  const overview = hasOperationsAccess
     ? {
       title: "Workflow overview",
       description: "Monitor request movement from intake through approval and closure.",
@@ -138,7 +138,7 @@ export default function RequestsHomePage() {
         </div>
       </div>
 
-      <div className={`requests-overview-grid${isDevUser ? "" : " is-self-service"}`}>
+      <div className={`requests-overview-grid${hasOperationsAccess ? "" : " is-self-service"}`}>
         {cards.map((card) => (
           <article
             key={card.title}

@@ -186,6 +186,29 @@ test("System Config API - List (GET /api/v1/system-configs)", async (t) => {
         assert.ok(body.meta?.count !== undefined);
     });
 
+    await t.test("allows IT staff roles to list system configs", async () => {
+        for (const role of ["it", "admin", "head_it"]) {
+            const staffUser = await prisma.user.create({
+                data: {
+                    username: `system-config-${role}-${randomUUID()}`,
+                    role,
+                    status: "active"
+                }
+            });
+            const staffToken = await createAuthToken(staffUser);
+
+            const response = await app.inject({
+                method: "GET",
+                url: "/api/v1/system-configs",
+                headers: {
+                    cookie: `it-hub-session=${staffToken}`
+                }
+            });
+
+            assert.equal(response.statusCode, 200, `${role} should be allowed to list system configs`);
+        }
+    });
+
     await t.test("returns 403 for non-IT users", async () => {
         // Tested in create section, but good to verify for list too
         const regularUser = await prisma.user.create({

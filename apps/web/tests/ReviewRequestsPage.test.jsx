@@ -14,7 +14,8 @@ vi.mock('@tanstack/react-query', async () => {
 });
 
 vi.mock('../src/features/requests/hooks/useRequests.js', () => ({
-    useAllRequests: vi.fn()
+    useAllRequests: vi.fn(),
+    purchaseRecordsKeys: { all: ['purchase-records'] }
 }));
 
 vi.mock('../src/shared/hooks/useSSE.js', () => ({
@@ -127,6 +128,31 @@ describe('ReviewRequestsPage', () => {
         const errorView = renderPage();
         expect(screen.getByText('Unable to load review requests')).toBeInTheDocument();
         errorView.unmount();
+    });
+
+    it('renders purchase records without legacy status field', () => {
+        useAllRequests.mockReturnValue({
+            data: {
+                data: [{
+                    id: 'rec-1',
+                    reason: 'Need chairs',
+                    recordStatus: 'RECORDED',
+                    approvalStatus: 'NOT_REQUIRED',
+                    createdAt: '2026-01-15T10:00:00.000Z',
+                    items: [{ itemName: 'Ergonomic Chair', quantity: 2 }]
+                }],
+                meta: { page: 1, totalPages: 1, total: 1 }
+            },
+            isLoading: false,
+            error: null,
+            isFetching: false,
+            refetch: vi.fn()
+        });
+
+        renderPage();
+
+        expect(screen.getByText('Ergonomic Chair')).toBeInTheDocument();
+        expect(screen.getByText('Submitted')).toBeInTheDocument(); // derived from recordStatus + approvalStatus
     });
 
     it('renders shared empty state', () => {

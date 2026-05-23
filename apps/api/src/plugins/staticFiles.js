@@ -1,7 +1,7 @@
 import path from 'path';
 import fs from 'node:fs/promises';
 import { uploadsConfig } from '../config/uploads.js';
-import { requireAuthenticated } from '../shared/auth/requireAuthenticated.js';
+import { requireActiveUser } from '../shared/auth/requireActiveUser.js';
 import { createProblemDetails, sendProblem } from '../shared/errors/problemDetails.js';
 import { hasItRole, hasAdminRole } from '../shared/auth/rbac.js';
 
@@ -10,7 +10,8 @@ export default async function staticFilesPlugin(app, options) {
         config,
         userRepo,
         requestRepo,
-        maintenanceRepo
+        maintenanceRepo,
+        purchaseRecordRepo
     } = options ?? {};
 
     const uploadPath = path.isAbsolute(uploadsConfig.uploadDir)
@@ -18,7 +19,7 @@ export default async function staticFilesPlugin(app, options) {
         : path.resolve(process.cwd(), uploadsConfig.uploadDir);
 
     app.get('/api/v1/uploads/*', async (request, reply) => {
-        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        const actor = await requireActiveUser(request, reply, { config, userRepo });
         if (!actor) return;
 
         const filename = request.params['*'];
@@ -53,13 +54,25 @@ export default async function staticFilesPlugin(app, options) {
                     }));
                 }
             } else {
-                const linkedCompletion = await maintenanceRepo?.getCompletionBySignerSignatureUrl?.(fileUrl);
-                if (!linkedCompletion) {
-                    return sendProblem(reply, createProblemDetails({
-                        status: 404,
-                        title: 'Not Found',
-                        detail: 'File not found'
-                    }));
+                const linkedPurchaseItem = await purchaseRecordRepo?.getPurchaseRecordItemByImageFileUrl?.(fileUrl);
+                if (linkedPurchaseItem) {
+                    const canAccess = linkedPurchaseItem.purchaseRecord.requesterId === actor.id || hasItRole(actor) || hasAdminRole(actor);
+                    if (!canAccess) {
+                        return sendProblem(reply, createProblemDetails({
+                            status: 403,
+                            title: 'Forbidden',
+                            detail: 'You do not have permission to access this product image'
+                        }));
+                    }
+                } else {
+                    const linkedCompletion = await maintenanceRepo?.getCompletionBySignerSignatureUrl?.(fileUrl);
+                    if (!linkedCompletion) {
+                        return sendProblem(reply, createProblemDetails({
+                            status: 404,
+                            title: 'Not Found',
+                            detail: 'File not found'
+                        }));
+                    }
                 }
             }
         }

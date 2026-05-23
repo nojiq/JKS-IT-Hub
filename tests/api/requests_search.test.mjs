@@ -11,6 +11,9 @@ import { signSessionToken } from "../../apps/api/src/shared/auth/jwt.js";
 import { getAuthConfig } from "../../apps/api/src/config/authConfig.js";
 import appPlugin from "../../apps/api/src/server.js";
 import { prisma } from "../../apps/api/src/shared/db/prisma.js";
+import { createLegacyItemRequest } from "./helpers/legacyItemRequest.mjs";
+
+const itemRequest = createLegacyItemRequest(prisma);
 
 async function build() {
     const app = Fastify();
@@ -56,7 +59,7 @@ test("Requests Search API", async (t) => {
         }, config.jwt);
 
         // Create Test Requests
-        const request1 = await prisma.itemRequest.create({
+        const request1 = await itemRequest.create({
             data: {
                 requesterId: requester1.id,
                 itemName: "Dell Laptop XPS 15",
@@ -69,7 +72,7 @@ test("Requests Search API", async (t) => {
         });
         req1Id = request1.id;
 
-        const request2 = await prisma.itemRequest.create({
+        const request2 = await itemRequest.create({
             data: {
                 requesterId: requester1.id,
                 itemName: "Wireless Mouse",
@@ -82,7 +85,7 @@ test("Requests Search API", async (t) => {
         });
         req2Id = request2.id;
 
-        const request3 = await prisma.itemRequest.create({
+        const request3 = await itemRequest.create({
             data: {
                 requesterId: requester2.id,
                 itemName: "Monitor 27 inch",
@@ -191,9 +194,9 @@ test("Requests Search API", async (t) => {
 
     // Cleanup
     await t.test("Cleanup", async () => {
-        if (req1Id) await prisma.itemRequest.delete({ where: { id: req1Id } });
-        if (req2Id) await prisma.itemRequest.delete({ where: { id: req2Id } });
-        if (req3Id) await prisma.itemRequest.delete({ where: { id: req3Id } });
+        if (req1Id) await itemRequest.delete({ where: { id: req1Id } });
+        if (req2Id) await itemRequest.delete({ where: { id: req2Id } });
+        if (req3Id) await itemRequest.delete({ where: { id: req3Id } });
         if (itUser) await prisma.user.delete({ where: { id: itUser.id } });
         if (requester1) await prisma.user.delete({ where: { id: requester1.id } });
         if (requester2) await prisma.user.delete({ where: { id: requester2.id } });

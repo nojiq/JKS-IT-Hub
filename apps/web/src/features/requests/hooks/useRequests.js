@@ -1,46 +1,81 @@
 import { keepPreviousData, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { submitRequest, fetchMyRequests, fetchRequestDetails, fetchAllRequests } from "../api/requestsApi.js";
+import {
+    createPurchaseRecord,
+    fetchMyPurchaseRecords,
+    fetchPurchaseRecordDetails,
+    fetchAllPurchaseRecords,
+    verifyPurchaseRecordItemSnipe
+} from "../api/purchaseRecordsApi.js";
 
-// Query Keys
-export const requestsKeys = {
-    all: ['requests'],
-    myParams: (filters) => ['requests', 'my', filters],
-    detail: (id) => ['requests', id]
+export const purchaseRecordsKeys = {
+    all: ["purchase-records"],
+    myParams: (filters) => ["purchase-records", "my", filters],
+    detail: (id) => ["purchase-records", id]
 };
 
-// Mutations
-export const useSubmitRequest = () => {
+/** @deprecated Use purchaseRecordsKeys */
+export const requestsKeys = purchaseRecordsKeys;
+
+export const useSubmitPurchaseRecord = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: submitRequest,
+        mutationFn: createPurchaseRecord,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: requestsKeys.all });
+            queryClient.invalidateQueries({ queryKey: purchaseRecordsKeys.all });
         }
     });
 };
 
-// Queries
-export const useMyRequests = (filters = {}) => {
+/** @deprecated Use useSubmitPurchaseRecord */
+export const useSubmitRequest = useSubmitPurchaseRecord;
+
+export const useMyPurchaseRecords = (filters = {}) => {
     return useQuery({
-        queryKey: requestsKeys.myParams(filters),
-        queryFn: () => fetchMyRequests(filters),
+        queryKey: purchaseRecordsKeys.myParams(filters),
+        queryFn: () => fetchMyPurchaseRecords(filters),
         placeholderData: keepPreviousData
     });
 };
 
-export const useRequestDetails = (id) => {
+/** @deprecated Use useMyPurchaseRecords */
+export const useMyRequests = useMyPurchaseRecords;
+
+export const usePurchaseRecordDetails = (id) => {
     return useQuery({
-        queryKey: requestsKeys.detail(id),
-        queryFn: () => fetchRequestDetails(id),
+        queryKey: purchaseRecordsKeys.detail(id),
+        queryFn: () => fetchPurchaseRecordDetails(id),
         enabled: !!id
     });
-};// ... (existing)
+};
 
-export const useAllRequests = (filters = {}) => {
+/** @deprecated Use usePurchaseRecordDetails */
+export const useRequestDetails = usePurchaseRecordDetails;
+
+export const useAllPurchaseRecords = (filters = {}) => {
     return useQuery({
-        queryKey: ['requests', 'admin', filters],
-        queryFn: () => fetchAllRequests(filters),
+        queryKey: ["purchase-records", "admin", filters],
+        queryFn: () => fetchAllPurchaseRecords(filters),
         placeholderData: keepPreviousData
+    });
+};
+
+/** @deprecated Use useAllPurchaseRecords */
+export const useAllRequests = useAllPurchaseRecords;
+
+export const useVerifyPurchaseRecordItemSnipe = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ recordId, itemId, payload }) =>
+            verifyPurchaseRecordItemSnipe(recordId, itemId, payload),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: purchaseRecordsKeys.all });
+            if (variables?.recordId) {
+                queryClient.invalidateQueries({
+                    queryKey: purchaseRecordsKeys.detail(variables.recordId)
+                });
+            }
+        }
     });
 };

@@ -1,5 +1,5 @@
 
-import { requireAuthenticated } from "../../shared/auth/requireAuthenticated.js";
+import { requireActiveUser } from "../../shared/auth/requireActiveUser.js";
 import { createProblemDetails, sendProblem } from "../../shared/errors/problemDetails.js";
 import * as inAppRepo from './inAppRepo.js';
 import { listNotificationsSchema, markAsReadSchema } from './schema.js';
@@ -16,7 +16,7 @@ export default async function (app, { config, userRepo }) {
 
     // List Current User's Notifications
     app.get("/", async (request, reply) => {
-        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        const actor = await requireActiveUser(request, reply, { config, userRepo });
         if (!actor) return;
 
         // Manual validation
@@ -56,7 +56,7 @@ export default async function (app, { config, userRepo }) {
 
     // Get Unread Count
     app.get("/unread-count", async (request, reply) => {
-        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        const actor = await requireActiveUser(request, reply, { config, userRepo });
         if (!actor) return;
 
         try {
@@ -69,7 +69,7 @@ export default async function (app, { config, userRepo }) {
 
     // Mark All as Read
     app.put("/read-all", async (request, reply) => {
-        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        const actor = await requireActiveUser(request, reply, { config, userRepo });
         if (!actor) return;
 
         try {
@@ -82,7 +82,7 @@ export default async function (app, { config, userRepo }) {
 
     // Mark Single as Read
     app.put("/:id/read", async (request, reply) => {
-        const actor = await requireAuthenticated(request, reply, { config, userRepo });
+        const actor = await requireActiveUser(request, reply, { config, userRepo });
         if (!actor) return;
 
         const validation = markAsReadSchema.safeParse(request.params);

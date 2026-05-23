@@ -1,15 +1,32 @@
 
-import { describe, it, beforeEach, afterEach, mock } from 'node:test';
+import { describe, it, before, after, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert';
 import { prisma } from '../../apps/api/src/shared/db/prisma.js';
+import { createLegacyItemRequest } from './helpers/legacyItemRequest.mjs';
 import * as requestService from '../../apps/api/src/features/requests/service.js';
 import { __setTransporter } from '../../apps/api/src/features/notifications/email/emailService.js';
 
-describe('Requests Notifications Integration', () => {
+const itemRequest = createLegacyItemRequest(prisma);
+
+describe('Requests Notifications Integration', { concurrency: false }, () => {
     let requester;
     let itStaff;
     let devStaff;
     let mockTransporter;
+    let originalSmtpHost;
+
+    before(() => {
+        originalSmtpHost = process.env.SMTP_HOST;
+    });
+
+    after(async () => {
+        if (originalSmtpHost === undefined) {
+            delete process.env.SMTP_HOST;
+        } else {
+            process.env.SMTP_HOST = originalSmtpHost;
+        }
+        await prisma.$disconnect();
+    });
 
     beforeEach(async () => {
         // Mock email transporter
@@ -19,9 +36,17 @@ describe('Requests Notifications Integration', () => {
         __setTransporter(mockTransporter);
 
         // Cleanup
+        const usernames = ['requester_notif', 'it_notif', 'dev_notif', 'requester_notif2'];
+        const existingUsers = await prisma.user.findMany({
+            where: { username: { in: usernames } },
+            select: { id: true }
+        });
+        const userIds = existingUsers.map((user) => user.id);
         await prisma.emailNotification.deleteMany();
-        await prisma.itemRequest.deleteMany();
-        await prisma.user.deleteMany({ where: { username: { in: ['requester_notif', 'it_notif', 'dev_notif', 'requester_notif2'] } } });
+        await prisma.inAppNotification.deleteMany();
+        await prisma.auditLog.deleteMany({ where: { actorUserId: { in: userIds } } });
+        await itemRequest.deleteMany();
+        await prisma.user.deleteMany({ where: { username: { in: usernames } } });
 
         // Create users
         requester = await prisma.user.create({
@@ -36,20 +61,28 @@ describe('Requests Notifications Integration', () => {
     });
 
     afterEach(async () => {
+        await requestService.__waitForPendingRequestNotifications();
         __setTransporter(null);
         mock.restoreAll();
 
+        const usernames = ['requester_notif', 'it_notif', 'dev_notif', 'requester_notif2'];
+        const existingUsers = await prisma.user.findMany({
+            where: { username: { in: usernames } },
+            select: { id: true }
+        });
+        const userIds = existingUsers.map((user) => user.id);
         await prisma.emailNotification.deleteMany();
-        await prisma.itemRequest.deleteMany();
-        await prisma.user.deleteMany({ where: { username: { in: ['requester_notif', 'it_notif', 'dev_notif', 'requester_notif2'] } } });
+        await prisma.inAppNotification.deleteMany();
+        await prisma.auditLog.deleteMany({ where: { actorUserId: { in: userIds } } });
+        await itemRequest.deleteMany();
+        await prisma.user.deleteMany({ where: { username: { in: usernames } } });
     });
 
     it('should create notification for IT staff when request is submitted', async () => {
         const reqData = { itemName: 'Test Notify Item', description: 'Desc', priority: 'MEDIUM', justification: 'Justification' };
 
         const request = await requestService.submitRequest(reqData, requester);
-
-        await new Promise(r => setTimeout(r, 50));
+        await requestService.__waitForPendingRequestNotifications();
 
         const notifications = await prisma.emailNotification.findMany({
             where: { referenceId: request.id, templateType: 'new_request_submitted' }
@@ -64,14 +97,12 @@ describe('Requests Notifications Integration', () => {
     it('should notify requester and admins when IT review is completed', async () => {
         const reqData = { itemName: 'Review Notify Item', description: 'Desc', priority: 'MEDIUM', justification: 'Justification' };
         let request = await requestService.submitRequest(reqData, requester);
-
-        await new Promise(r => setTimeout(r, 50));
+        await requestService.__waitForPendingRequestNotifications();
 
         await prisma.emailNotification.deleteMany({ where: { referenceId: request.id } });
 
         request = await requestService.itReviewRequest(request.id, { itReview: 'Looks good' }, devStaff);
-
-        await new Promise(r => setTimeout(r, 50));
+        await requestService.__waitForPendingRequestNotifications();
 
         const requesterNotif = await prisma.emailNotification.findFirst({
             where: {
@@ -96,14 +127,13 @@ describe('Requests Notifications Integration', () => {
     it('should notify requester when request is approved', async () => {
         const reqData = { itemName: 'Approve Notify Item', description: 'Desc', priority: 'MEDIUM', justification: 'Justification' };
         let request = await requestService.submitRequest(reqData, requester);
+        await requestService.__waitForPendingRequestNotifications();
         request = await requestService.itReviewRequest(request.id, { itReview: 'OK' }, devStaff);
-
-        await new Promise(r => setTimeout(r, 50));
+        await requestService.__waitForPendingRequestNotifications();
         await prisma.emailNotification.deleteMany({ where: { referenceId: request.id } });
 
         request = await requestService.approveRequest(request.id, devStaff);
-
-        await new Promise(r => setTimeout(r, 50));
+        await requestService.__waitForPendingRequestNotifications();
 
         const approvedNotif = await prisma.emailNotification.findFirst({
             where: {
@@ -120,13 +150,11 @@ describe('Requests Notifications Integration', () => {
     it('should notify requester when request is rejected', async () => {
         const reqData = { itemName: 'Reject Notify Item', description: 'Desc', priority: 'MEDIUM', justification: 'Justification' };
         let request = await requestService.submitRequest(reqData, requester);
-
-        await new Promise(r => setTimeout(r, 50));
+        await requestService.__waitForPendingRequestNotifications();
         await prisma.emailNotification.deleteMany({ where: { referenceId: request.id } });
 
         request = await requestService.rejectRequest(request.id, 'No budget', devStaff);
-
-        await new Promise(r => setTimeout(r, 50));
+        await requestService.__waitForPendingRequestNotifications();
 
         const rejectedNotif = await prisma.emailNotification.findFirst({
             where: {
@@ -142,15 +170,15 @@ describe('Requests Notifications Integration', () => {
     });
 
     it('should NOT fail request submission if notification fails', async () => {
-        mockTransporter.sendMail = mock.fn(async () => {
-            throw new Error("SMTP Error");
-        });
+        const originalSmtpHost = process.env.SMTP_HOST;
+        delete process.env.SMTP_HOST;
 
         const reqData = { itemName: 'Fail Notify Item', description: 'Desc', priority: 'MEDIUM', justification: 'Justification' };
 
         try {
             const start = Date.now();
             const request = await requestService.submitRequest(reqData, requester);
+            await requestService.__waitForPendingRequestNotifications();
             const duration = Date.now() - start;
 
             assert.ok(request.id, 'Request should be created');
@@ -158,6 +186,12 @@ describe('Requests Notifications Integration', () => {
 
         } catch (e) {
             assert.fail('Should not throw error: ' + e.message);
+        } finally {
+            if (originalSmtpHost === undefined) {
+                delete process.env.SMTP_HOST;
+            } else {
+                process.env.SMTP_HOST = originalSmtpHost;
+            }
         }
     });
 });

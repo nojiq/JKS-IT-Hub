@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { AssignmentSourceBadge } from "./AssignmentSourceBadge.jsx";
 import { AssetEntityLink } from "./AssetEntityLink.jsx";
 import {
@@ -59,7 +60,19 @@ export function AssetTable({ assets = [], ariaLabel = "Asset inventory" }) {
                 <td>
                   <span className="assets-status-pill">{formatAssetValue(asset.statusLabel)}</span>
                 </td>
-                <td className="assets-network-cell assets-ip-cell">{formatAssetValue(asset.ipAddress)}</td>
+                <td className="assets-network-cell assets-ip-cell">
+                  {asset.ipAddress ? (
+                    <Link
+                      className="assets-entity-link"
+                      to={`/ip-list/${encodeURIComponent(asset.ipAddress)}`}
+                      title={`Open IP list record for ${asset.ipAddress}`}
+                    >
+                      {formatAssetValue(asset.ipAddress)}
+                    </Link>
+                  ) : (
+                    formatAssetValue(asset.ipAddress)
+                  )}
+                </td>
                 <td className="assets-network-cell assets-mac-cell">
                   {macRows.length ? (
                     <div className="assets-mac-list">

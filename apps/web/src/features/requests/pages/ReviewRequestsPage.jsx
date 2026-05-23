@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useAllRequests } from '../hooks/useRequests.js';
+import { useAllRequests, purchaseRecordsKeys } from '../hooks/useRequests.js';
+import {
+    deriveLegacyStatus,
+    formatLegacyStatusLabel,
+    getPrimaryItemName
+} from '../utils/purchaseRecordUtils.js';
 import RequestReviewModal from '../components/RequestReviewModal';
 import { useSSE } from '../../../shared/hooks/useSSE.js';
 import { SearchInput } from '../../../shared/components/SearchInput/SearchInput';
@@ -49,6 +54,7 @@ const ReviewRequestsPage = () => {
     const [selectedRequestIds, setSelectedRequestIds] = useState(new Set());
 
     const handleRequestEvent = useCallback(() => {
+        queryClient.invalidateQueries({ queryKey: purchaseRecordsKeys.all });
         queryClient.invalidateQueries({ queryKey: ['requests'] });
     }, [queryClient]);
 
@@ -261,17 +267,21 @@ const ReviewRequestsPage = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {requests.map((request) => (
+                            {requests.map((request) => {
+                                const legacyStatus = deriveLegacyStatus(request);
+                                const itemLabel = getPrimaryItemName(request);
+
+                                return (
                                 <tr key={request.id} className={selectedRequestIds.has(request.id) ? 'workspace-table-row-selected' : ''}>
                                     <td data-label="Select">
                                         <input
                                             type="checkbox"
-                                            aria-label={`Select request ${request.itemName}`}
+                                            aria-label={`Select request ${itemLabel}`}
                                             checked={selectedRequestIds.has(request.id)}
                                             onChange={() => toggleSelected(request.id)}
                                         />
                                     </td>
-                                    <td data-label="Item Name" className="font-medium">{request.itemName}</td>
+                                    <td data-label="Item Name" className="font-medium">{itemLabel}</td>
                                     <td data-label="Requester">
                                         <div>
                                             {request.requester?.ldapAttributes?.displayName || request.requester?.username}
@@ -292,8 +302,8 @@ const ReviewRequestsPage = () => {
                                         )}
                                     </td>
                                     <td data-label="Status">
-                                        <span className={statusClass(request.status)}>
-                                            {request.status === 'ALREADY_PURCHASED' ? 'Purchased' : request.status.replace('_', ' ')}
+                                        <span className={statusClass(legacyStatus)}>
+                                            {formatLegacyStatusLabel(request)}
                                         </span>
                                     </td>
                                     <td data-label="Actions">
@@ -306,7 +316,8 @@ const ReviewRequestsPage = () => {
                                         </button>
                                     </td>
                                 </tr>
-                            ))}
+                            );
+                            })}
                         </tbody>
                     </table>
                 </div>

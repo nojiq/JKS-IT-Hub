@@ -13,6 +13,7 @@ import './MobileModal.css';
  * @param {React.ReactNode} props.children - Modal content
  * @param {boolean} [props.fullScreenOnMobile=true] - Whether to use full-screen on mobile
  * @param {React.ReactNode} [props.footer] - Optional footer content
+ * @param {string} [props.containerClassName] - Extra class on modal container (e.g. wider layout)
  */
 export function MobileModal({
     isOpen,
@@ -20,7 +21,8 @@ export function MobileModal({
     title,
     children,
     fullScreenOnMobile = true,
-    footer
+    footer,
+    containerClassName = ""
 }) {
     const isMobile = useIsMobile();
 
@@ -66,7 +68,7 @@ export function MobileModal({
             aria-modal="true"
             aria-labelledby="mobile-modal-title"
         >
-            <div className="mobile-modal-container">
+            <div className={`mobile-modal-container${containerClassName ? ` ${containerClassName}` : ""}`}>
                 <div className="mobile-modal-header">
                     <h2 id="mobile-modal-title" className="mobile-modal-title">
                         {title}

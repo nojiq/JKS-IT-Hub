@@ -4,6 +4,13 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import * as repo from "../../apps/api/src/features/requests/repo.js";
 import { prisma } from "../../apps/api/src/shared/db/prisma.js";
+import { createLegacyItemRequest } from "./helpers/legacyItemRequest.mjs";
+
+const itemRequest = createLegacyItemRequest(prisma);
+
+test.after(async () => {
+    await prisma.$disconnect();
+});
 
 test("Requests Approval - Repository Layer", async (t) => {
     let requesterId;
@@ -65,7 +72,7 @@ test("Requests Approval - Repository Layer", async (t) => {
 
     await t.test("approveRequest", async () => {
         // Reset status
-        await prisma.itemRequest.update({
+        await itemRequest.update({
             where: { id: requestId },
             data: { status: "IT_REVIEWED", approvedById: null, approvedAt: null }
         });
@@ -81,7 +88,7 @@ test("Requests Approval - Repository Layer", async (t) => {
     // Cleanup
     await t.test("Cleanup", async () => {
         if (requestId) {
-            await prisma.itemRequest.delete({ where: { id: requestId } });
+            await itemRequest.delete({ where: { id: requestId } });
         }
         if (requesterId) {
             await prisma.user.delete({ where: { id: requesterId } });

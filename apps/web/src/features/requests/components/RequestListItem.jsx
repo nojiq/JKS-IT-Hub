@@ -1,89 +1,45 @@
 /* eslint-disable react/prop-types */
-import React from 'react';
-import RequestStatusBadge from './RequestStatusBadge';
-import { formatDisplayDate } from '../../../shared/utils/date-format.js';
+import React from "react";
+import RequestStatusBadge from "./RequestStatusBadge";
+import { formatDisplayDate } from "../../../shared/utils/date-format.js";
+import {
+    getItemCountLabel,
+    getPrimaryItemImageUrl,
+    getPrimaryItemName,
+    getRecordDisplayStatus,
+    getRecordReason
+} from "../utils/purchaseRecordUtils.js";
 
 const RequestListItem = ({ request, onClick }) => {
+    const { recordStatus, approvalStatus } = getRecordDisplayStatus(request);
+    const reason = getRecordReason(request);
+    const imageUrl = getPrimaryItemImageUrl(request);
+
     return (
-        <div className="request-item" onClick={() => onClick(request.id)}>
-            <div className="request-header">
-                <h3>{request.itemName}</h3>
-                <RequestStatusBadge status={request.status} />
+        <button
+            type="button"
+            className="purchase-record-card"
+            onClick={() => onClick(request.id)}
+        >
+            <div className="purchase-record-card__top">
+                {imageUrl && <img className="purchase-record-card__thumb" src={imageUrl} alt="" />}
+                <div className="purchase-record-card__title-wrap">
+                    <h3>{getPrimaryItemName(request)}</h3>
+                    <span className="purchase-record-card__meta-chip">{getItemCountLabel(request)}</span>
+                </div>
+                <RequestStatusBadge recordStatus={recordStatus} approvalStatus={approvalStatus} />
             </div>
 
-            <div className="request-body">
-                <p className="meta">
-                    Submitted: {formatDisplayDate(request.createdAt)}
-                    {request.priority && <span className={`priority ${request.priority.toLowerCase()}`}> • {request.priority} Priority</span>}
-                    <span className="updated-at"> • Updated: {formatDisplayDate(request.updatedAt)}</span>
-                </p>
-                <p className="preview">{request.justification ? request.justification.substring(0, 100) : 'No justification provided'}...</p>
-            </div>
+            <p className="purchase-record-card__reason">
+                {reason ? `${reason.slice(0, 140)}${reason.length > 140 ? "…" : ""}` : "No reason provided"}
+            </p>
 
-            <div className="request-actions">
-                <span className="view-link">View Details</span>
+            <div className="purchase-record-card__footer">
+                <span>Submitted {formatDisplayDate(request.createdAt)}</span>
+                <span>Updated {formatDisplayDate(request.updatedAt)}</span>
+                <span className="purchase-record-card__cta">View details</span>
             </div>
-
-            <style>{`
-                .request-item {
-                    border: 1px solid #e5e7eb;
-                    border-radius: 8px;
-                    padding: 1rem;
-                    margin-bottom: 1rem;
-                    background-color: white;
-                    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                }
-                .request-item:hover {
-                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-                    background-color: #f9fafb;
-                    transform: translateY(-1px);
-                }
-                .request-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: flex-start;
-                    margin-bottom: 0.5rem;
-                }
-                .request-header h3 {
-                    margin: 0;
-                    font-size: 1.125rem;
-                    font-weight: 600;
-                    color: #111827;
-                }
-                .request-body {
-                    margin-bottom: 0.75rem;
-                }
-                .meta {
-                    font-size: 0.875rem;
-                    color: #6b7280;
-                    margin-bottom: 0.5rem;
-                }
-                .priority {
-                    font-weight: 500;
-                }
-                .priority.urgent { color: #dc2626; }
-                .priority.high { color: #ea580c; }
-                .priority.medium { color: #d97706; }
-                .priority.low { color: #059669; }
-                
-                .preview {
-                    color: #374151;
-                    font-size: 0.875rem;
-                    line-height: 1.5;
-                    margin-top: 0;
-                }
-                .view-link {
-                    color: #4f46e5;
-                    font-size: 0.875rem;
-                    font-weight: 500;
-                }
-                .request-item:hover .view-link {
-                    text-decoration: underline;
-                }
-            `}</style>
-        </div>
+        </button>
     );
 };
 
