@@ -339,6 +339,61 @@ h6,
   border-color: var(--ui-accent-primary);
 }
 
+.auth-password-input {
+  position: relative;
+}
+
+.auth-password-input input {
+  width: 100%;
+  height: 40px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border-color);
+  padding: 0 2.75rem 0 0.75rem;
+  font-size: 0.875rem;
+  background: var(--surface-input);
+  color: var(--text-primary);
+}
+
+.auth-password-input input:focus {
+  outline: 2px solid var(--ui-accent-muted);
+  outline-offset: 2px;
+  border-color: var(--ui-accent-primary);
+}
+
+.auth-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 120ms ease, background-color 120ms ease;
+}
+
+.auth-password-toggle:hover {
+  color: var(--text-primary);
+  background: var(--ui-surface-muted);
+}
+
+.auth-password-toggle:focus-visible {
+  outline: 2px solid var(--ui-accent-muted);
+  outline-offset: 2px;
+}
+
+.auth-password-toggle-icon {
+  width: 18px;
+  height: 18px;
+}
+
 .auth-error {
   margin: 0;
   color: var(--error-text);
