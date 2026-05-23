@@ -100,7 +100,7 @@ describe('MaintenanceAssignmentsPage', () => {
 
         const desktopRow = screen.getByText('DES-0030').closest('tr');
         expect(within(desktopRow).getByRole('checkbox', { name: /select DES-0030/i })).toBeChecked();
-        expect(screen.getByText('1 asset selected')).toBeInTheDocument();
+        expect(screen.getByRole('region', { name: /bulk assignment actions/i })).toHaveTextContent('1 asset selected');
         expect(screen.queryByText('LAP-0099')).not.toBeInTheDocument();
     });
 
@@ -114,6 +114,6 @@ describe('MaintenanceAssignmentsPage', () => {
         expect(screen.getByText('DES-0030')).toBeInTheDocument();
         expect(screen.queryByText('LAP-0099')).not.toBeInTheDocument();
         expect(screen.queryByText('PRN-0007')).not.toBeInTheDocument();
-        expect(screen.getByText('1 of 3 assets shown')).toBeInTheDocument();
+        expect(screen.getByText('1 of 3 shown')).toBeInTheDocument();
     });
 });
