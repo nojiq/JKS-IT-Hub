@@ -33,6 +33,7 @@ const MaintenanceAssignmentsPage = () => {
     const policyFilterId = useId();
     const bulkPolicySelectId = useId();
     const bulkTechnicianSelectId = useId();
+    const bulkStartDateInputId = useId();
     const { data: rows = [], isLoading, error, refetch } = useAssignmentMatrix();
     const { data: profiles = [] } = useMaintenanceProfiles(false);
     const [search, setSearch] = useState('');
@@ -49,6 +50,7 @@ const MaintenanceAssignmentsPage = () => {
     const [assignModalRows, setAssignModalRows] = useState([]);
     const [bulkProfileId, setBulkProfileId] = useState('');
     const [bulkTechnicianId, setBulkTechnicianId] = useState('');
+    const [bulkStartDate, setBulkStartDate] = useState('');
     const [technicians, setTechnicians] = useState([]);
     const [isLoadingTechnicians, setIsLoadingTechnicians] = useState(false);
     const [isBulkSaving, setIsBulkSaving] = useState(false);
@@ -229,14 +231,19 @@ const MaintenanceAssignmentsPage = () => {
         setIsBulkSaving(true);
         setBulkError(null);
         try {
+            const isoStartDate = bulkStartDate ? new Date(bulkStartDate).toISOString() : undefined;
             await Promise.all(
-                selectedRows.map((row) =>
-                    createMaintenanceAssignment({
+                selectedRows.map((row) => {
+                    const payload = {
                         assetId: row.assetId,
                         profileId: bulkProfileId,
                         userId: bulkTechnicianId
-                    })
-                )
+                    };
+                    if (isoStartDate) {
+                        payload.startDate = isoStartDate;
+                    }
+                    return createMaintenanceAssignment(payload);
+                })
             );
             const technicianLabel =
                 selectedTechnician?.displayName ||
@@ -249,6 +256,7 @@ const MaintenanceAssignmentsPage = () => {
             setSelected(new Set());
             setBulkProfileId('');
             setBulkTechnicianId('');
+            setBulkStartDate('');
             await refetch();
         } catch (err) {
             const message = err.message || 'Failed to save assignments';
@@ -455,7 +463,7 @@ const MaintenanceAssignmentsPage = () => {
                                                     className="workspace-inline-link"
                                                     onClick={() => openAssignModal([row])}
                                                 >
-                                                    Assign
+                                                    {String(row.status || '').toLowerCase() !== 'unassigned' ? 'Reassign' : 'Assign'}
                                                 </button>
                                             </td>
                                         </tr>
@@ -549,6 +557,14 @@ const MaintenanceAssignmentsPage = () => {
                                     </option>
                                 ))}
                             </select>
+                            <input
+                                id={bulkStartDateInputId}
+                                type="date"
+                                aria-label="Start date"
+                                value={bulkStartDate}
+                                onChange={(event) => setBulkStartDate(event.target.value)}
+                                disabled={isBulkSaving}
+                            />
                             <button type="submit" className="workspace-inline-button is-primary" disabled={!canBulkAssign}>
                                 {isBulkSaving ? 'Applying…' : 'Apply'}
                             </button>

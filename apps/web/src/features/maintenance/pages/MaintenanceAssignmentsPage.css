@@ -36,7 +36,8 @@
   flex-wrap: wrap;
 }
 
-.maintenance-assignments-bulk-actions select {
+.maintenance-assignments-bulk-actions select,
+.maintenance-assignments-bulk-actions input[type="date"] {
   min-width: 10rem;
   height: 2.1rem;
   border: 1px solid var(--ui-border-subtle);

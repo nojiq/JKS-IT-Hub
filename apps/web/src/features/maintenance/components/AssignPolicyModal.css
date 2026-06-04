@@ -50,7 +50,8 @@
   gap: 0.65rem;
 }
 
-.assign-policy-modal__form select {
+.assign-policy-modal__form select,
+.assign-policy-modal__form input[type="date"] {
   width: 100%;
   min-height: 2.5rem;
   border: 1px solid var(--ui-border-subtle);

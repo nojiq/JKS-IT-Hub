@@ -41,6 +41,9 @@ uploads/
 .codex/
 .kilocode/
 .opencode/
+.codegraph/
+.cursor/
+.omo/
 _bmad/
 _bmad-output/
 docs/superpowers/

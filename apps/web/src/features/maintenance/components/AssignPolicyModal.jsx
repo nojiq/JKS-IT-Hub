@@ -14,6 +14,7 @@ const AssignPolicyModal = ({ rows = [], onClose, onSuccess }) => {
     const { data: profiles = [] } = useMaintenanceProfiles(false);
     const [profileId, setProfileId] = useState('');
     const [technicianId, setTechnicianId] = useState('');
+    const [startDate, setStartDate] = useState('');
     const [technicians, setTechnicians] = useState([]);
     const [isLoadingTechnicians, setIsLoadingTechnicians] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -56,12 +57,17 @@ const AssignPolicyModal = ({ rows = [], onClose, onSuccess }) => {
         setIsSaving(true);
         setError(null);
         try {
+            const isoStartDate = startDate ? new Date(startDate).toISOString() : undefined;
             for (const row of rows) {
-                await createMaintenanceAssignment({
+                const payload = {
                     assetId: row.assetId,
                     profileId,
                     userId: technicianId
-                });
+                };
+                if (isoStartDate) {
+                    payload.startDate = isoStartDate;
+                }
+                await createMaintenanceAssignment(payload);
             }
             await queryClient.invalidateQueries({ queryKey: preventiveKeys.all });
             toast.success(
@@ -144,6 +150,16 @@ const AssignPolicyModal = ({ rows = [], onClose, onSuccess }) => {
                             ))}
                         </select>
                     )}
+
+                    <label className="form-group" htmlFor="assign-start-date">
+                        Start date (optional)
+                    </label>
+                    <input
+                        id="assign-start-date"
+                        type="date"
+                        value={startDate}
+                        onChange={(event) => setStartDate(event.target.value)}
+                    />
 
                     <p className="assign-policy-modal__handoff">
                         After confirm, scheduling is automatic — tasks appear on the technician dashboard when due.
