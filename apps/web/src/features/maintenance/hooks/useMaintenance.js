@@ -386,6 +386,17 @@ export const useTaskPresets = (filters = {}) => {
     });
 };
 
+export const useCreateTaskPreset = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: preventiveApi.createTaskPreset,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: preventiveKeys.taskPresets() });
+            queryClient.invalidateQueries({ queryKey: preventiveKeys.all });
+        }
+    });
+};
+
 export const useDeleteTaskPreset = () => {
     const queryClient = useQueryClient();
     return useMutation({

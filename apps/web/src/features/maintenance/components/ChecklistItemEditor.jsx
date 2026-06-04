@@ -35,7 +35,8 @@ const findPresetByTitle = (taskPresets, value) => {
     return taskPresets.find((preset) => preset.title?.trim().toLowerCase() === normalized) || null;
 };
 
-const ChecklistItemEditor = ({ items = [], taskPresets = [], onChange, onDeleteTaskPreset }) => {
+const ChecklistItemEditor = ({ items = [], taskPresets = [], onChange, onCreateTaskPreset, onDeleteTaskPreset }) => {
+    const [creatingPresetIndex, setCreatingPresetIndex] = useState(null);
     const [deletingPresetId, setDeletingPresetId] = useState(null);
     const sync = (next) => {
         onChange(next.map((item, index) => ({ ...item, isRequired: true, orderIndex: index })));
@@ -58,6 +59,29 @@ const ChecklistItemEditor = ({ items = [], taskPresets = [], onChange, onDeleteT
             title: value,
             description: preset ? preset.description || '' : items[index]?.description || ''
         });
+    };
+
+    const handleCreatePreset = async (index) => {
+        if (!onCreateTaskPreset) return;
+        const item = items[index];
+        const title = item?.title?.trim();
+        if (!title || findPresetByTitle(taskPresets, title)) return;
+
+        setCreatingPresetIndex(index);
+        try {
+            const preset = await onCreateTaskPreset({
+                title,
+                description: item.description?.trim() || undefined,
+                category: 'Other'
+            });
+            updateItem(index, {
+                taskPresetId: preset?.id ?? null,
+                title: preset?.title || title,
+                description: preset?.description ?? item.description ?? ''
+            });
+        } finally {
+            setCreatingPresetIndex(null);
+        }
     };
 
     const handleDeletePreset = async (index, presetId) => {
@@ -102,12 +126,20 @@ const ChecklistItemEditor = ({ items = [], taskPresets = [], onChange, onDeleteT
                 </p>
             ) : (
                 <div className="checklist-item-editor__list" role="list">
-                    {items.map((item, index) => (
-                        <div
-                            key={`item-${index}-${item.orderIndex ?? index}`}
-                            className="checklist-item-card"
-                            role="listitem"
-                        >
+                    {items.map((item, index) => {
+                        const isUnsavedTask = Boolean(
+                            onCreateTaskPreset &&
+                            item.title?.trim() &&
+                            !item.taskPresetId &&
+                            !findPresetByTitle(taskPresets, item.title)
+                        );
+
+                        return (
+                            <div
+                                key={`item-${index}-${item.orderIndex ?? index}`}
+                                className="checklist-item-card"
+                                role="listitem"
+                            >
                             <div className="checklist-item-card__top">
                                 <p className="checklist-item-card__index">Item {index + 1}</p>
                                 <div className="checklist-item-card__controls">
@@ -143,17 +175,17 @@ const ChecklistItemEditor = ({ items = [], taskPresets = [], onChange, onDeleteT
                                 <label htmlFor={`checklist-item-title-${index}`}>Task</label>
                                 <div className="checklist-item-card__task-field">
                                     <input
-                                    id={`checklist-item-title-${index}`}
-                                    list={`checklist-task-options-${index}`}
-                                    role="combobox"
-                                    aria-autocomplete="list"
-                                    type="text"
-                                    className="form-control"
-                                    value={item.title || ''}
-                                    onChange={(event) => updateTaskTitle(index, event.target.value)}
-                                    placeholder="Choose a saved task or type a new one"
-                                    required
-                                    aria-required="true"
+                                        id={`checklist-item-title-${index}`}
+                                        list={`checklist-task-options-${index}`}
+                                        role="combobox"
+                                        aria-autocomplete="list"
+                                        type="text"
+                                        className="form-control"
+                                        value={item.title || ''}
+                                        onChange={(event) => updateTaskTitle(index, event.target.value)}
+                                        placeholder="Choose a saved task or type a new one"
+                                        required
+                                        aria-required="true"
                                     />
                                     <datalist id={`checklist-task-options-${index}`}>
                                         {taskPresets.map((preset) => (
@@ -172,6 +204,16 @@ const ChecklistItemEditor = ({ items = [], taskPresets = [], onChange, onDeleteT
                                             {deletingPresetId === item.taskPresetId ? 'Removing…' : 'Remove saved task'}
                                         </button>
                                     ) : null}
+                                    {isUnsavedTask ? (
+                                        <button
+                                            type="button"
+                                            className="checklist-item-editor__save-task"
+                                            onClick={() => handleCreatePreset(index)}
+                                            disabled={creatingPresetIndex === index}
+                                        >
+                                            {creatingPresetIndex === index ? 'Saving task…' : 'Save as task'}
+                                        </button>
+                                    ) : null}
                                 </div>
                             </div>
 
@@ -185,9 +227,9 @@ const ChecklistItemEditor = ({ items = [], taskPresets = [], onChange, onDeleteT
                                     onChange={(event) => updateItem(index, { description: event.target.value })}
                                 />
                             </div>
-
-                        </div>
-                    ))}
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </div>
