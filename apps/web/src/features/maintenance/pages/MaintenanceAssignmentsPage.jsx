@@ -5,7 +5,7 @@ import { DataStateBlock } from '../../../shared/workspace/DataStateBlock.jsx';
 import { WorkspacePanel } from '../../../shared/workspace/WorkspacePanel.jsx';
 import { useToast } from '../../../shared/hooks/useToast.js';
 import { createMaintenanceAssignment } from '../api/preventiveMaintenanceApi.js';
-import { fetchUsers } from '../../users/users-api.js';
+import { fetchActiveItDepartmentUsers, getUserDisplayName } from '../utils/maintenanceAssignees.js';
 import { formatTechnician } from '../utils/maintenanceDisplay.js';
 import { formatTaskDueLabel } from '../utils/taskUrgency.js';
 import '../../../shared/workspace/workspace.css';
@@ -125,8 +125,8 @@ const MaintenanceAssignmentsPage = () => {
         const loadTechnicians = async () => {
             try {
                 setIsLoadingTechnicians(true);
-                const result = await fetchUsers({ role: 'it', status: 'active' });
-                if (active) setTechnicians(result.users || result || []);
+                const result = await fetchActiveItDepartmentUsers();
+                if (active) setTechnicians(result);
             } catch {
                 if (active) setBulkError('Failed to load IT assignees');
             } finally {
@@ -246,8 +246,7 @@ const MaintenanceAssignmentsPage = () => {
                 })
             );
             const technicianLabel =
-                selectedTechnician?.displayName ||
-                selectedTechnician?.username ||
+                getUserDisplayName(selectedTechnician) ||
                 'selected assignee';
             toast.success(
                 'Assignments confirmed',
@@ -553,7 +552,7 @@ const MaintenanceAssignmentsPage = () => {
                                 </option>
                                 {technicians.map((technician) => (
                                     <option key={technician.id} value={technician.id}>
-                                        {technician.displayName || technician.username}
+                                        {getUserDisplayName(technician)}
                                     </option>
                                 ))}
                             </select>

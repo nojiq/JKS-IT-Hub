@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useMaintenanceProfiles, preventiveKeys } from '../hooks/useMaintenance.js';
 import { createMaintenanceAssignment } from '../api/preventiveMaintenanceApi.js';
-import { fetchUsers } from '../../users/users-api.js';
+import { fetchActiveItDepartmentUsers, getUserDisplayName } from '../utils/maintenanceAssignees.js';
 import { useToast } from '../../../shared/hooks/useToast.js';
 import './AssignPolicyModal.css';
 
@@ -24,8 +24,7 @@ const AssignPolicyModal = ({ rows = [], onClose, onSuccess }) => {
         const load = async () => {
             try {
                 setIsLoadingTechnicians(true);
-                const result = await fetchUsers({ role: 'it', status: 'active' });
-                setTechnicians(result.users || result || []);
+                setTechnicians(await fetchActiveItDepartmentUsers());
             } catch {
                 setError('Failed to load technicians');
             } finally {
@@ -145,7 +144,7 @@ const AssignPolicyModal = ({ rows = [], onClose, onSuccess }) => {
                             <option value="">Choose technician…</option>
                             {technicians.map((tech) => (
                                 <option key={tech.id} value={tech.id}>
-                                    {tech.displayName || tech.username}
+                                    {getUserDisplayName(tech)}
                                 </option>
                             ))}
                         </select>

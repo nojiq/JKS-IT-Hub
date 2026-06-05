@@ -61,8 +61,9 @@ describe('MaintenanceAssignmentsPage bulk assignment', () => {
         createMaintenanceAssignment.mockResolvedValue({});
         fetchUsers.mockResolvedValue({
             users: [
-                { id: 'tech-1', username: 'it.one', displayName: 'I.T One' },
-                { id: 'tech-2', username: 'it.two', displayName: 'I.T Two' }
+                { id: 'tech-1', username: 'it.one', displayName: 'I.T One', orgSnapshot: { department: { name: 'IT' } } },
+                { id: 'tech-2', username: 'it.two', displayName: 'I.T Two', orgSnapshot: { department: { name: 'IT' } } },
+                { id: 'user-1', username: 'nwt', displayName: 'nwt', orgSnapshot: { department: { name: 'OPERATIONAL EXCELLENCE' } } }
             ]
         });
         useAssignmentMatrix.mockReturnValue({

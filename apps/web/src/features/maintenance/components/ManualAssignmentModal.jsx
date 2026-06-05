@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useManuallyAssignWindow } from '../hooks/useMaintenance.js';
-import { fetchUsers } from '../../users/users-api.js';
+import { fetchActiveItDepartmentUsers, getUserDisplayName } from '../utils/maintenanceAssignees.js';
 import { formatDisplayDateTime } from '../../../shared/utils/date-format.js';
 import './ManualAssignmentModal.css';
 
@@ -16,9 +16,7 @@ const ManualAssignmentModal = ({ window, onClose }) => {
         const loadTechnicians = async () => {
             try {
                 setIsLoadingTechnicians(true);
-                const result = await fetchUsers({ role: 'it', status: 'active' });
-                const techniciansList = result.users || result || [];
-                setTechnicians(techniciansList);
+                setTechnicians(await fetchActiveItDepartmentUsers());
 
                 // Pre-select current assignee if exists
                 if (window.assignedToId) {
@@ -66,7 +64,7 @@ const ManualAssignmentModal = ({ window, onClose }) => {
                         <p><strong>Policy:</strong> {window.cycleConfig?.name || 'Ad-hoc'}</p>
                         <p><strong>Scheduled:</strong> {formatDisplayDateTime(window.scheduledStartDate, { fallback: '-' })}</p>
                         {window.assignedTo && (
-                            <p><strong>Currently assigned to:</strong> {window.assignedTo.displayName || window.assignedTo.username}</p>
+                            <p><strong>Currently assigned to:</strong> {getUserDisplayName(window.assignedTo)}</p>
                         )}
                     </div>
 
@@ -89,7 +87,7 @@ const ManualAssignmentModal = ({ window, onClose }) => {
                                     <option value="">-- Select PIC --</option>
                                     {technicians.map((tech) => (
                                         <option key={tech.id} value={tech.id}>
-                                            {tech.displayName || tech.username}
+                                            {getUserDisplayName(tech)}
                                         </option>
                                     ))}
                                 </select>

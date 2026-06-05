@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCreateAssignmentRule, useUpdateAssignmentRule } from '../hooks/useMaintenance.js';
-import { fetchUsers } from '../../users/users-api.js';
+import { fetchActiveItDepartmentUsers, getUserDisplayName } from '../utils/maintenanceAssignees.js';
 import { useToast } from '../../../shared/hooks/useToast.js';
 import './CycleConfigForm.css';
 import './AssignmentRuleForm.css';
@@ -54,9 +54,7 @@ const AssignmentRuleForm = ({ rule = null, onClose, variant = 'default' }) => {
         const loadTechnicians = async () => {
             try {
                 setIsLoadingTechnicians(true);
-                const result = await fetchUsers({ role: 'it', status: 'active' });
-                const techniciansList = result.users || result || [];
-                setAvailableTechnicians(techniciansList);
+                setAvailableTechnicians(await fetchActiveItDepartmentUsers());
             } catch (error) {
                 console.error('Failed to load technicians:', error);
                 setErrors({ technicians: 'Failed to load IT staff' });
@@ -154,7 +152,7 @@ const AssignmentRuleForm = ({ rule = null, onClose, variant = 'default' }) => {
             ...selectedTechnicians,
             {
                 id: technician.id,
-                displayName: technician.displayName || technician.username,
+                displayName: getUserDisplayName(technician),
                 orderIndex: selectedTechnicians.length
             }
         ]);
@@ -329,7 +327,7 @@ const AssignmentRuleForm = ({ rule = null, onClose, variant = 'default' }) => {
                                         <option value="">Add PIC…</option>
                                         {unselectedTechnicians.map((tech) => (
                                             <option key={tech.id} value={tech.id}>
-                                                {tech.displayName || tech.username}
+                                                {getUserDisplayName(tech)}
                                             </option>
                                         ))}
                                     </select>
