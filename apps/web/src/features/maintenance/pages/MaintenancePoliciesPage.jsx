@@ -1,7 +1,6 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import {
     useCreateMaintenanceProfile,
-    useCreateTaskPreset,
     useDeleteTaskPreset,
     useMaintenanceProfiles,
     useSaveProfileChecklist,
@@ -33,7 +32,6 @@ const MaintenancePoliciesPage = () => {
     const createProfile = useCreateMaintenanceProfile();
     const updateProfile = useUpdateMaintenanceProfile();
     const saveChecklist = useSaveProfileChecklist();
-    const createTaskPreset = useCreateTaskPreset();
     const deleteTaskPreset = useDeleteTaskPreset();
 
     const [selectedPolicyId, setSelectedPolicyId] = useState(null);
@@ -142,12 +140,6 @@ const MaintenancePoliciesPage = () => {
         }
     };
 
-    const handleCreateTaskPreset = async (payload) => {
-        const preset = await createTaskPreset.mutateAsync(payload);
-        toast.success('Task saved', `"${preset.title}" is now available for checklists.`);
-        return preset;
-    };
-
     if (isLoading) {
         return (
             <section className="maintenance-module-page">
@@ -234,7 +226,6 @@ const MaintenancePoliciesPage = () => {
                                 <ChecklistItemEditor
                                     items={form.checklistItems}
                                     taskPresets={taskPresets}
-                                    onCreateTaskPreset={handleCreateTaskPreset}
                                     onDeleteTaskPreset={(presetId) => deleteTaskPreset.mutateAsync(presetId)}
                                     onChange={(items) => setForm((prev) => ({ ...prev, checklistItems: items }))}
                                 />

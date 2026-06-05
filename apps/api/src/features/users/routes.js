@@ -47,7 +47,7 @@ export default async function (app, { config, userRepo, auditRepo, userFieldRepo
         // Parse pagination
         const pagination = {
             page: page ? parseInt(page, 10) : 1,
-            perPage: perPage ? parseInt(perPage, 10) : 20
+            perPage: perPage ? parseInt(perPage, 10) : 1000
         };
 
         // Build filters object

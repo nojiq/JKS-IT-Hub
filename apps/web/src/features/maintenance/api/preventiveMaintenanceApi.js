@@ -65,15 +65,6 @@ export const fetchTaskPresets = async (filters = {}) => {
     return payload.data ?? [];
 };
 
-export const createTaskPreset = async (data) => {
-    const response = await apiFetch(`${MAINTENANCE_BASE}/task-presets`, {
-        method: 'POST',
-        body: JSON.stringify(data)
-    });
-    const payload = await parseJson(response);
-    return payload.data;
-};
-
 export const deleteTaskPreset = async (presetId) => {
     const response = await apiFetch(`${MAINTENANCE_BASE}/task-presets/${presetId}`, {
         method: 'DELETE'

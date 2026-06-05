@@ -3,15 +3,19 @@ import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import ChecklistItemEditor from '../ChecklistItemEditor.jsx';
 
-function StatefulChecklistItemEditor({ initialItems, taskPresets = [], onCreateTaskPreset }) {
+function StatefulChecklistItemEditor({ initialItems, taskPresets = [], onChange }) {
     const [items, setItems] = useState(initialItems);
+
+    const handleChange = (nextItems) => {
+        setItems(nextItems);
+        onChange?.(nextItems);
+    };
 
     return (
         <ChecklistItemEditor
             items={items}
             taskPresets={taskPresets}
-            onCreateTaskPreset={onCreateTaskPreset}
-            onChange={setItems}
+            onChange={handleChange}
         />
     );
 }
@@ -34,8 +38,8 @@ describe('ChecklistItemEditor', () => {
             />
         );
 
-        fireEvent.change(screen.getByRole('combobox', { name: /task/i }), {
-            target: { value: 'Monitor' }
+        fireEvent.change(screen.getByLabelText(/task/i), {
+            target: { value: 'preset-monitor' }
         });
 
         expect(onChange).toHaveBeenCalledWith([
@@ -62,36 +66,31 @@ describe('ChecklistItemEditor', () => {
         expect(screen.queryByLabelText('Require evidence')).not.toBeInTheDocument();
     });
 
-    it('saves a typed task as a reusable preset and links it to the item', async () => {
-        const onCreateTaskPreset = vi.fn().mockResolvedValue({
-            id: 'preset-usb',
-            title: 'USB ports',
-            description: 'Confirm all USB ports are working.'
-        });
+    it('allows a new task to be entered after choosing add new task from the dropdown', () => {
+        const onChange = vi.fn();
 
         render(
             <StatefulChecklistItemEditor
                 initialItems={[{ title: '', description: '', isRequired: true, evidenceRequired: false }]}
                 taskPresets={[]}
-                onCreateTaskPreset={onCreateTaskPreset}
+                onChange={onChange}
             />
         );
 
-        fireEvent.change(screen.getByRole('combobox', { name: /task/i }), {
+        fireEvent.change(screen.getByLabelText(/task/i), {
+            target: { value: '__add_new_task__' }
+        });
+        fireEvent.change(screen.getByLabelText(/new task name/i), {
             target: { value: 'USB ports' }
         });
-        fireEvent.change(screen.getByLabelText(/description/i), {
-            target: { value: 'Confirm all USB ports are working.' }
-        });
 
-        fireEvent.click(screen.getByRole('button', { name: /save as task/i }));
-
-        expect(onCreateTaskPreset).toHaveBeenCalledWith({
-            title: 'USB ports',
-            description: 'Confirm all USB ports are working.',
-            category: 'Other'
-        });
-        expect(await screen.findByDisplayValue('USB ports')).toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: /save as task/i })).not.toBeInTheDocument();
+        expect(screen.getByDisplayValue('USB ports')).toBeInTheDocument();
+        expect(onChange).toHaveBeenLastCalledWith([
+            expect.objectContaining({
+                taskPresetId: null,
+                title: 'USB ports',
+                isNewTask: true
+            })
+        ]);
     });
 });

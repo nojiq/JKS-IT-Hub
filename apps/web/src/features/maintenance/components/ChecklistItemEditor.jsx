@@ -9,6 +9,8 @@ const EMPTY_ITEM = {
     orderIndex: 0
 };
 
+const ADD_NEW_TASK_VALUE = '__add_new_task__';
+
 function IconChevronDown(props) {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18" aria-hidden {...props}>
@@ -35,8 +37,7 @@ const findPresetByTitle = (taskPresets, value) => {
     return taskPresets.find((preset) => preset.title?.trim().toLowerCase() === normalized) || null;
 };
 
-const ChecklistItemEditor = ({ items = [], taskPresets = [], onChange, onCreateTaskPreset, onDeleteTaskPreset }) => {
-    const [creatingPresetIndex, setCreatingPresetIndex] = useState(null);
+const ChecklistItemEditor = ({ items = [], taskPresets = [], onChange, onDeleteTaskPreset }) => {
     const [deletingPresetId, setDeletingPresetId] = useState(null);
     const sync = (next) => {
         onChange(next.map((item, index) => ({ ...item, isRequired: true, orderIndex: index })));
@@ -52,36 +53,34 @@ const ChecklistItemEditor = ({ items = [], taskPresets = [], onChange, onCreateT
         sync(next);
     };
 
-    const updateTaskTitle = (index, value) => {
+    const updateTaskSelection = (index, value) => {
+        if (value === ADD_NEW_TASK_VALUE) {
+            updateItem(index, {
+                taskPresetId: null,
+                title: '',
+                description: '',
+                isNewTask: true
+            });
+            return;
+        }
+
+        const preset = taskPresets.find((candidate) => candidate.id === value) || null;
+        updateItem(index, {
+            taskPresetId: preset?.id ?? null,
+            title: preset?.title ?? '',
+            description: preset?.description || '',
+            isNewTask: false
+        });
+    };
+
+    const updateNewTaskTitle = (index, value) => {
         const preset = findPresetByTitle(taskPresets, value);
         updateItem(index, {
             taskPresetId: preset?.id ?? null,
             title: value,
-            description: preset ? preset.description || '' : items[index]?.description || ''
+            description: preset ? preset.description || '' : items[index]?.description || '',
+            isNewTask: !preset
         });
-    };
-
-    const handleCreatePreset = async (index) => {
-        if (!onCreateTaskPreset) return;
-        const item = items[index];
-        const title = item?.title?.trim();
-        if (!title || findPresetByTitle(taskPresets, title)) return;
-
-        setCreatingPresetIndex(index);
-        try {
-            const preset = await onCreateTaskPreset({
-                title,
-                description: item.description?.trim() || undefined,
-                category: 'Other'
-            });
-            updateItem(index, {
-                taskPresetId: preset?.id ?? null,
-                title: preset?.title || title,
-                description: preset?.description ?? item.description ?? ''
-            });
-        } finally {
-            setCreatingPresetIndex(null);
-        }
     };
 
     const handleDeletePreset = async (index, presetId) => {
@@ -127,12 +126,7 @@ const ChecklistItemEditor = ({ items = [], taskPresets = [], onChange, onCreateT
             ) : (
                 <div className="checklist-item-editor__list" role="list">
                     {items.map((item, index) => {
-                        const isUnsavedTask = Boolean(
-                            onCreateTaskPreset &&
-                            item.title?.trim() &&
-                            !item.taskPresetId &&
-                            !findPresetByTitle(taskPresets, item.title)
-                        );
+                        const selectedTaskValue = item.isNewTask ? ADD_NEW_TASK_VALUE : item.taskPresetId || '';
 
                         return (
                             <div
@@ -174,26 +168,35 @@ const ChecklistItemEditor = ({ items = [], taskPresets = [], onChange, onCreateT
                             <div className="form-group">
                                 <label htmlFor={`checklist-item-title-${index}`}>Task</label>
                                 <div className="checklist-item-card__task-field">
-                                    <input
+                                    <select
                                         id={`checklist-item-title-${index}`}
-                                        list={`checklist-task-options-${index}`}
-                                        role="combobox"
-                                        aria-autocomplete="list"
-                                        type="text"
                                         className="form-control"
-                                        value={item.title || ''}
-                                        onChange={(event) => updateTaskTitle(index, event.target.value)}
-                                        placeholder="Choose a saved task or type a new one"
+                                        value={selectedTaskValue}
+                                        onChange={(event) => updateTaskSelection(index, event.target.value)}
                                         required
                                         aria-required="true"
-                                    />
-                                    <datalist id={`checklist-task-options-${index}`}>
+                                    >
+                                        <option value="" disabled>
+                                            Choose a saved task
+                                        </option>
                                         {taskPresets.map((preset) => (
-                                            <option key={preset.id} value={preset.title}>
-                                                {preset.description || preset.category || preset.title}
+                                            <option key={preset.id} value={preset.id}>
+                                                {preset.title}
                                             </option>
                                         ))}
-                                    </datalist>
+                                        <option value={ADD_NEW_TASK_VALUE}>Add new task</option>
+                                    </select>
+                                    {item.isNewTask ? (
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            value={item.title || ''}
+                                            onChange={(event) => updateNewTaskTitle(index, event.target.value)}
+                                            placeholder="New task name"
+                                            required
+                                            aria-label={`New task name for item ${index + 1}`}
+                                        />
+                                    ) : null}
                                     {item.taskPresetId && onDeleteTaskPreset ? (
                                         <button
                                             type="button"
@@ -202,16 +205,6 @@ const ChecklistItemEditor = ({ items = [], taskPresets = [], onChange, onCreateT
                                             disabled={deletingPresetId === item.taskPresetId}
                                         >
                                             {deletingPresetId === item.taskPresetId ? 'Removing…' : 'Remove saved task'}
-                                        </button>
-                                    ) : null}
-                                    {isUnsavedTask ? (
-                                        <button
-                                            type="button"
-                                            className="checklist-item-editor__save-task"
-                                            onClick={() => handleCreatePreset(index)}
-                                            disabled={creatingPresetIndex === index}
-                                        >
-                                            {creatingPresetIndex === index ? 'Saving task…' : 'Save as task'}
                                         </button>
                                     ) : null}
                                 </div>
