@@ -24,6 +24,26 @@ const emptyPolicyForm = () => ({
     checklistItems: [{ taskPresetId: null, title: '', description: '', measurementType: 'none', isRequired: true }]
 });
 
+const inferMeasurementType = (title, fallback = 'none') => {
+    const normalized = String(title || '').trim().toLowerCase();
+    if (normalized === 'battery') return 'battery';
+    if (['hard drive', 'hdd', 'ssd'].includes(normalized)) return 'hard_drive';
+    return fallback || 'none';
+};
+
+const buildChecklistPayload = (items) => (
+    items
+        .filter((item) => item.title.trim())
+        .map((item) => ({
+            title: item.title.trim(),
+            description: item.description,
+            measurementType: inferMeasurementType(item.title, item.measurementType || 'none'),
+            required: true,
+            taskPresetId: item.taskPresetId || undefined,
+            evidenceRequired: false
+        }))
+);
+
 const MaintenancePoliciesPage = () => {
     const policiesHintId = useId();
     const toast = useToast();
@@ -60,7 +80,7 @@ const MaintenancePoliciesPage = () => {
                     taskPresetId: item.taskPresetId || null,
                     title: item.title,
                     description: item.description || '',
-                    measurementType: item.measurementType || 'none',
+                    measurementType: inferMeasurementType(item.title, item.measurementType || 'none'),
                     isRequired: true
                 })) || emptyPolicyForm().checklistItems
         });
@@ -85,16 +105,7 @@ const MaintenancePoliciesPage = () => {
                     description: form.description,
                     intervalMonths: form.intervalMonths,
                     gracePeriodDays: form.gracePeriodDays,
-                    checklistItems: form.checklistItems
-                        .filter((item) => item.title.trim())
-                        .map((item) => ({
-                            title: item.title.trim(),
-                            description: item.description,
-                            measurementType: item.measurementType || 'none',
-                            required: true,
-                            taskPresetId: item.taskPresetId || undefined,
-                            evidenceRequired: false
-                        }))
+                    checklistItems: buildChecklistPayload(form.checklistItems)
                 });
                 toast.success('Policy created', `"${created.name}" is ready for assignments.`);
                 setIsCreating(false);
@@ -108,6 +119,10 @@ const MaintenancePoliciesPage = () => {
                         intervalMonths: form.intervalMonths,
                         gracePeriodDays: form.gracePeriodDays
                     }
+                });
+                await saveChecklist.mutateAsync({
+                    profileId: selectedPolicy.id,
+                    items: buildChecklistPayload(form.checklistItems)
                 });
                 toast.success('Policy updated', 'Maintenance policy settings saved.');
             }
@@ -123,16 +138,7 @@ const MaintenancePoliciesPage = () => {
         try {
             await saveChecklist.mutateAsync({
                 profileId: selectedPolicy.id,
-                items: form.checklistItems
-                    .filter((item) => item.title.trim())
-                    .map((item) => ({
-                        title: item.title.trim(),
-                        description: item.description,
-                        measurementType: item.measurementType || 'none',
-                        required: true,
-                        taskPresetId: item.taskPresetId || undefined,
-                        evidenceRequired: false
-                    }))
+                items: buildChecklistPayload(form.checklistItems)
             });
             toast.success('Checklist saved', 'Checklist template version updated.');
             refetch();
@@ -217,7 +223,7 @@ const MaintenancePoliciesPage = () => {
                                 setForm={setForm}
                                 isCreating={isCreating}
                                 onSave={handleSavePolicy}
-                                isSaving={createProfile.isPending || updateProfile.isPending}
+                                isSaving={createProfile.isPending || updateProfile.isPending || saveChecklist.isPending}
                             />
                             <div className="maintenance-policies-detail__checklist">
                                 <MotionlessChecklistHead

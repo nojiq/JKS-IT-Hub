@@ -84,6 +84,37 @@ describe('ChecklistItemEditor', () => {
         ]);
     });
 
+    it('infers battery measurements when an older saved battery task has no measurement type', () => {
+        const onChange = vi.fn();
+
+        render(
+            <ChecklistItemEditor
+                items={[{ title: '', description: '', isRequired: true, evidenceRequired: false }]}
+                taskPresets={[
+                    {
+                        id: 'preset-battery',
+                        title: 'Battery',
+                        description: 'Check battery health.',
+                        measurementType: 'none'
+                    }
+                ]}
+                onChange={onChange}
+            />
+        );
+
+        fireEvent.change(screen.getByLabelText(/task/i), {
+            target: { value: 'preset-battery' }
+        });
+
+        expect(onChange).toHaveBeenCalledWith([
+            expect.objectContaining({
+                taskPresetId: 'preset-battery',
+                title: 'Battery',
+                measurementType: 'battery'
+            })
+        ]);
+    });
+
     it('explains that all tasks must be completed without showing a required checkbox', () => {
         render(
             <ChecklistItemEditor
