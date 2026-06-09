@@ -146,6 +146,24 @@ const createRunForAssignment = async (tx, assignment, dueDate) => {
     }
 };
 
+export const createInitialRunForAssignment = async (tx, assignment, options = {}) => {
+    const now = options.now ?? new Date();
+    const dueDate = startOfBusinessDay(assignment.startDate ?? now);
+    const { created, run } = await createRunForAssignment(tx, assignment, dueDate);
+    const updated = await updateRunStatusFromDate(
+        tx,
+        run,
+        startOfBusinessDay(now),
+        assignment.profile?.gracePeriodDays ?? 0
+    );
+
+    return {
+        created,
+        statusUpdated: Boolean(updated.statusUpdated),
+        run: updated
+    };
+};
+
 const processAssignment = async (assignment, today, windowEnd, tx) => {
     const latestRun = await getLatestRun(tx, assignment.id);
     const graceDays = assignment.profile.gracePeriodDays ?? 0;

@@ -1,6 +1,7 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import MaintenanceAssignmentsPage from '../src/features/maintenance/pages/MaintenanceAssignmentsPage.jsx';
 import { useAssignmentMatrix, useMaintenanceProfiles } from '../src/features/maintenance/hooks/useMaintenance.js';
 import { createMaintenanceAssignment } from '../src/features/maintenance/api/preventiveMaintenanceApi.js';
@@ -52,6 +53,35 @@ const rows = [
     }
 ];
 
+const assignedRows = [
+    {
+        assetId: 'asset-3',
+        assetTag: 'DES-003',
+        deviceType: 'Desktop',
+        userName: 'Haziq',
+        department: 'IT',
+        profile: { id: 'profile-1', name: 'Quarterly PM' },
+        technician: { id: 'tech-1', username: 'it.one', displayName: 'I.T One' },
+        startDate: '2099-02-01T00:00:00.000Z',
+        nextDueDate: '2099-02-01T00:00:00.000Z',
+        status: 'scheduled'
+    }
+];
+
+const renderPage = () => {
+    const queryClient = new QueryClient({
+        defaultOptions: {
+            queries: { retry: false },
+            mutations: { retry: false }
+        }
+    });
+    return render(
+        <QueryClientProvider client={queryClient}>
+            <MaintenanceAssignmentsPage />
+        </QueryClientProvider>
+    );
+};
+
 describe('MaintenanceAssignmentsPage bulk assignment', () => {
     const refetch = vi.fn();
 
@@ -80,7 +110,7 @@ describe('MaintenanceAssignmentsPage bulk assignment', () => {
     });
 
     it('assigns the selected assets to one policy and technician from the bulk bar', async () => {
-        render(<MaintenanceAssignmentsPage />);
+        renderPage();
 
         fireEvent.click(screen.getByLabelText('Select LAP-001'));
         fireEvent.click(screen.getByLabelText('Select LAP-002'));
@@ -105,5 +135,33 @@ describe('MaintenanceAssignmentsPage bulk assignment', () => {
         });
         expect(refetch).toHaveBeenCalled();
         expect(toast.success).toHaveBeenCalledWith('Assignments confirmed', '2 assets linked to I.T One.');
+    });
+
+    it('prefills saved values when reassigning one asset', async () => {
+        useAssignmentMatrix.mockReturnValue({
+            data: assignedRows,
+            isLoading: false,
+            error: null,
+            refetch
+        });
+
+        renderPage();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Reassign' }));
+
+        expect(screen.getByLabelText('Select policy')).toHaveValue('profile-1');
+        expect(await screen.findByLabelText(/assign technician/i)).toHaveValue('tech-1');
+        expect(screen.getByLabelText(/start date/i)).toHaveValue('2099-02-01');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+
+        await waitFor(() => {
+            expect(createMaintenanceAssignment).toHaveBeenCalledWith({
+                assetId: 'asset-3',
+                profileId: 'profile-1',
+                userId: 'tech-1',
+                startDate: '2099-02-01T00:00:00.000Z'
+            });
+        });
     });
 });

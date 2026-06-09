@@ -10,6 +10,10 @@ import {
     dailyPreventiveMaintenanceJob
 } from "../../apps/api/src/features/maintenance/preventiveScheduler.js";
 import {
+    createMaintenanceAssignment,
+    listTechnicianRuns
+} from "../../apps/api/src/features/maintenance/preventiveMaintenanceService.js";
+import {
     completeMaintenanceRun,
     startMaintenanceRun,
     updateMaintenanceRunItem
@@ -166,6 +170,89 @@ test("preventive maintenance scheduler creates first due run inside 30-day windo
     assert.equal(run.items.length, 2);
     assert.equal(run.items[0].title, "Inspect asset");
     assert.equal(run.items[1].evidenceRequired, false);
+});
+
+test("creating a preventive assignment immediately creates an open run for the technician dashboard", async () => {
+    const admin = await makeUser("pm-admin");
+    await prisma.user.update({
+        where: { id: admin.id },
+        data: { role: "admin" }
+    });
+    admin.role = "admin";
+
+    const user = await makeUser();
+    const asset = await makeAsset("PM-ASSIGN");
+    const { profile, template } = await makeProfileWithTemplate({ intervalMonths: 6 });
+    const startDate = "2099-01-15T00:00:00.000Z";
+
+    const assignment = await createMaintenanceAssignment({
+        profileId: profile.id,
+        userId: user.id,
+        assetId: asset.id,
+        startDate
+    }, admin);
+    track("assignmentIds", assignment.id);
+    track("runIds", assignment.nextRun.id);
+
+    assert.equal(assignment.nextRun.dueDate.toISOString(), startDate);
+    assert.equal(assignment.nextRun.status, "scheduled");
+
+    const run = await prisma.maintenanceRun.findUnique({
+        where: { id: assignment.nextRun.id },
+        include: { items: { orderBy: { sortOrder: "asc" } } }
+    });
+    assert.equal(run.userId, user.id);
+    assert.equal(run.checklistTemplateId, template.id);
+    assert.equal(run.items.length, 2);
+    assert.equal(run.items[0].title, "Inspect asset");
+
+    const dashboard = await listTechnicianRuns(user, { page: 1, perPage: 10 });
+    assert.equal(dashboard.data.some((item) => item.id === run.id), true);
+});
+
+test("creating the same preventive assignment reassigns the open run instead of failing", async () => {
+    const admin = await makeUser("pm-reassign-admin");
+    await prisma.user.update({
+        where: { id: admin.id },
+        data: { role: "admin" }
+    });
+    admin.role = "admin";
+
+    const firstUser = await makeUser("pm-reassign-first");
+    const secondUser = await makeUser("pm-reassign-second");
+    const asset = await makeAsset("PM-REASSIGN");
+    const { profile } = await makeProfileWithTemplate({ intervalMonths: 6 });
+    const startDate = "2099-02-01T00:00:00.000Z";
+
+    const firstAssignment = await createMaintenanceAssignment({
+        profileId: profile.id,
+        userId: firstUser.id,
+        assetId: asset.id,
+        startDate
+    }, admin);
+    track("assignmentIds", firstAssignment.id);
+    track("runIds", firstAssignment.nextRun.id);
+
+    const reassigned = await createMaintenanceAssignment({
+        profileId: profile.id,
+        userId: secondUser.id,
+        assetId: asset.id,
+        startDate
+    }, admin);
+
+    assert.equal(reassigned.id, firstAssignment.id);
+    assert.equal(reassigned.nextRun.id, firstAssignment.nextRun.id);
+    assert.equal(reassigned.technician.id, secondUser.id);
+
+    const run = await prisma.maintenanceRun.findUnique({
+        where: { id: firstAssignment.nextRun.id }
+    });
+    assert.equal(run.userId, secondUser.id);
+
+    const firstDashboard = await listTechnicianRuns(firstUser, { page: 1, perPage: 10 });
+    const secondDashboard = await listTechnicianRuns(secondUser, { page: 1, perPage: 10 });
+    assert.equal(firstDashboard.data.some((item) => item.id === run.id), false);
+    assert.equal(secondDashboard.data.some((item) => item.id === run.id), true);
 });
 
 test("preventive maintenance scheduler uses completedAt drift instead of previous dueDate", async () => {

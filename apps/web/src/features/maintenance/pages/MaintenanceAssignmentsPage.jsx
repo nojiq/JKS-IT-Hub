@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState, useRef } from 'react';
 import { useAssignmentMatrix, useMaintenanceProfiles } from '../hooks/useMaintenance.js';
 import AssignPolicyModal from '../components/AssignPolicyModal.jsx';
 import { DataStateBlock } from '../../../shared/workspace/DataStateBlock.jsx';
@@ -55,6 +55,7 @@ const MaintenanceAssignmentsPage = () => {
     const [isLoadingTechnicians, setIsLoadingTechnicians] = useState(false);
     const [isBulkSaving, setIsBulkSaving] = useState(false);
     const [bulkError, setBulkError] = useState(null);
+    const isSavingRef = useRef(false);
 
     const rowsWithDisplay = useMemo(
         () =>
@@ -226,8 +227,9 @@ const MaintenanceAssignmentsPage = () => {
 
     const handleBulkAssign = async (event) => {
         event.preventDefault();
-        if (!canBulkAssign) return;
+        if (!canBulkAssign || isSavingRef.current) return;
 
+        isSavingRef.current = true;
         setIsBulkSaving(true);
         setBulkError(null);
         try {
@@ -262,6 +264,7 @@ const MaintenanceAssignmentsPage = () => {
             setBulkError(message);
             toast.error('Failed to assign assets', message);
         } finally {
+            isSavingRef.current = false;
             setIsBulkSaving(false);
         }
     };

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useMaintenanceProfiles, preventiveKeys } from '../hooks/useMaintenance.js';
@@ -7,6 +7,21 @@ import { createMaintenanceAssignment } from '../api/preventiveMaintenanceApi.js'
 import { fetchActiveItDepartmentUsers, getUserDisplayName } from '../utils/maintenanceAssignees.js';
 import { useToast } from '../../../shared/hooks/useToast.js';
 import './AssignPolicyModal.css';
+
+const getCommonRowValue = (rows, getValue) => {
+    if (!rows.length) return '';
+    const firstValue = getValue(rows[0]) || '';
+    return rows.every((row) => (getValue(row) || '') === firstValue) ? firstValue : '';
+};
+
+const toDateInputValue = (value) => {
+    if (!value) return '';
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+        return value.slice(0, 10);
+    }
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
+};
 
 const AssignPolicyModal = ({ rows = [], onClose, onSuccess }) => {
     const toast = useToast();
@@ -19,6 +34,13 @@ const AssignPolicyModal = ({ rows = [], onClose, onSuccess }) => {
     const [isLoadingTechnicians, setIsLoadingTechnicians] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState(null);
+    const isSavingRef = useRef(false);
+
+    useEffect(() => {
+        setProfileId(getCommonRowValue(rows, (row) => row.profile?.id));
+        setTechnicianId(getCommonRowValue(rows, (row) => row.technician?.id));
+        setStartDate(toDateInputValue(getCommonRowValue(rows, (row) => row.startDate || row.nextDueDate)));
+    }, [rows]);
 
     useEffect(() => {
         const load = async () => {
@@ -51,8 +73,9 @@ const AssignPolicyModal = ({ rows = [], onClose, onSuccess }) => {
 
     const handleSave = async (event) => {
         event.preventDefault();
-        if (!canSave) return;
+        if (!canSave || isSavingRef.current) return;
 
+        isSavingRef.current = true;
         setIsSaving(true);
         setError(null);
         try {
@@ -78,6 +101,7 @@ const AssignPolicyModal = ({ rows = [], onClose, onSuccess }) => {
         } catch (err) {
             setError(err.message || 'Failed to save assignments');
         } finally {
+            isSavingRef.current = false;
             setIsSaving(false);
         }
     };

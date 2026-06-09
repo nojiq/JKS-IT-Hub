@@ -89,14 +89,14 @@ describe('Maintenance dashboard route', () => {
                     {
                         id: 'run-1',
                         status: 'overdue',
-                        dueDate: '2026-05-10T10:00:00.000Z',
+                        dueDate: '2026-06-08T10:00:00.000Z',
                         asset: { assetTag: 'SRV-ALPHA', name: 'Server Rack Alpha' },
                         profile: { name: '6-Month Major Maintenance' }
                     },
                     {
                         id: 'run-2',
                         status: 'due',
-                        dueDate: '2026-05-20T10:00:00.000Z',
+                        dueDate: '2026-06-12T10:00:00.000Z',
                         asset: { assetTag: 'LAP-12', name: 'Laptop 12' },
                         profile: { name: 'Quarterly PM' }
                     }

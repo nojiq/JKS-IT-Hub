@@ -8,19 +8,41 @@ export const URGENCY = Object.freeze({
 
 const OPEN_STATUSES = new Set(['scheduled', 'due', 'in_progress', 'overdue']);
 
+const startOfLocalDay = (value) => {
+    const date = new Date(value);
+    date.setHours(0, 0, 0, 0);
+    return date;
+};
+
+const getCurrentWeekEnd = (now) => {
+    const today = startOfLocalDay(now);
+    const day = today.getDay();
+    const daysSinceMonday = day === 0 ? 6 : day - 1;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - daysSinceMonday);
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    return sunday;
+};
+
+const getCalendarDiffDays = (from, to) => (
+    Math.round((startOfLocalDay(to).getTime() - startOfLocalDay(from).getTime()) / MS_PER_DAY)
+);
+
 export const classifyTaskUrgency = (task, now = new Date()) => {
     const status = String(task?.status || '').toLowerCase();
     if (status === 'overdue') return URGENCY.overdue;
-    if (status === 'due' || status === 'in_progress') return URGENCY.dueThisWeek;
 
     const due = task?.dueDate ? new Date(task.dueDate) : null;
     if (!due || Number.isNaN(due.getTime())) {
+        if (status === 'due' || status === 'in_progress') return URGENCY.dueThisWeek;
         return URGENCY.upcoming;
     }
 
-    const diffDays = Math.ceil((due.getTime() - now.getTime()) / MS_PER_DAY);
+    const diffDays = getCalendarDiffDays(now, due);
     if (diffDays < 0) return URGENCY.overdue;
-    if (diffDays <= 7) return URGENCY.dueThisWeek;
+    if (startOfLocalDay(due) <= getCurrentWeekEnd(now)) return URGENCY.dueThisWeek;
     return URGENCY.upcoming;
 };
 
@@ -60,14 +82,14 @@ export const formatTaskDueLabel = (task, now = new Date()) => {
         return urgency === URGENCY.overdue ? 'Overdue' : 'Due date TBD';
     }
 
-    const diffDays = Math.ceil((due.getTime() - now.getTime()) / MS_PER_DAY);
+    const diffDays = getCalendarDiffDays(now, due);
     if (urgency === URGENCY.overdue) {
         const days = Math.abs(diffDays);
         return days <= 1 ? 'Overdue' : `Overdue by ${days} days`;
     }
     if (diffDays === 0) return 'Due today';
     if (diffDays === 1) return 'Due tomorrow';
-    if (diffDays <= 7) return `Due in ${diffDays} days`;
+    if (urgency === URGENCY.dueThisWeek) return `Due in ${diffDays} days`;
     return due.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 };
 

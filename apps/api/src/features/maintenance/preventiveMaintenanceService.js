@@ -9,6 +9,7 @@ import {
     startMaintenanceRun,
     updateMaintenanceRunItem
 } from './preventiveRunService.js';
+import { createInitialRunForAssignment } from './preventiveScheduler.js';
 import {
     createAssignmentSchema,
     createProfileSchema,
@@ -352,21 +353,94 @@ export const createMaintenanceAssignment = async (data, actor) => {
         }
     });
     if (existing) {
-        const error = new Error('An active assignment already exists for this asset and policy.');
-        error.statusCode = 409;
-        throw error;
+        const { assignment, run } = await prisma.$transaction(async (tx) => {
+            const updatedAssignment = await tx.maintenanceAssignment.update({
+                where: { id: existing.id },
+                data: {
+                    userId: payload.userId,
+                    startDate
+                },
+                include: {
+                    asset: true,
+                    profile: {
+                        include: {
+                            activeTemplate: {
+                                include: {
+                                    items: {
+                                        orderBy: { sortOrder: 'asc' }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    user: true
+                }
+            });
+
+            const openRun = await tx.maintenanceRun.findFirst({
+                where: {
+                    assignmentId: existing.id,
+                    status: { in: OPEN_RUN_STATUSES }
+                },
+                orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }]
+            });
+
+            if (openRun) {
+                const updatedRun = await tx.maintenanceRun.update({
+                    where: { id: openRun.id },
+                    data: { userId: payload.userId }
+                });
+                return { assignment: updatedAssignment, run: updatedRun };
+            }
+
+            const runResult = await createInitialRunForAssignment(tx, updatedAssignment);
+            return { assignment: updatedAssignment, run: runResult.run };
+        });
+
+        return {
+            id: assignment.id,
+            asset: mapAssetSummary(assignment.asset),
+            profile: mapProfileSummary(assignment.profile),
+            technician: mapUserSummary(assignment.user),
+            startDate: assignment.startDate,
+            nextRun: run
+                ? {
+                    id: run.id,
+                    dueDate: run.dueDate,
+                    status: run.status
+                }
+                : null
+        };
     }
 
-    const assignment = await prisma.maintenanceAssignment.create({
-        data: {
-            profileId: payload.profileId,
-            assetId: payload.assetId,
-            userId: payload.userId,
-            status: 'active',
-            startDate,
-            activeKey: `${payload.assetId}:${payload.profileId}`
-        },
-        include: { asset: true, profile: true, user: true }
+    const { assignment, initialRun } = await prisma.$transaction(async (tx) => {
+        const createdAssignment = await tx.maintenanceAssignment.create({
+            data: {
+                profileId: payload.profileId,
+                assetId: payload.assetId,
+                userId: payload.userId,
+                status: 'active',
+                startDate,
+                activeKey: `${payload.assetId}:${payload.profileId}`
+            },
+            include: {
+                asset: true,
+                profile: {
+                    include: {
+                        activeTemplate: {
+                            include: {
+                                items: {
+                                    orderBy: { sortOrder: 'asc' }
+                                }
+                            }
+                        }
+                    }
+                },
+                user: true
+            }
+        });
+        const runResult = await createInitialRunForAssignment(tx, createdAssignment);
+        return { assignment: createdAssignment, initialRun: runResult.run };
     });
 
     return {
@@ -375,7 +449,13 @@ export const createMaintenanceAssignment = async (data, actor) => {
         profile: mapProfileSummary(assignment.profile),
         technician: mapUserSummary(assignment.user),
         startDate: assignment.startDate,
-        nextRun: null
+        nextRun: initialRun
+            ? {
+                id: initialRun.id,
+                dueDate: initialRun.dueDate,
+                status: initialRun.status
+            }
+            : null
     };
 };
 
@@ -628,6 +708,7 @@ export const listAssetsAssignmentMatrix = async () => {
             assignmentId: assignment?.id ?? null,
             profile: assignment ? mapProfileSummary(assignment.profile) : null,
             technician: assignment ? mapUserSummary(assignment.user) : null,
+            startDate: assignment?.startDate ?? null,
             nextDueDate: nextRun?.dueDate ?? null,
             status: nextRun?.status ?? (assignment ? 'scheduled' : 'unassigned'),
             runId: nextRun?.id ?? null
