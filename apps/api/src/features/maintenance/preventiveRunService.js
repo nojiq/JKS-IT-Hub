@@ -16,6 +16,61 @@ const invalidState = (message) => {
     return error;
 };
 
+const badRequest = (message) => {
+    const error = new Error(message);
+    error.statusCode = 400;
+    return error;
+};
+
+const asTrimmedString = (value) => {
+    if (value === undefined || value === null) return null;
+    const trimmed = String(value).trim();
+    return trimmed || null;
+};
+
+const asNumber = (value, field, { min = 0, max = Number.POSITIVE_INFINITY } = {}) => {
+    if (value === undefined || value === null || value === "") return null;
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric < min || numeric > max) {
+        throw badRequest(`Invalid ${field}`);
+    }
+    return numeric;
+};
+
+const normalizeMeasurements = (measurementType, measurements) => {
+    if (measurements === undefined) return undefined;
+    if (measurements === null) return null;
+    if (typeof measurements !== "object" || Array.isArray(measurements)) {
+        throw badRequest("Invalid measurements");
+    }
+
+    if (measurementType === "battery") {
+        const designCapacityMwh = asNumber(measurements.designCapacityMwh, "design capacity", { min: 0 });
+        const fullChargeCapacityMwh = asNumber(measurements.fullChargeCapacityMwh, "full charge capacity", { min: 0 });
+        const cycleCount = asNumber(measurements.cycleCount, "cycle count", { min: 0 });
+        return {
+            batteryModel: asTrimmedString(measurements.batteryModel),
+            designCapacityMwh,
+            fullChargeCapacityMwh,
+            cycleCount
+        };
+    }
+
+    if (measurementType === "hard_drive") {
+        return {
+            model: asTrimmedString(measurements.model),
+            sizeGb: asNumber(measurements.sizeGb, "size", { min: 0 }),
+            performancePercent: asNumber(measurements.performancePercent, "performance", { min: 0, max: 100 }),
+            healthPercent: asNumber(measurements.healthPercent, "health", { min: 0, max: 100 })
+        };
+    }
+
+    if (Object.keys(measurements).length > 0) {
+        throw badRequest("Measurements are only supported for battery and hard drive tasks");
+    }
+    return null;
+};
+
 const getRunOrThrow = async (runId, tx = prisma) => {
     const run = await tx.maintenanceRun.findUnique({
         where: { id: runId },
@@ -78,12 +133,14 @@ export const updateMaintenanceRunItem = async (runItemId, data, actorUserId, opt
         }
 
         const isPending = data.status === "pending";
+        const normalizedMeasurements = normalizeMeasurements(existing.measurementType || "none", data.measurements);
         return tx.maintenanceRunItem.update({
             where: { id: runItemId },
             data: {
                 status: data.status,
                 notes: data.notes ?? existing.notes,
                 evidenceUrl: data.evidenceUrl ?? existing.evidenceUrl,
+                ...(normalizedMeasurements !== undefined ? { measurements: normalizedMeasurements } : {}),
                 completedById: isPending ? null : actorUserId,
                 completedAt: isPending ? null : now
             }

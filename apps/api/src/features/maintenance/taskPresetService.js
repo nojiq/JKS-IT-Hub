@@ -9,11 +9,19 @@ const normalizeText = (value) => {
     return normalized || null;
 };
 
+const inferMeasurementType = (title, fallback = 'none') => {
+    const normalized = String(title || '').trim().toLowerCase();
+    if (normalized === 'battery') return 'battery';
+    if (['hard drive', 'hdd', 'ssd'].includes(normalized)) return 'hard_drive';
+    return fallback || 'none';
+};
+
 const mapPreset = (preset) => ({
     id: preset.id,
     title: preset.title,
     description: preset.description,
     category: preset.category,
+    measurementType: preset.measurementType || 'none',
     isActive: preset.isActive,
     createdBy: preset.createdBy
         ? {
@@ -60,6 +68,7 @@ export const createTaskPreset = async (data, actor, tx = prisma) => {
     const title = normalizeText(payload.title);
     const description = normalizeText(payload.description);
     const category = normalizeText(payload.category);
+    const measurementType = inferMeasurementType(title, payload.measurementType);
 
     const preset = await tx.maintenanceTaskPreset.upsert({
         where: { title },
@@ -67,12 +76,14 @@ export const createTaskPreset = async (data, actor, tx = prisma) => {
             title,
             description,
             category,
+            measurementType,
             createdById: actor?.id ?? null
         },
         update: {
             isActive: true,
             description,
-            category
+            category,
+            measurementType
         },
         include: { createdBy: { select: { id: true, username: true } } }
     });
@@ -110,9 +121,12 @@ export const ensureTaskPresetForChecklistItem = async (item, actor, tx = prisma)
             title: normalizeText(item.title),
             description: normalizeText(item.description),
             category: 'Other',
+            measurementType: inferMeasurementType(item.title, item.measurementType),
             createdById: actor?.id ?? null
         },
-        update: { isActive: true }
+        update: {
+            isActive: true,
+            measurementType: inferMeasurementType(item.title, item.measurementType)
+        }
     });
 };
-

@@ -278,3 +278,150 @@ test("maintenance run items accept repair as a completion result", async () => {
     await prisma.maintenanceAssignment.delete({ where: { id: assignment.id } });
     await prisma.asset.delete({ where: { id: asset.id } });
 });
+
+test("maintenance run items save structured battery and hard drive measurements", async () => {
+    const user = users.it;
+    const asset = await prisma.asset.create({
+        data: {
+            snipeAssetId: Math.floor(Math.random() * 1000000000),
+            assetTag: `MEASURE-${randomUUID()}`,
+            name: "Measurement test asset"
+        }
+    });
+
+    const profile = await prisma.maintenanceProfile.create({
+        data: {
+            name: `Measurement profile ${randomUUID()}`,
+            intervalMonths: 3
+        }
+    });
+    track("profileIds", profile.id);
+    const template = await prisma.checklistTemplate.create({
+        data: {
+            profileId: profile.id,
+            name: `Measurement checklist ${randomUUID()}`,
+            version: 1,
+            items: {
+                create: [
+                    {
+                        sortOrder: 0,
+                        title: "Battery",
+                        measurementType: "battery",
+                        required: true,
+                        evidenceRequired: false
+                    },
+                    {
+                        sortOrder: 1,
+                        title: "Hard drive",
+                        measurementType: "hard_drive",
+                        required: true,
+                        evidenceRequired: false
+                    }
+                ]
+            }
+        }
+    });
+    track("templateIds", template.id);
+    await prisma.maintenanceProfile.update({
+        where: { id: profile.id },
+        data: { activeTemplateId: template.id }
+    });
+    const assignment = await prisma.maintenanceAssignment.create({
+        data: {
+            profileId: profile.id,
+            assetId: asset.id,
+            userId: user.id,
+            status: "active",
+            startDate: new Date(),
+            activeKey: `${asset.id}:${profile.id}`
+        }
+    });
+    const run = await prisma.maintenanceRun.create({
+        data: {
+            assignmentId: assignment.id,
+            profileId: profile.id,
+            assetId: asset.id,
+            userId: user.id,
+            checklistTemplateId: template.id,
+            checklistVersion: 1,
+            dueDate: new Date(),
+            status: "scheduled",
+            items: {
+                create: [
+                    {
+                        sortOrder: 0,
+                        title: "Battery",
+                        measurementType: "battery",
+                        required: true,
+                        evidenceRequired: false
+                    },
+                    {
+                        sortOrder: 1,
+                        title: "Hard drive",
+                        measurementType: "hard_drive",
+                        required: true,
+                        evidenceRequired: false
+                    }
+                ]
+            }
+        },
+        include: { items: { orderBy: { sortOrder: "asc" } } }
+    });
+
+    const batteryResponse = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/maintenance/runs/items/${run.items[0].id}`,
+        headers: authHeader(tokens.it),
+        payload: {
+            status: "pass",
+            measurements: {
+                batteryModel: "L20M4PC0",
+                designCapacityMwh: 50000,
+                fullChargeCapacityMwh: 39000,
+                cycleCount: 801
+            }
+        }
+    });
+    assert.equal(batteryResponse.statusCode, 200, batteryResponse.body);
+    const batteryItem = JSON.parse(batteryResponse.body).data.items.find((item) => item.id === run.items[0].id);
+    assert.equal(batteryItem.measurementType, "battery");
+    assert.equal(batteryItem.measurements.batteryModel, "L20M4PC0");
+    assert.equal(batteryItem.measurements.designCapacityMwh, 50000);
+
+    const driveResponse = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/maintenance/runs/items/${run.items[1].id}`,
+        headers: authHeader(tokens.it),
+        payload: {
+            status: "pass",
+            measurements: {
+                model: "Samsung SSD 870",
+                sizeGb: 512,
+                performancePercent: 75,
+                healthPercent: 92
+            }
+        }
+    });
+    assert.equal(driveResponse.statusCode, 200, driveResponse.body);
+    const driveItem = JSON.parse(driveResponse.body).data.items.find((item) => item.id === run.items[1].id);
+    assert.equal(driveItem.measurements.performancePercent, 75);
+    assert.equal(driveItem.measurements.healthPercent, 92);
+
+    const invalidResponse = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/maintenance/runs/items/${run.items[1].id}`,
+        headers: authHeader(tokens.it),
+        payload: {
+            status: "pass",
+            measurements: {
+                performancePercent: 120
+            }
+        }
+    });
+    assert.equal(invalidResponse.statusCode, 400, invalidResponse.body);
+
+    await prisma.maintenanceRunItem.deleteMany({ where: { runId: run.id } });
+    await prisma.maintenanceRun.delete({ where: { id: run.id } });
+    await prisma.maintenanceAssignment.delete({ where: { id: assignment.id } });
+    await prisma.asset.delete({ where: { id: asset.id } });
+});

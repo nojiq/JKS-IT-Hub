@@ -4,10 +4,13 @@ const booleanQuerySchema = z.union([z.literal('true'), z.literal('false'), z.boo
     .optional()
     .transform((value) => value === true || value === 'true');
 
+const measurementTypeSchema = z.enum(['none', 'battery', 'hard_drive']).optional().default('none');
+
 const checklistItemInputSchema = z.object({
     taskPresetId: z.string().uuid().optional(),
     title: z.string().trim().min(1).max(255),
     description: z.string().max(2000).optional(),
+    measurementType: measurementTypeSchema,
     required: z.boolean().optional().default(true),
     evidenceRequired: z.boolean().optional().default(false)
 });
@@ -21,7 +24,8 @@ export const listTaskPresetsQuerySchema = z.object({
 export const taskPresetInputSchema = z.object({
     title: z.string().trim().min(1).max(255),
     description: z.string().max(2000).optional(),
-    category: z.string().max(100).optional()
+    category: z.string().max(100).optional(),
+    measurementType: measurementTypeSchema
 });
 
 export const createProfileSchema = z.object({
@@ -68,5 +72,6 @@ export const listRunsQuerySchema = z.object({
 export const updateRunItemSchema = z.object({
     status: z.enum(['pending', 'pass', 'fail', 'repair', 'na']),
     notes: z.string().max(2000).optional(),
-    evidenceUrl: z.string().url().max(2000).optional()
+    evidenceUrl: z.string().url().max(2000).optional(),
+    measurements: z.record(z.string(), z.unknown()).optional()
 });

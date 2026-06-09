@@ -43,6 +43,7 @@ const copyChecklistItem = (item) => ({
     sortOrder: item.sortOrder,
     title: item.title,
     description: item.description ?? null,
+    measurementType: item.measurementType || "none",
     required: item.required,
     evidenceRequired: false
 });
@@ -122,6 +123,7 @@ const createRunForAssignment = async (tx, assignment, dueDate) => {
                             sortOrder: item.sortOrder,
                             title: item.title,
                             description: item.description,
+                            measurementType: item.measurementType || "none",
                             required: item.required,
                             evidenceRequired: false,
                             status: "pending"

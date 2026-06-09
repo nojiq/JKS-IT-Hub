@@ -172,6 +172,74 @@
   gap: 0.5rem 0.75rem;
 }
 
+.maintenance-task-drawer__measurement-panel {
+  margin-top: 0.75rem;
+  padding: 0.65rem;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--ui-surface-elevated);
+}
+
+.maintenance-task-drawer__measurement-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.maintenance-task-drawer__measurement-field {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--ui-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.maintenance-task-drawer__measurement-control {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.maintenance-task-drawer__measurement-control input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--ui-surface-muted);
+  color: var(--ui-text-primary);
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.45rem 0.55rem;
+}
+
+.maintenance-task-drawer__measurement-control small {
+  color: var(--ui-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.maintenance-task-drawer__measurement-derived {
+  margin: 0.6rem 0 0;
+  color: var(--ui-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.maintenance-task-drawer__measurement-warnings {
+  margin-top: 0.55rem;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.maintenance-task-drawer__measurement-warnings span {
+  padding: 0.35rem 0.45rem;
+  border-radius: var(--radius-control);
+  background: var(--ui-feedback-warning-muted);
+  color: var(--ui-feedback-warning);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .maintenance-task-drawer__file-button {
   display: inline-flex;
   align-items: center;

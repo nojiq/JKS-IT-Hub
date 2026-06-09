@@ -31,7 +31,8 @@ describe('ChecklistItemEditor', () => {
                     {
                         id: 'preset-monitor',
                         title: 'Monitor',
-                        description: 'Test and clean the monitor.'
+                        description: 'Test and clean the monitor.',
+                        measurementType: 'none'
                     }
                 ]}
                 onChange={onChange}
@@ -46,7 +47,39 @@ describe('ChecklistItemEditor', () => {
             expect.objectContaining({
                 taskPresetId: 'preset-monitor',
                 title: 'Monitor',
-                description: 'Test and clean the monitor.'
+                description: 'Test and clean the monitor.',
+                measurementType: 'none'
+            })
+        ]);
+    });
+
+    it('copies measurement type from a saved battery task', () => {
+        const onChange = vi.fn();
+
+        render(
+            <ChecklistItemEditor
+                items={[{ title: '', description: '', isRequired: true, evidenceRequired: false }]}
+                taskPresets={[
+                    {
+                        id: 'preset-battery',
+                        title: 'Battery',
+                        description: 'Check battery health.',
+                        measurementType: 'battery'
+                    }
+                ]}
+                onChange={onChange}
+            />
+        );
+
+        fireEvent.change(screen.getByLabelText(/task/i), {
+            target: { value: 'preset-battery' }
+        });
+
+        expect(onChange).toHaveBeenCalledWith([
+            expect.objectContaining({
+                taskPresetId: 'preset-battery',
+                title: 'Battery',
+                measurementType: 'battery'
             })
         ]);
     });
@@ -64,6 +97,7 @@ describe('ChecklistItemEditor', () => {
         expect(screen.queryByLabelText('Must complete before finishing')).not.toBeInTheDocument();
         expect(screen.queryByLabelText('Required for sign-off')).not.toBeInTheDocument();
         expect(screen.queryByLabelText('Require evidence')).not.toBeInTheDocument();
+        expect(screen.getByLabelText('Measurement fields')).toBeInTheDocument();
     });
 
     it('allows a new task to be entered after choosing add new task from the dropdown', () => {
@@ -89,6 +123,7 @@ describe('ChecklistItemEditor', () => {
             expect.objectContaining({
                 taskPresetId: null,
                 title: 'USB ports',
+                measurementType: 'none',
                 isNewTask: true
             })
         ]);

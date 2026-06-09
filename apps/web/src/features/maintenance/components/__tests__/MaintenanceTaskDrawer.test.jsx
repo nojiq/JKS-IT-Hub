@@ -80,6 +80,105 @@ describe('MaintenanceTaskDrawer', () => {
         });
     });
 
+    it('captures battery measurements and warns on low health', async () => {
+        updateItem.mockResolvedValue({});
+        render(
+            <MaintenanceTaskDrawer
+                task={{
+                    ...baseTask,
+                    items: [{
+                        ...baseTask.items[0],
+                        title: 'Battery',
+                        measurementType: 'battery',
+                        status: 'pending',
+                        notes: null,
+                        measurements: {
+                            batteryModel: 'L20M4PC0',
+                            designCapacityMwh: 50000,
+                            fullChargeCapacityMwh: 35000,
+                            cycleCount: 901
+                        }
+                    }]
+                }}
+                onClose={vi.fn()}
+            />
+        );
+
+        expect(screen.getByLabelText('Battery model')).toHaveValue('L20M4PC0');
+        expect(screen.getByText('Battery health: 70%')).toBeInTheDocument();
+        expect(screen.getByText('Battery health is 70%, below 80%.')).toBeInTheDocument();
+        expect(screen.getByText('Cycle count is above 800.')).toBeInTheDocument();
+
+        const fullChargeInput = screen.getByRole('spinbutton', { name: /full charge capacity/i });
+        fireEvent.change(fullChargeInput, {
+            target: { value: '34000' }
+        });
+        fireEvent.blur(fullChargeInput);
+
+        await waitFor(() => {
+            expect(updateItem).toHaveBeenCalledWith({
+                itemId: 'item-1',
+                data: {
+                    status: 'pending',
+                    notes: undefined,
+                    measurements: {
+                        batteryModel: 'L20M4PC0',
+                        designCapacityMwh: 50000,
+                        fullChargeCapacityMwh: 34000,
+                        cycleCount: 901
+                    }
+                }
+            });
+        });
+    });
+
+    it('captures HDSentinel hard drive measurements and warnings', async () => {
+        updateItem.mockResolvedValue({});
+        render(
+            <MaintenanceTaskDrawer
+                task={{
+                    ...baseTask,
+                    items: [{
+                        ...baseTask.items[0],
+                        title: 'Hard drive',
+                        measurementType: 'hard_drive',
+                        status: 'pending',
+                        notes: null,
+                        measurements: {
+                            model: 'Samsung SSD 870',
+                            sizeGb: 512,
+                            performancePercent: 75,
+                            healthPercent: 92
+                        }
+                    }]
+                }}
+                onClose={vi.fn()}
+            />
+        );
+
+        expect(screen.getByLabelText('Model')).toHaveValue('Samsung SSD 870');
+        expect(screen.getByRole('spinbutton', { name: /performance/i })).toHaveValue(75);
+        expect(screen.getByText('Performance is below 80%.')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Pass' }));
+
+        await waitFor(() => {
+            expect(updateItem).toHaveBeenCalledWith({
+                itemId: 'item-1',
+                data: {
+                    status: 'pass',
+                    notes: undefined,
+                    measurements: {
+                        model: 'Samsung SSD 870',
+                        sizeGb: 512,
+                        performancePercent: 75,
+                        healthPercent: 92
+                    }
+                }
+            });
+        });
+    });
+
     it('uploads optional evidence and shows the file link', async () => {
         uploadEvidence.mockResolvedValueOnce({
             id: 'item-1',

@@ -5,11 +5,17 @@ const EMPTY_ITEM = {
     taskPresetId: null,
     title: '',
     description: '',
+    measurementType: 'none',
     isRequired: true,
     orderIndex: 0
 };
 
 const ADD_NEW_TASK_VALUE = '__add_new_task__';
+const MEASUREMENT_OPTIONS = [
+    { value: 'none', label: 'Standard task' },
+    { value: 'battery', label: 'Battery measurements' },
+    { value: 'hard_drive', label: 'Hard drive measurements' }
+];
 
 function IconChevronDown(props) {
     return (
@@ -37,6 +43,13 @@ const findPresetByTitle = (taskPresets, value) => {
     return taskPresets.find((preset) => preset.title?.trim().toLowerCase() === normalized) || null;
 };
 
+const inferMeasurementType = (title) => {
+    const normalized = String(title || '').trim().toLowerCase();
+    if (normalized === 'battery') return 'battery';
+    if (['hard drive', 'hdd', 'ssd'].includes(normalized)) return 'hard_drive';
+    return 'none';
+};
+
 const ChecklistItemEditor = ({ items = [], taskPresets = [], onChange, onDeleteTaskPreset }) => {
     const [deletingPresetId, setDeletingPresetId] = useState(null);
     const sync = (next) => {
@@ -59,6 +72,7 @@ const ChecklistItemEditor = ({ items = [], taskPresets = [], onChange, onDeleteT
                 taskPresetId: null,
                 title: '',
                 description: '',
+                measurementType: 'none',
                 isNewTask: true
             });
             return;
@@ -69,6 +83,7 @@ const ChecklistItemEditor = ({ items = [], taskPresets = [], onChange, onDeleteT
             taskPresetId: preset?.id ?? null,
             title: preset?.title ?? '',
             description: preset?.description || '',
+            measurementType: preset?.measurementType || inferMeasurementType(preset?.title) || 'none',
             isNewTask: false
         });
     };
@@ -79,6 +94,7 @@ const ChecklistItemEditor = ({ items = [], taskPresets = [], onChange, onDeleteT
             taskPresetId: preset?.id ?? null,
             title: value,
             description: preset ? preset.description || '' : items[index]?.description || '',
+            measurementType: preset?.measurementType || inferMeasurementType(value),
             isNewTask: !preset
         });
     };
@@ -219,6 +235,21 @@ const ChecklistItemEditor = ({ items = [], taskPresets = [], onChange, onDeleteT
                                     value={item.description || ''}
                                     onChange={(event) => updateItem(index, { description: event.target.value })}
                                 />
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor={`checklist-item-measurement-${index}`}>Measurement fields</label>
+                                <select
+                                    id={`checklist-item-measurement-${index}`}
+                                    className="form-control"
+                                    value={item.measurementType || 'none'}
+                                    onChange={(event) => updateItem(index, { measurementType: event.target.value })}
+                                >
+                                    {MEASUREMENT_OPTIONS.map((option) => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                             </div>
                         );

@@ -49,6 +49,11 @@ const invalidState = (message) => {
     return error;
 };
 
+const resolveMeasurementType = (item, preset) => {
+    if (item.measurementType && item.measurementType !== 'none') return item.measurementType;
+    return preset?.measurementType || 'none';
+};
+
 export const assertMaintenanceAdmin = (actor) => {
     if (!ADMIN_ROLES.has(actor?.role)) {
         throw forbidden('Maintenance administration requires an admin role.');
@@ -127,6 +132,8 @@ const mapRunItem = (item) => ({
     sortOrder: item.sortOrder,
     title: item.title,
     description: item.description,
+    measurementType: item.measurementType || 'none',
+    measurements: item.measurements || null,
     required: item.required,
     evidenceRequired: item.evidenceRequired,
     status: item.status,
@@ -242,6 +249,7 @@ export const createMaintenanceProfile = async (data, actor) => {
                 taskPresetId: preset.id,
                 title: item.title,
                 description: item.description,
+                measurementType: resolveMeasurementType(item, preset),
                 required: item.required ?? true,
                 evidenceRequired: false
             };
@@ -308,6 +316,7 @@ export const saveProfileChecklist = async (profileId, data, actor) => {
                 taskPresetId: preset.id,
                 title: item.title,
                 description: item.description,
+                measurementType: resolveMeasurementType(item, preset),
                 required: item.required ?? true,
                 evidenceRequired: false
             };

@@ -21,7 +21,7 @@ const emptyPolicyForm = () => ({
     description: '',
     intervalMonths: 3,
     gracePeriodDays: 0,
-    checklistItems: [{ taskPresetId: null, title: '', description: '', isRequired: true }]
+    checklistItems: [{ taskPresetId: null, title: '', description: '', measurementType: 'none', isRequired: true }]
 });
 
 const MaintenancePoliciesPage = () => {
@@ -60,6 +60,7 @@ const MaintenancePoliciesPage = () => {
                     taskPresetId: item.taskPresetId || null,
                     title: item.title,
                     description: item.description || '',
+                    measurementType: item.measurementType || 'none',
                     isRequired: true
                 })) || emptyPolicyForm().checklistItems
         });
@@ -89,6 +90,7 @@ const MaintenancePoliciesPage = () => {
                         .map((item) => ({
                             title: item.title.trim(),
                             description: item.description,
+                            measurementType: item.measurementType || 'none',
                             required: true,
                             taskPresetId: item.taskPresetId || undefined,
                             evidenceRequired: false
@@ -126,6 +128,7 @@ const MaintenancePoliciesPage = () => {
                     .map((item) => ({
                         title: item.title.trim(),
                         description: item.description,
+                        measurementType: item.measurementType || 'none',
                         required: true,
                         taskPresetId: item.taskPresetId || undefined,
                         evidenceRequired: false

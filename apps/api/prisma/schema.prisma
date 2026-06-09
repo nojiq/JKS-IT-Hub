@@ -638,6 +638,7 @@ model MaintenanceTaskPreset {
   title       String   @db.VarChar(255)
   description String?  @db.Text
   category    String?  @db.VarChar(100)
+  measurementType String @default("none") @map("measurement_type") @db.VarChar(50)
   isActive    Boolean  @default(true) @map("is_active")
   createdById String?  @map("created_by_id") @db.Char(36)
   createdAt   DateTime @default(now()) @map("created_at")
@@ -660,6 +661,7 @@ model ChecklistItem {
   sortOrder        Int      @map("sort_order")
   title            String   @db.VarChar(255)
   description      String?  @db.Text
+  measurementType  String   @default("none") @map("measurement_type") @db.VarChar(50)
   required         Boolean  @default(true)
   evidenceRequired Boolean  @default(false) @map("evidence_required")
   createdAt        DateTime @default(now()) @map("created_at")
@@ -746,6 +748,8 @@ model MaintenanceRunItem {
   sortOrder        Int                      @map("sort_order")
   title            String                   @db.VarChar(255)
   description      String?                  @db.Text
+  measurementType  String                   @default("none") @map("measurement_type") @db.VarChar(50)
+  measurements     Json?
   required         Boolean
   evidenceRequired Boolean                  @map("evidence_required")
   status           MaintenanceRunItemStatus @default(pending)
