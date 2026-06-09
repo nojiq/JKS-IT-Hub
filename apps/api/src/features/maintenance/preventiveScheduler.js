@@ -60,6 +60,10 @@ const buildChecklistSnapshot = (template) => {
     };
 };
 
+const buildOptionalRelation = (relationName, id) => (
+    id ? { [relationName]: { connect: { id } } } : {}
+);
+
 const getRunStatusForDate = (run, today, graceDays = 0) => {
     if (TERMINAL_RUN_STATUSES.includes(run.status)) return run.status;
 
@@ -118,8 +122,8 @@ const createRunForAssignment = async (tx, assignment, dueDate) => {
                     status: "scheduled",
                     items: {
                         create: items.map((item) => ({
-                            checklistItemId: item.id,
-                            taskPresetId: item.taskPresetId,
+                            ...buildOptionalRelation("checklistItem", item.id),
+                            ...buildOptionalRelation("taskPreset", item.taskPresetId),
                             sortOrder: item.sortOrder,
                             title: item.title,
                             description: item.description,

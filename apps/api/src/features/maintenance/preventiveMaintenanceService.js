@@ -54,6 +54,10 @@ const resolveMeasurementType = (item, preset) => {
     return preset?.measurementType || 'none';
 };
 
+const buildTaskPresetRelation = (taskPresetId) => (
+    taskPresetId ? { taskPreset: { connect: { id: taskPresetId } } } : {}
+);
+
 export const assertMaintenanceAdmin = (actor) => {
     if (!ADMIN_ROLES.has(actor?.role)) {
         throw forbidden('Maintenance administration requires an admin role.');
@@ -246,7 +250,7 @@ export const createMaintenanceProfile = async (data, actor) => {
             const preset = await ensureTaskPresetForChecklistItem(item, actor, tx);
             return {
                 sortOrder: index,
-                taskPresetId: preset.id,
+                ...buildTaskPresetRelation(preset.id),
                 title: item.title,
                 description: item.description,
                 measurementType: resolveMeasurementType(item, preset),
@@ -313,7 +317,7 @@ export const saveProfileChecklist = async (profileId, data, actor) => {
             const preset = await ensureTaskPresetForChecklistItem(item, actor, tx);
             return {
                 sortOrder: index,
-                taskPresetId: preset.id,
+                ...buildTaskPresetRelation(preset.id),
                 title: item.title,
                 description: item.description,
                 measurementType: resolveMeasurementType(item, preset),
