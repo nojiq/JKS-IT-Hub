@@ -231,6 +231,13 @@
   font-size: 0.875rem;
 }
 
+.maintenance-task-row__owner {
+  margin: 0.25rem 0 0;
+  color: var(--ui-text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 .maintenance-task-row__meta {
   display: grid;
   justify-items: end;

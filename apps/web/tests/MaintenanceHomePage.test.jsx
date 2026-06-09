@@ -90,7 +90,12 @@ describe('Maintenance dashboard route', () => {
                         id: 'run-1',
                         status: 'overdue',
                         dueDate: '2026-06-08T10:00:00.000Z',
-                        asset: { assetTag: 'SRV-ALPHA', name: 'Server Rack Alpha' },
+                        asset: {
+                            assetTag: 'SRV-ALPHA',
+                            name: 'Server Rack Alpha',
+                            userName: 'Afiq Rahman',
+                            department: 'Finance'
+                        },
                         profile: { name: '6-Month Major Maintenance' }
                     },
                     {
@@ -116,6 +121,7 @@ describe('Maintenance dashboard route', () => {
         expect(screen.getByRole('button', { name: 'Overdue: 1' })).toBeInTheDocument();
         expect(screen.getByText('6-Month Major Maintenance')).toBeInTheDocument();
         expect(screen.getByText(/Server Rack Alpha/)).toBeInTheDocument();
+        expect(screen.getByText('Afiq Rahman · Finance')).toBeInTheDocument();
     });
 
     it('shows maintenance management tabs to IT users', async () => {

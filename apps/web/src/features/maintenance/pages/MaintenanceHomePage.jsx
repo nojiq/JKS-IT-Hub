@@ -35,12 +35,18 @@ function MetricCard({ label, count, tone, isActive, onClick }) {
 
 function TaskRow({ task, onOpen }) {
     const urgency = classifyTaskUrgency(task);
+    const assetUserName = task.asset?.userName;
+    const assetDepartment = task.asset?.department;
+    const assetOwnerParts = [assetUserName, assetDepartment].filter(Boolean);
 
     return (
         <button type="button" className="maintenance-task-row" onClick={() => onOpen(task)}>
             <div className="maintenance-task-row__main">
                 <p className="maintenance-task-row__asset">{formatTaskAssetLabel(task)}</p>
                 <p className="maintenance-task-row__policy">{formatTaskPolicyLabel(task)}</p>
+                {assetOwnerParts.length > 0 ? (
+                    <p className="maintenance-task-row__owner">{assetOwnerParts.join(' · ')}</p>
+                ) : null}
             </div>
             <TaskMeta urgency={urgency} task={task} />
         </button>

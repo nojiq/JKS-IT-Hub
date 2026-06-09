@@ -17,7 +17,12 @@ const baseTask = {
     id: 'run-1',
     status: 'in_progress',
     dueDate: '2026-05-16T00:00:00.000Z',
-    asset: { assetTag: 'JKS-001', name: 'Laptop' },
+    asset: {
+        assetTag: 'JKS-001',
+        name: 'Laptop',
+        userName: 'Afiq Rahman',
+        department: 'Finance'
+    },
     profile: { name: 'Quarterly maintenance' },
     assignedTo: { username: 'tech.user' },
     items: [
@@ -43,6 +48,8 @@ describe('MaintenanceTaskDrawer', () => {
         render(<MaintenanceTaskDrawer task={baseTask} onClose={vi.fn()} />);
 
         expect(screen.getByRole('button', { name: 'Repair' })).toBeInTheDocument();
+        expect(screen.getByText('Afiq Rahman')).toBeInTheDocument();
+        expect(screen.getByText('Finance')).toBeInTheDocument();
         expect(screen.getByLabelText(/remarks/i)).toBeInTheDocument();
         expect(screen.getByPlaceholderText('What was repaired?')).toBeInTheDocument();
         expect(screen.getByLabelText('Attach file')).toBeInTheDocument();

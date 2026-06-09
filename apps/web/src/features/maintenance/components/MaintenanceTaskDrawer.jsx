@@ -106,6 +106,8 @@ const MaintenanceTaskDrawer = ({ task, readOnly = false, onClose, onSuccess }) =
     const assignee = formatTechnician(run?.assignedTo);
     const assetLabel = formatTaskAssetLabel(run);
     const policyLabel = formatTaskPolicyLabel(run);
+    const assetUserName = run?.asset?.userName || '—';
+    const assetDepartment = run?.asset?.department || '—';
 
     const requiredItems = items.filter((item) => item.required);
     const allRequiredAnswered = requiredItems.every(
@@ -194,6 +196,8 @@ const MaintenanceTaskDrawer = ({ task, readOnly = false, onClose, onSuccess }) =
                     <dl>
                         <MetaRow label="Asset" value={assetLabel} />
                         <MetaRow label="Policy" value={policyLabel} />
+                        <MetaRow label="Name" value={assetUserName} />
+                        <MetaRow label="Department" value={assetDepartment} />
                         <MetaRow label="Due" value={formatDisplayDate(run.dueDate, { fallback: '—' })} />
                         <MetaRow label="Technician" value={assignee.primary} secondary={assignee.secondary} />
                         <MetaRow label="Status" value={run.status} />

@@ -64,14 +64,46 @@ const mapUserSummary = (user) => {
     };
 };
 
+const mapAssetAssigneeFields = (asset) => {
+    const user = asset?.assignedToUser;
+    if (user) {
+        const ldap = user.ldapAttributes && typeof user.ldapAttributes === 'object' ? user.ldapAttributes : {};
+        const userName =
+            ldap.displayName ||
+            ldap.cn ||
+            ldap.name ||
+            user.username ||
+            null;
+        const department =
+            user.orgSnapshot?.department?.name ||
+            ldap.department ||
+            ldap.departmentName ||
+            null;
+        return {
+            userName: userName ? String(userName).trim() : null,
+            department: department ? String(department).trim() : null
+        };
+    }
+
+    const snipeName = asset?.snipeAssignedName?.trim() || null;
+    const snipeUsername = asset?.snipeAssignedUsername?.trim() || null;
+    return {
+        userName: snipeName || snipeUsername || null,
+        department: null
+    };
+};
+
 const mapAssetSummary = (asset) => {
     if (!asset) return null;
+    const assignee = mapAssetAssigneeFields(asset);
     return {
         id: asset.id,
         assetTag: asset.assetTag,
         name: asset.name,
         categoryName: asset.categoryName,
-        statusLabel: asset.statusLabel
+        statusLabel: asset.statusLabel,
+        userName: assignee.userName,
+        department: assignee.department
     };
 };
 
@@ -142,7 +174,18 @@ export const mapMaintenanceRun = (run) => ({
 });
 
 const runInclude = {
-    asset: true,
+    asset: {
+        include: {
+            assignedToUser: {
+                select: {
+                    id: true,
+                    username: true,
+                    ldapAttributes: true,
+                    orgSnapshot: true
+                }
+            }
+        }
+    },
     profile: true,
     user: true,
     completedBy: true,
@@ -629,35 +672,6 @@ export const uploadRunItemEvidence = async (runItemId, file, actor) => {
 export const completeRun = async (runId, actor) => {
     await completeMaintenanceRun(runId, actor.id);
     return getMaintenanceRun(runId, actor);
-};
-
-const mapAssetAssigneeFields = (asset) => {
-    const user = asset?.assignedToUser;
-    if (user) {
-        const ldap = user.ldapAttributes && typeof user.ldapAttributes === 'object' ? user.ldapAttributes : {};
-        const userName =
-            ldap.displayName ||
-            ldap.cn ||
-            ldap.name ||
-            user.username ||
-            null;
-        const department =
-            user.orgSnapshot?.department?.name ||
-            ldap.department ||
-            ldap.departmentName ||
-            null;
-        return {
-            userName: userName ? String(userName).trim() : null,
-            department: department ? String(department).trim() : null
-        };
-    }
-
-    const snipeName = asset?.snipeAssignedName?.trim() || null;
-    const snipeUsername = asset?.snipeAssignedUsername?.trim() || null;
-    return {
-        userName: snipeName || snipeUsername || null,
-        department: null
-    };
 };
 
 export const listAssetsAssignmentMatrix = async () => {
