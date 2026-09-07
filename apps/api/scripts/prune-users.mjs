@@ -33,8 +33,8 @@ const APPLY = hasArg("--apply");
 const logStep = (msg) => console.log(`- ${msg}`);
 
 const main = async () => {
-  if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL is missing. Run with: node --env-file=.env apps/api/scripts/prune-users.mjs ...");
+  if (!process.env.DATABASE_URL && !process.env.MYSQL_DATABASE) {
+    throw new Error("DATABASE_URL or MYSQL_DATABASE is missing. Run with: node --env-file=.env apps/api/scripts/prune-users.mjs ...");
   }
 
   const keepUser = await prisma.user.findUnique({

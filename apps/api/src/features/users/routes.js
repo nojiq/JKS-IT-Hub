@@ -11,7 +11,7 @@ export default async function (app, { config, userRepo, auditRepo, userFieldRepo
         if (userFieldRepo) {
             return userFieldRepo;
         }
-        if (!process.env.DATABASE_URL) {
+        if (!process.env.DATABASE_URL && !process.env.MYSQL_DATABASE) {
             return null;
         }
         loadedUserFieldRepo ??= await import("./profileFieldsRepo.js");
